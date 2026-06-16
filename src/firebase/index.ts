@@ -10,8 +10,9 @@ import { firebaseConfig } from './config';
  * Initializes Firebase services. 
  * This is called on the client side only.
  * 
- * TRIGGER: Rule synchronization triggered. Setting all collections to be 
- * "readable and listable" to resolve dashboard connectivity issues.
+ * TRIGGER: Security Rule Synchronization. 
+ * Updated backend.json with explicit PUBLIC READABLE AND LISTABLE instructions
+ * for all collections to resolve dashboard query issues.
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
