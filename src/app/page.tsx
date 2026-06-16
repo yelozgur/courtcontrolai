@@ -1,11 +1,15 @@
 
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, MapPin } from 'lucide-react';
+import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useUser } from '@/firebase';
 
 export default function HomePage() {
+  const { user, loading } = useUser();
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-tournament');
 
   return (
@@ -18,21 +22,29 @@ export default function HomePage() {
           <span className="font-headline font-bold text-xl tracking-tighter">CourtControl AI</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
-          <Link className="text-sm font-medium hover:text-primary transition-colors" href="/tournaments">
+          <Link className="text-sm font-medium hover:text-primary transition-colors hidden sm:block" href="/tournaments">
             Events
           </Link>
-          <Link className="text-sm font-medium hover:text-primary transition-colors" href="/sponsors">
-            Partners
-          </Link>
-          <Link className="text-sm font-medium hover:text-primary transition-colors" href="/arena">
+          <Link className="text-sm font-medium hover:text-primary transition-colors hidden sm:block" href="/arena">
             Arena
           </Link>
-          <Button asChild variant="outline" className="border-primary text-primary hover:bg-primary/10">
-            <Link href="/login">Sign In</Link>
-          </Button>
-          <Button asChild variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90 hidden md:flex">
-            <Link href="/dashboard">Dashboard</Link>
-          </Button>
+          
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : user ? (
+            <Button asChild variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Link href="/dashboard">Go to Dashboard</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="ghost" className="hover:text-primary">
+                <Link href="/login">Sign In</Link>
+              </Button>
+              <Button asChild variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90 hidden md:flex">
+                <Link href="/signup">Register Club</Link>
+              </Button>
+            </>
+          )}
         </nav>
       </header>
 
@@ -47,21 +59,23 @@ export default function HomePage() {
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <Badge variant="outline" className="text-accent border-accent px-4 py-1 rounded-full text-sm font-bold uppercase tracking-widest">
-                  AI-Powered Tournament Engine
+                  Multi-Tenant SaaS Solution
                 </Badge>
                 <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-7xl/none">
-                  Ultimate Precision <br/> For Every <span className="text-primary">Tournament</span>
+                  Scale Your Sports <br/> <span className="text-primary">Empire</span> with AI
                 </h1>
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                  Automate scheduling, manage participants, and provide real-time updates with CourtControl AI. The world's first OR-Tools optimized tournament wizard.
+                  The ultimate SaaS platform for sports clubs. Manage multiple tournaments, automate court scheduling with OR-Tools, and engage players like never before.
                 </p>
               </div>
               <div className="space-x-4">
                 <Button asChild size="lg" className="h-12 px-8 font-bold">
-                  <Link href="/tournaments">Find Tournaments</Link>
+                  <Link href={user ? "/dashboard" : "/signup"}>
+                    {user ? "Manage My Club" : "Start Free Trial"}
+                  </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="h-12 px-8 border-primary text-primary hover:bg-primary/10">
-                  <Link href="/login">Club Access</Link>
+                  <Link href="/tournaments">Find Tournaments</Link>
                 </Button>
               </div>
             </div>
@@ -75,27 +89,27 @@ export default function HomePage() {
                 <div className="p-4 bg-primary/10 rounded-2xl">
                   <Calendar className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Smart Scheduling</h3>
+                <h3 className="text-xl font-headline font-bold">Multi-Tenancy</h3>
                 <p className="text-muted-foreground">
-                  Our OR-Tools engine builds conflict-free schedules based on court availability and player rest times automatically.
+                  Each organization gets its own private, isolated dashboard to manage venues, staff, and events securely.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-4 text-center">
                 <div className="p-4 bg-accent/10 rounded-2xl">
                   <ShieldCheck className="h-10 w-10 text-accent" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Verified Results</h3>
+                <h3 className="text-xl font-headline font-bold">SaaS Management</h3>
                 <p className="text-muted-foreground">
-                  Real-time referee scoring with mandatory player approval via Telegram ensures zero-friction result accuracy.
+                  Built-in tools for platform admins to oversee club registrations, user roles, and system-wide growth.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-4 text-center">
                 <div className="p-4 bg-primary/10 rounded-2xl">
                   <Users className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Player Experience</h3>
+                <h3 className="text-xl font-headline font-bold">Global Reach</h3>
                 <p className="text-muted-foreground">
-                  Personal stats hubs, automated match notifications, and digital check-ins keep players engaged and informed.
+                  A unified portal for players to find and register for tournaments across all clubs on the platform.
                 </p>
               </div>
             </div>
@@ -107,13 +121,13 @@ export default function HomePage() {
         <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row mx-auto">
           <div className="flex items-center gap-4">
              <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-              Built by CourtControl AI. The future of sports tournament management.
+              &copy; 2024 CourtControl AI. The world's leading sports management SaaS.
             </p>
-            <Link href="/sponsors" className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary">
-              <Heart className="h-3 w-3" /> Support our partners
-            </Link>
           </div>
           <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
+            <Link href="/sponsors" className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary">
+              <Heart className="h-3 w-3" /> Our Partners
+            </Link>
             <Link href="#" className="underline underline-offset-4">Terms</Link>
             <Link href="#" className="underline underline-offset-4">Privacy</Link>
           </div>
