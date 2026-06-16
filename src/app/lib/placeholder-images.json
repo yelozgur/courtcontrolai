@@ -2,10 +2,10 @@
 {
   "placeholderImages": [
     {
-      "id": "hero-sports",
-      "description": "Professional sports arena with dynamic lighting",
-      "imageUrl": "https://picsum.photos/seed/sports1/1200/600",
-      "imageHint": "sports arena"
+      "id": "hero-tournament",
+      "description": "Professional sports stadium under bright tournament lights",
+      "imageUrl": "https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=2069&auto=format&fit=crop",
+      "imageHint": "sports tournament stadium"
     },
     {
       "id": "club-logo-placeholder",

@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-tournament",
+      "description": "Professional sports stadium under bright tournament lights",
+      "imageUrl": "https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=2069&auto=format&fit=crop",
+      "imageHint": "sports tournament stadium"
+    },
+    {
+      "id": "club-logo-placeholder",
+      "description": "Minimalist sports club logo",
+      "imageUrl": "https://picsum.photos/seed/logo1/400/400",
+      "imageHint": "sports logo"
+    },
+    {
+      "id": "player-avatar",
+      "description": "Professional athlete profile",
+      "imageUrl": "https://picsum.photos/seed/player1/200/200",
+      "imageHint": "athlete portrait"
+    },
+    {
+      "id": "tournament-banner",
+      "description": "Exciting tournament bracket graphic",
+      "imageUrl": "https://picsum.photos/seed/bracket1/800/400",
+      "imageHint": "tournament bracket"
+    }
+  ]
 }
