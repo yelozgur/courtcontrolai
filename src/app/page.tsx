@@ -1,10 +1,9 @@
-
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2 } from 'lucide-react';
+import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Play, Monitor } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser } from '@/firebase';
 
@@ -32,84 +31,97 @@ export default function HomePage() {
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           ) : user ? (
-            <Button asChild variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link href="/dashboard">Go to Dashboard</Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm" className="hidden sm:flex">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+            </div>
           ) : (
-            <>
-              <Button asChild variant="ghost" className="hover:text-primary">
+            <div className="flex items-center gap-2">
+              <Button asChild variant="ghost" size="sm">
                 <Link href="/login">Sign In</Link>
               </Button>
-              <Button asChild variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90 hidden md:flex">
-                <Link href="/signup">Register Club</Link>
+              <Button asChild variant="default" size="sm" className="bg-primary text-primary-foreground hidden md:flex">
+                <Link href="/signup">Register</Link>
               </Button>
-            </>
+            </div>
           )}
         </nav>
       </header>
 
       <main className="flex-1">
         <section 
-          className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-cover bg-center relative overflow-hidden"
+          className="w-full py-20 md:py-32 lg:py-48 bg-cover bg-center relative overflow-hidden"
           style={{ backgroundImage: `url('${heroImage?.imageUrl}')` }}
-          data-ai-hint={heroImage?.imageHint}
+          data-ai-hint="sports tournament"
         >
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]"></div>
+          <div className="absolute inset-0 bg-background/85 backdrop-blur-[1px]"></div>
           <div className="container px-4 md:px-6 relative z-10 mx-auto">
-            <div className="flex flex-col items-center space-y-4 text-center">
-              <div className="space-y-2">
+            <div className="flex flex-col items-center space-y-6 text-center">
+              <div className="space-y-4">
                 <Badge variant="outline" className="text-accent border-accent px-4 py-1 rounded-full text-sm font-bold uppercase tracking-widest">
-                  Multi-Tenant SaaS Solution
+                  The Multi-Tenant Sports SaaS
                 </Badge>
-                <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-7xl/none">
-                  Scale Your Sports <br/> <span className="text-primary">Empire</span> with AI
+                <h1 className="text-4xl font-headline font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl/none">
+                  Choose Your <span className="text-primary">Arena</span>
                 </h1>
-                <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                  The ultimate SaaS platform for sports clubs. Manage multiple tournaments, automate court scheduling with OR-Tools, and engage players like never before.
+                <p className="mx-auto max-w-[800px] text-muted-foreground md:text-xl lg:text-2xl leading-relaxed">
+                  Manage your club, host elite tournaments, or find your next competition. <br className="hidden md:block" /> AI-powered scheduling and real-time live results for every court.
                 </p>
               </div>
-              <div className="space-x-4">
-                <Button asChild size="lg" className="h-12 px-8 font-bold">
-                  <Link href={user ? "/dashboard" : "/signup"}>
-                    {user ? "Manage My Club" : "Start Free Trial"}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl mt-8">
+                <Button asChild size="lg" className="h-16 text-lg font-bold flex flex-col items-center gap-1">
+                  <Link href="/tournaments">
+                    <Trophy className="h-5 w-5" />
+                    Find Tournaments
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="h-12 px-8 border-primary text-primary hover:bg-primary/10">
-                  <Link href="/tournaments">Find Tournaments</Link>
+                <Button asChild variant="secondary" size="lg" className="h-16 text-lg font-bold flex flex-col items-center gap-1">
+                  <Link href="/arena">
+                    <Monitor className="h-5 w-5" />
+                    Enter Live Arena
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="h-16 text-lg font-bold border-primary text-primary hover:bg-primary/10 flex flex-col items-center gap-1 sm:col-span-2 lg:col-span-1">
+                  <Link href={user ? "/dashboard" : "/signup"}>
+                    <Zap className="h-5 w-5" />
+                    {user ? "Go to Dashboard" : "Register Your Club"}
+                  </Link>
                 </Button>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-card">
+        <section className="w-full py-16 bg-card border-y border-border">
           <div className="container px-4 md:px-6 mx-auto">
             <div className="grid gap-12 lg:grid-cols-3">
-              <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="flex flex-col items-center space-y-4 text-center p-6 bg-secondary/20 rounded-3xl border border-white/5">
                 <div className="p-4 bg-primary/10 rounded-2xl">
                   <Calendar className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Multi-Tenancy</h3>
+                <h3 className="text-xl font-headline font-bold">Smart Scheduling</h3>
                 <p className="text-muted-foreground">
-                  Each organization gets its own private, isolated dashboard to manage venues, staff, and events securely.
+                  Our AI scheduler handles court allocations and match timing automatically.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="flex flex-col items-center space-y-4 text-center p-6 bg-secondary/20 rounded-3xl border border-white/5">
                 <div className="p-4 bg-accent/10 rounded-2xl">
-                  <ShieldCheck className="h-10 w-10 text-accent" />
+                  <Monitor className="h-10 w-10 text-accent" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">SaaS Management</h3>
+                <h3 className="text-xl font-headline font-bold">Live Dashboards</h3>
                 <p className="text-muted-foreground">
-                  Built-in tools for platform admins to oversee club registrations, user roles, and system-wide growth.
+                  Real-time scoring and brackets for waiting areas and digital stadium screens.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="flex flex-col items-center space-y-4 text-center p-6 bg-secondary/20 rounded-3xl border border-white/5">
                 <div className="p-4 bg-primary/10 rounded-2xl">
                   <Users className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Global Reach</h3>
+                <h3 className="text-xl font-headline font-bold">Member Portal</h3>
                 <p className="text-muted-foreground">
-                  A unified portal for players to find and register for tournaments across all clubs on the platform.
+                  Unified player profiles and registration across all clubs on the network.
                 </p>
               </div>
             </div>
@@ -117,19 +129,20 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-border bg-card py-6 md:px-8 md:py-0">
-        <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row mx-auto">
-          <div className="flex items-center gap-4">
-             <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-              &copy; 2024 CourtControl AI. The world's leading sports management SaaS.
+      <footer className="border-t border-border bg-card py-12 md:px-8">
+        <div className="container flex flex-col items-center justify-between gap-6 md:h-24 md:flex-row mx-auto">
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <Zap className="h-6 w-6 text-primary" />
+            <p className="text-center text-sm leading-loose text-muted-foreground md:text-left font-medium">
+              &copy; 2024 CourtControl AI. The elite sports management engine.
             </p>
           </div>
-          <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
-            <Link href="/sponsors" className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary">
-              <Heart className="h-3 w-3" /> Our Partners
+          <div className="flex items-center gap-6 text-sm font-bold text-muted-foreground">
+            <Link href="/sponsors" className="flex items-center gap-2 hover:text-primary transition-colors">
+              <Heart className="h-4 w-4" /> Partners
             </Link>
-            <Link href="#" className="underline underline-offset-4">Terms</Link>
-            <Link href="#" className="underline underline-offset-4">Privacy</Link>
+            <Link href="/arena" className="hover:text-primary transition-colors">Live Feed</Link>
+            <Link href="/login" className="hover:text-primary transition-colors">Login</Link>
           </div>
         </div>
       </footer>

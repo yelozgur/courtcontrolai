@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
 export default function LoginPage() {
-  const { user, loading } = useUser();
+  const { loading } = useUser();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
@@ -30,12 +29,6 @@ export default function LoginPage() {
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user && !loading) {
-      router.push('/dashboard');
-    }
-  }, [user, loading, router]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth || !db) return;
@@ -44,7 +37,6 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
-      // SAA-Level Admin override logic
       const isAdminShortcut = email === 'admin';
       const loginEmail = isAdminShortcut ? 'admin@deneme.com' : email;
       const loginPassword = isAdminShortcut && password === 'adm' ? 'password' : password;
@@ -57,8 +49,6 @@ export default function LoginPage() {
       try {
         const userSnap = await getDoc(userRef);
 
-        // If profile doesn't exist, create it. 
-        // Ensure admin@deneme.com always gets the admin role.
         if (!userSnap.exists()) {
           await setDoc(userRef, {
             email: loggedUser.email,
@@ -70,9 +60,7 @@ export default function LoginPage() {
           await setDoc(userRef, { role: 'admin' }, { merge: true });
         }
       } catch (firestoreError: any) {
-        console.warn('Firestore profile check failed, proceeding to dashboard:', firestoreError);
-        // If Firestore is "offline" or unavailable, we still proceed to dashboard
-        // because the user is successfully authenticated with Auth.
+        console.warn('Firestore profile check failed:', firestoreError);
       }
 
       toast({
@@ -81,14 +69,12 @@ export default function LoginPage() {
       });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error(error);
-      
       if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
         setErrorType('config');
         setErrorMessage(error.message);
       } else if (error.message?.includes('offline') || error.code === 'unavailable') {
         setErrorType('firestore');
-        setErrorMessage('Firestore service is currently unavailable or offline. Please ensure Firestore is enabled in your Firebase Console.');
+        setErrorMessage('Firestore service is offline. Ensure it is enabled in your Firebase Console.');
       } else {
         setErrorType('creds');
         setErrorMessage(error.message);
@@ -115,7 +101,6 @@ export default function LoginPage() {
       const userRef = doc(db, 'users', user.uid);
       try {
         const userSnap = await getDoc(userRef);
-
         if (!userSnap.exists()) {
           await setDoc(userRef, {
             email: user.email,
@@ -126,7 +111,7 @@ export default function LoginPage() {
           });
         }
       } catch (e) {
-        console.warn('Firestore profile sync failed during Google login:', e);
+        console.warn('Firestore profile sync failed:', e);
       }
 
       toast({
@@ -147,7 +132,7 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -166,47 +151,20 @@ export default function LoginPage() {
         <CardHeader className="text-center space-y-1">
           <CardTitle className="text-2xl font-headline font-bold">Sign In</CardTitle>
           <CardDescription>
-            Enter your credentials to access your dashboard.
+            Enter your credentials to access your club.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {errorType === 'config' && (
             <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle className="font-bold">Firebase Setup Required</AlertTitle>
+              <AlertTitle className="font-bold">Setup Required</AlertTitle>
               <AlertDescription className="mt-2 space-y-2">
-                <p className="text-xs">Your Firebase project is connected, but the Auth service is not enabled. Please do the following:</p>
+                <p className="text-xs">Authentication provider not enabled:</p>
                 <ul className="text-[11px] space-y-1 bg-black/20 p-2 rounded border border-white/5">
                   <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Go to Firebase Console</li>
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Select <strong>Build {'>'} Authentication</strong></li>
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Click <strong>Get Started</strong></li>
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Enable <strong>Email/Password</strong> & <strong>Google</strong></li>
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Enable <strong>Email/Password</strong></li>
                 </ul>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {errorType === 'firestore' && (
-            <Alert variant="destructive" className="bg-amber-500/10 border-amber-500/20 text-amber-500">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle className="font-bold">Firestore Offline</AlertTitle>
-              <AlertDescription className="mt-2 space-y-2">
-                <p className="text-xs">Database connectivity issues. Please ensure Firestore is initialized:</p>
-                <ul className="text-[11px] space-y-1 bg-black/20 p-2 rounded border border-white/5">
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-amber-500" /> Go to Firebase Console</li>
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-amber-500" /> Select <strong>Build {'>'} Firestore Database</strong></li>
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-amber-500" /> Click <strong>Create Database</strong></li>
-                </ul>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {errorType === 'creds' && (
-            <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-500">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Login Issue</AlertTitle>
-              <AlertDescription className="text-xs">
-                {errorMessage}
               </AlertDescription>
             </Alert>
           )}
@@ -218,22 +176,10 @@ export default function LoginPage() {
             disabled={isSubmitting}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-              <path
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                fill="#4285F4"
-              />
-              <path
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                fill="#34A853"
-              />
-              <path
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                fill="#EA4335"
-              />
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
             Sign in with Google
           </Button>
@@ -243,13 +189,13 @@ export default function LoginPage() {
               <Separator className="w-full" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#0F172A] px-2 text-muted-foreground">Or continue with email</span>
+              <span className="bg-[#0F172A] px-2 text-muted-foreground">Or with email</span>
             </div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email or Username</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -286,14 +232,10 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-sm text-center text-muted-foreground">
             Don't have an account?{' '}
-            <Link href="/signup" className="text-primary hover:underline font-bold">
-              Sign Up
-            </Link>
+            <Link href="/signup" className="text-primary hover:underline font-bold">Sign Up</Link>
           </div>
           <div className="bg-primary/10 p-3 rounded-lg text-[10px] text-primary font-mono text-center">
             Super Admin: <strong>admin</strong> / <strong>adm</strong>
-            <br />
-            (Mapped to admin@deneme.com)
           </div>
         </CardFooter>
       </Card>
