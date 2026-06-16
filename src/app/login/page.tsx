@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -25,7 +25,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorHint, setErrorHint] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'config' | 'creds' | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && !loading) {
@@ -37,10 +38,10 @@ export default function LoginPage() {
     e.preventDefault();
     if (!auth || !db) return;
     setIsSubmitting(true);
-    setErrorHint(null);
+    setErrorType(null);
+    setErrorMessage(null);
 
     try {
-      // Logic to handle 'admin' shortcut
       const loginEmail = email === 'admin' ? 'admin@platform.com' : email;
       const loginPassword = email === 'admin' && password === 'adm' ? 'password' : password;
 
@@ -67,13 +68,12 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error(error);
       
-      // Provide actionable hints for common Firebase setup errors
       if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
-        setErrorHint("Firebase Auth is not fully configured. Please ensure 'Email/Password' is enabled in the Firebase Console.");
-      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-        setErrorHint("Invalid credentials. If this is a new project, you may need to 'Sign Up' first.");
+        setErrorType('config');
+        setErrorMessage(error.message);
       } else {
-        setErrorHint(error.message);
+        setErrorType('creds');
+        setErrorMessage(error.message);
       }
 
       toast({
@@ -111,12 +111,28 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {errorHint && (
+          {errorType === 'config' && (
             <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Configuration Error</AlertTitle>
+              <AlertTitle className="font-bold">Firebase Setup Required</AlertTitle>
+              <AlertDescription className="mt-2 space-y-2">
+                <p className="text-xs">Your Firebase project is connected, but the Auth service is not enabled. Please do the following:</p>
+                <ul className="text-[11px] space-y-1 bg-black/20 p-2 rounded border border-white/5">
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Go to Firebase Console</li>
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Select <strong>Build > Authentication</strong></li>
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Click <strong>Get Started</strong></li>
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Enable <strong>Email/Password</strong></li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {errorType === 'creds' && (
+            <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-500">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Login Issue</AlertTitle>
               <AlertDescription className="text-xs">
-                {errorHint}
+                {errorMessage}
               </AlertDescription>
             </Alert>
           )}
@@ -167,7 +183,7 @@ export default function LoginPage() {
           <div className="bg-primary/10 p-3 rounded-lg text-[10px] text-primary font-mono text-center">
             Super Admin: <strong>admin</strong> / <strong>adm</strong>
             <br />
-            (Note: Admin must be registered via Signup if not existing)
+            (Requires account creation via signup first)
           </div>
         </CardFooter>
       </Card>
