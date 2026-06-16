@@ -73,7 +73,8 @@
         "location": { "type": "string" },
         "contactEmail": { "type": "string", "format": "email" },
         "numCourts": { "type": "number" },
-        "logoUrl": { "type": "string" }
+        "logoUrl": { "type": "string" },
+        "primarySport": { "type": "string" }
       },
       "required": ["ownerId", "name", "contactEmail"]
     },

@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Building2, Mail, MapPin, Hash, Save, Loader2 } from "lucide-react"
+import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy } from "lucide-react"
 import { useFirestore, useDoc, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function ClubSettings() {
   const db = useFirestore()
@@ -32,7 +33,8 @@ export default function ClubSettings() {
     name: "",
     location: "",
     contactEmail: "",
-    numCourts: 1
+    numCourts: 1,
+    primarySport: "padel"
   })
   const [isSaving, setIsSaving] = useState(false)
 
@@ -42,7 +44,8 @@ export default function ClubSettings() {
         name: clubData.name || "",
         location: clubData.location || "",
         contactEmail: clubData.contactEmail || "",
-        numCourts: clubData.numCourts || 1
+        numCourts: clubData.numCourts || 1,
+        primarySport: clubData.primarySport || "padel"
       })
     }
   }, [clubData])
@@ -102,6 +105,30 @@ export default function ClubSettings() {
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="e.g. Ace Padel Club"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="primary-sport">Primary Sport Type</Label>
+              <div className="relative">
+                <Trophy className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                <Select 
+                  value={formData.primarySport} 
+                  onValueChange={(val) => setFormData({...formData, primarySport: val})}
+                >
+                  <SelectTrigger className="pl-10">
+                    <SelectValue placeholder="Select primary sport" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="padel">Padel</SelectItem>
+                    <SelectItem value="tennis">Tennis</SelectItem>
+                    <SelectItem value="badminton">Badminton</SelectItem>
+                    <SelectItem value="pickleball">Pickleball</SelectItem>
+                    <SelectItem value="squash">Squash</SelectItem>
+                    <SelectItem value="basketball">Basketball</SelectItem>
+                    <SelectItem value="table-tennis">Table Tennis</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">This sets the default type for your tournament wizard.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="club-email">Contact Email</Label>

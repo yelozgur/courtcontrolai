@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -59,15 +59,22 @@ export default function TournamentWizard() {
 
   const { data: userClubs } = useCollection(clubsQuery)
   const clubId = userClubs?.[0]?.id
+  const clubSport = userClubs?.[0]?.primarySport || "padel"
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     startDate: "",
-    sport: "padel",
+    sport: "",
     numCourts: 1,
     categories: [] as Category[]
   })
+
+  useEffect(() => {
+    if (clubSport && !formData.sport) {
+      setFormData(prev => ({ ...prev, sport: clubSport }))
+    }
+  }, [clubSport])
 
   const handleAddCategory = () => {
     if (!newCategoryName) return
@@ -189,42 +196,19 @@ export default function TournamentWizard() {
               <CardDescription>Tell us the basics of your epic tournament.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="t-name">Tournament Name</Label>
-                <Input 
-                  id="t-name" 
-                  placeholder="e.g. Summer Championship 2024" 
-                  className="bg-secondary/50 h-12 text-lg"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="t-desc">Description</Label>
-                <Textarea 
-                  id="t-desc" 
-                  placeholder="Event details, rules, and entry fees..." 
-                  className="bg-secondary/50 min-h-[100px]"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="t-date">Start Date</Label>
-                  <div className="relative">
-                    <CalendarDays className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
-                    <Input 
-                      id="t-date" 
-                      type="date" 
-                      className="bg-secondary/50 h-12 pl-10" 
-                      value={formData.startDate}
-                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    />
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 col-span-1 md:col-span-2">
+                  <Label htmlFor="t-name">Tournament Name</Label>
+                  <Input 
+                    id="t-name" 
+                    placeholder="e.g. Summer Championship 2024" 
+                    className="bg-secondary/50 h-12 text-lg"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="t-sport">Sport</Label>
+                  <Label htmlFor="t-sport">Tournament Type (Sport)</Label>
                   <Select value={formData.sport} onValueChange={(val) => setFormData({ ...formData, sport: val })}>
                     <SelectTrigger className="bg-secondary/50 h-12">
                       <SelectValue placeholder="Select Sport" />
@@ -239,10 +223,34 @@ export default function TournamentWizard() {
                       <SelectItem value="basketball">Basketball</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Matches will follow the rules of this sport.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="t-date">Start Date</Label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input 
+                      id="t-date" 
+                      type="date" 
+                      className="bg-secondary/50 h-12 pl-10" 
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="t-desc">Event Description</Label>
+                <Textarea 
+                  id="t-desc" 
+                  placeholder="Event details, rules, and entry fees..." 
+                  className="bg-secondary/50 min-h-[100px]"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
               <div className="pt-4 flex justify-end">
-                <Button onClick={() => setStep(2)} className="h-12 px-10" disabled={!formData.name || !formData.startDate}>
+                <Button onClick={() => setStep(2)} className="h-12 px-10" disabled={!formData.name || !formData.startDate || !formData.sport}>
                   Next: Categories & Rules
                 </Button>
               </div>
