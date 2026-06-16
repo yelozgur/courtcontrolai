@@ -132,18 +132,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   };
 
-  const isSyncing = authLoading || (!isAdmin && (clubsLoading || profileLoading));
+  const isSyncing = authLoading || profileLoading || (user && !isAdmin && clubsLoading);
 
   if (isSyncing) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Synchronizing With CourtControl...</p>
+        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Synchronizing Your Club...</p>
       </div>
     );
   }
 
-  if (clubsError || profileError) {
+  // Handle error state gracefully. If profileError or clubsError exists, it's likely a security rule issue.
+  if (profileError || clubsError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
         <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
@@ -151,7 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <h2 className="text-3xl font-headline font-bold uppercase tracking-tight text-white mb-2 leading-none">DATABASE CONNECTION<br/>ERROR</h2>
         <p className="text-muted-foreground max-w-md mx-auto mb-10 leading-relaxed text-sm">
-          We encountered an issue connecting to your club data. This can happen if database services are still provisioning or security rules are being updated.
+          We encountered an issue connecting to your club data. This often happens if the project services are still provisioning or if security rules were just updated.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
            <Button onClick={() => window.location.reload()} size="lg" className="bg-[#8B5CF6] hover:bg-[#7C3AED] min-w-[200px] font-bold rounded-xl h-12">
