@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Tournament": {
@@ -43,6 +42,32 @@
         "durationMinutes": { "type": "number" }
       },
       "required": ["tournamentId", "court", "status"]
+    },
+    "Club": {
+      "title": "Club",
+      "description": "Information about the sports club",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "contactEmail": { "type": "string", "format": "email" },
+        "numCourts": { "type": "number" },
+        "logoUrl": { "type": "string" }
+      },
+      "required": ["name", "contactEmail"]
+    },
+    "Participant": {
+      "title": "Participant",
+      "description": "A player registered for tournaments",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "telegramHandle": { "type": "string" },
+        "skillLevel": { "type": "string", "enum": ["beginner", "intermediate", "pro"] },
+        "registeredAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email"]
     }
   },
   "auth": {
@@ -56,6 +81,14 @@
     "/matches/{matchId}": {
       "schema": "Match",
       "description": "Collection of individual matches"
+    },
+    "/clubs/{clubId}": {
+      "schema": "Club",
+      "description": "Club profile information"
+    },
+    "/participants/{participantId}": {
+      "schema": "Participant",
+      "description": "Global list of club participants"
     }
   }
 }
