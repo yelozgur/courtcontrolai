@@ -58,16 +58,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const db = useFirestore();
   const router = useRouter();
 
-  // Get the user profile to check role
+  // CRITICAL: Robust Admin Check (Immediate)
+  const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com';
+
+  // Get the user profile to check role in DB
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
   
   const { data: profile, loading: profileLoading, error: profileError } = useDoc(userProfileRef);
-
-  // CRITICAL: Robust Admin Check
-  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
 
   // Get the user's club (if not admin)
   const clubsQuery = useMemoFirebase(() => {
@@ -84,10 +84,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Sync admin role if missing but email matches
   React.useEffect(() => {
-    if (db && user?.email?.toLowerCase() === 'admin@deneme.com' && profile && profile.role !== 'admin') {
-      updateDoc(doc(db, 'users', user.uid), { role: 'admin' });
+    if (db && isAdmin && profile && profile.role !== 'admin') {
+      updateDoc(doc(db, 'users', user!.uid), { role: 'admin' });
     }
-  }, [db, user, profile]);
+  }, [db, user, profile, isAdmin]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -109,6 +109,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         contactEmail: user.email || '',
         numCourts: 1,
         location: 'Pending Set-up',
+        primarySport: 'padel',
+        createdAt: new Date().toISOString()
       });
 
       await updateDoc(doc(db, 'users', user.uid), {
@@ -123,11 +125,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  const isOffline = profileError?.message?.includes('offline') || clubsError?.message?.includes('offline');
+  const isOffline = profileError?.message?.includes('offline') || clubsError?.message?.includes('offline') || clubsError?.message?.includes('permission-denied');
 
   if (authLoading || (profileLoading && !profile && !isOffline)) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
+      <div className="h-screen flex items-center justify-center bg-[#0F172A]">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
@@ -143,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <p className="text-muted-foreground max-w-sm">
           We're having trouble reaching the database. This usually means the client is offline or Firestore hasn't been enabled in the console.
         </p>
-        <Button variant="outline" className="mt-6" onClick={() => window.location.reload()}>
+        <Button variant="outline" className="mt-6 border-white/10 hover:bg-white/5" onClick={() => window.location.reload()}>
           Try Again
         </Button>
       </div>
@@ -156,7 +158,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
         <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
           <CardHeader className="text-center">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
               <PlusCircle className="text-white h-7 w-7" />
             </div>
             <CardTitle className="text-2xl font-headline font-bold">Register Your Club</CardTitle>
@@ -171,13 +173,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 placeholder="e.g. Smash Padel Academy"
                 value={onboardingName}
                 onChange={(e) => setOnboardingName(e.target.value)}
+                className="bg-white/5 border-white/10"
               />
             </div>
-            <Button className="w-full" onClick={handleCreateClub} disabled={!onboardingName || isOnboarding}>
+            <Button className="w-full bg-primary" onClick={handleCreateClub} disabled={!onboardingName || isOnboarding}>
               {isOnboarding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
               Create My Club Dashboard
             </Button>
-            <Button variant="ghost" className="w-full text-muted-foreground" onClick={handleSignOut}>
+            <Button variant="ghost" className="w-full text-muted-foreground hover:bg-white/5" onClick={handleSignOut}>
               Sign Out
             </Button>
           </CardContent>
@@ -189,25 +192,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = isAdmin ? [...commonItems, ...adminItems] : [...commonItems, ...clubItems];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-[#0F172A]">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
+      <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
         <div className="p-6 flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Zap className="text-primary-foreground h-5 w-5" />
+              <Zap className="text-white h-5 w-5" />
             </div>
-            <span className="font-headline font-bold text-lg tracking-tight">CourtControl</span>
+            <span className="font-headline font-bold text-lg tracking-tight text-white uppercase">CourtControl</span>
           </Link>
         </div>
         <ScrollArea className="flex-1 px-3">
           <div className="px-3 mb-4">
-            <div className="p-2 rounded-lg bg-secondary/50 border border-white/5">
+            <div className="p-3 rounded-xl bg-white/5 border border-white/5">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
                 {isAdmin ? 'System Admin' : 'Active Club'}
               </p>
-              <p className="text-xs font-bold truncate text-primary">
-                {isAdmin ? 'All Organizations' : (userClub?.name || 'My Club')}
+              <p className="text-sm font-bold truncate text-primary mt-1">
+                {isAdmin ? 'Platform Manager' : (userClub?.name || 'Club Owner')}
               </p>
             </div>
           </div>
@@ -217,8 +220,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary',
-                  pathname === item.href ? 'bg-primary/20 text-primary shadow-sm' : 'text-muted-foreground'
+                  'group flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary',
+                  pathname === item.href ? 'bg-primary/20 text-primary shadow-sm border border-primary/20' : 'text-muted-foreground'
                 )}
               >
                 <item.icon
@@ -232,9 +235,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ))}
           </div>
         </ScrollArea>
-        <div className="p-4 mt-auto border-t border-border space-y-2">
-          <div className="flex items-center gap-3 px-3 py-2 bg-secondary/50 rounded-xl">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
+        <div className="p-4 mt-auto border-t border-white/5 space-y-2">
+          <div className="flex items-center gap-3 px-3 py-3 bg-white/5 rounded-2xl border border-white/5">
+            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary overflow-hidden border border-primary/20">
               {profile?.photoURL ? (
                 <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
@@ -242,13 +245,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{profile?.displayName || user?.displayName || 'User'}</p>
-              <p className="text-xs text-muted-foreground truncate capitalize">{isAdmin ? 'Admin' : (profile?.role || 'Member')}</p>
+              <p className="text-sm font-bold truncate text-white">{profile?.displayName || user?.displayName || 'User'}</p>
+              <p className="text-[10px] text-muted-foreground truncate uppercase tracking-tighter">{isAdmin ? 'Administrator' : (profile?.role || 'Member')}</p>
             </div>
           </div>
           <Button
             variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-destructive"
+            className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={handleSignOut}
           >
             <LogOut className="mr-3 h-5 w-5" /> Sign Out
