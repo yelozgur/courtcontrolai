@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -30,11 +29,12 @@ export default function LoginPage() {
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Re-enable dashboard redirect for better UX if already logged in
-  if (existingUser && !loading) {
-    router.push('/dashboard');
-    return null;
-  }
+  // Use useEffect for side-effect navigation to avoid "setState in render" error
+  useEffect(() => {
+    if (existingUser && !loading) {
+      router.push('/dashboard');
+    }
+  }, [existingUser, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,7 +138,8 @@ export default function LoginPage() {
     }
   };
 
-  if (loading) {
+  // Prevent UI flicker by showing a loader while checking auth state or during redirect
+  if (loading || (existingUser && !loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
