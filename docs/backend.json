@@ -106,7 +106,7 @@
     }
   },
   "auth": {
-    "providers": ["google.com"]
+    "providers": ["password"]
   },
   "firestore": {
     "/tournaments/{tournamentId}": {
