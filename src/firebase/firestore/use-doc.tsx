@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -32,12 +33,14 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
           setData(null);
         }
         setLoading(false);
+        setError(null);
       },
       async (serverError: FirestoreError) => {
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
           operation: 'get',
         });
+        
         errorEmitter.emit('permission-error', permissionError);
         setError(serverError);
         setLoading(false);

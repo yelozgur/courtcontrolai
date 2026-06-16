@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Building,
   Gavel,
+  AlertCircle,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -68,14 +69,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return doc(db, 'users', user.uid);
   }, [db, user]);
   
-  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
+  const { data: profile, loading: profileLoading, error: profileError } = useDoc(userProfileRef);
 
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user || isAdmin) return null;
     return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
   }, [db, user, isAdmin]);
 
-  const { data: userClubs, loading: clubsLoading } = useCollection(clubsQuery);
+  const { data: userClubs, loading: clubsLoading, error: clubsError } = useCollection(clubsQuery);
   const userClub = userClubs?.[0];
 
   const [onboardingName, setOnboardingName] = React.useState('');
@@ -116,6 +117,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           requestResourceData: newClub
         });
         errorEmitter.emit('permission-error', error);
+        setIsOnboarding(false);
       });
 
     updateDoc(userRef, {
@@ -137,6 +139,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Synchronizing With CourtControl...</p>
+      </div>
+    );
+  }
+
+  // Handle case where permissions are denied (e.g. database not fully ready or rules misconfigured)
+  if (clubsError || profileError) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
+        <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-headline font-bold uppercase tracking-tight text-white">Database Connection Error</h2>
+        <p className="text-muted-foreground max-w-md mt-2 mb-8">
+          We encountered an issue connecting to your club data. This can happen if the database services are still being provisioned or security rules are being updated.
+        </p>
+        <div className="flex gap-4">
+           <Button onClick={() => window.location.reload()}>Retry Connection</Button>
+           <Button variant="ghost" onClick={handleSignOut}>Sign Out</Button>
+        </div>
       </div>
     );
   }

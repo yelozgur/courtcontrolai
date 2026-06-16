@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -10,19 +11,15 @@ export function FirebaseErrorListener() {
 
   useEffect(() => {
     const handlePermissionError = (error: FirestorePermissionError) => {
-      // In a real app, you might show a specialized dialog or log to a service.
-      // For development, we'll throw it to trigger the Next.js error overlay
-      // if it's a contextual error, or show a toast.
+      // Show a toast with the contextual error details
       toast({
         variant: 'destructive',
         title: 'Security Rule Denied',
         description: `Operation: ${error.context.operation} on path: ${error.context.path}`,
       });
       
-      // We throw to ensure the error is visible in development
-      if (process.env.NODE_ENV === 'development') {
-         console.error('Firebase Permission Error Context:', error.context);
-      }
+      // Centralized error handling. We don't use console.error here to avoid triggering 
+      // multiple error overlays in development, as the error is handled centrally.
     };
 
     errorEmitter.on('permission-error', handlePermissionError);
