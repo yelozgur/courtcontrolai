@@ -1,14 +1,13 @@
 'use client';
 
 /**
- * Replace the values below with the config from your Firebase Console.
- * Project Settings -> General -> Your apps -> Firebase SDK snippet -> Config
+ * Firebase configuration using the project credentials provided by the user.
  */
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDjhD-rqQOoxCktV3KCHqWuxZ9iPm7wWgY",
+  authDomain: "studio-6483617873-db638.firebaseapp.com",
+  projectId: "studio-6483617873-db638",
+  storageBucket: "studio-6483617873-db638.firebasestorage.app",
+  messagingSenderId: "1142825197",
+  appId: "1:1142825197:web:a6218f4d0090df1e776ce4"
 };
