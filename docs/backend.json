@@ -91,6 +91,36 @@
         "clubId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Participant": {
+      "title": "Participant",
+      "description": "A player registered for a tournament",
+      "type": "object",
+      "properties": {
+        "clubId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "telegramHandle": { "type": "string" },
+        "skillLevel": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "categoryName": { "type": "string" },
+        "registeredAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clubId", "tournamentId", "name", "email"]
+    },
+    "Sponsor": {
+      "title": "Sponsor",
+      "description": "A club partner or sponsor",
+      "type": "object",
+      "properties": {
+        "clubId": { "type": "string" },
+        "name": { "type": "string" },
+        "websiteUrl": { "type": "string" },
+        "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] },
+        "logoUrl": { "type": "string" }
+      },
+      "required": ["clubId", "name", "tier"]
     }
   },
   "auth": {
@@ -100,6 +130,8 @@
     "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Collection of tournaments" },
     "/matches/{matchId}": { "schema": "Match", "description": "Collection of individual matches" },
     "/clubs/{clubId}": { "schema": "Club", "description": "Club profile information" },
-    "/users/{userId}": { "schema": "User", "description": "User profiles and roles" }
+    "/users/{userId}": { "schema": "User", "description": "User profiles and roles" },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament participant records" },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club sponsorship records" }
   }
 }

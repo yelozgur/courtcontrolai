@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -17,6 +18,7 @@ export function initializeFirebase(): {
   // Ensure we don't initialize multiple times
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   
+  // Connect to services
   const firestore = getFirestore(app);
   const auth = getAuth(app);
 
