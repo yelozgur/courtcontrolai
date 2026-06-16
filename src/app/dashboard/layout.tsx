@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useAuth, useDoc, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection, query, where, limit, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, collection, query, where, limit, addDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -64,9 +64,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
+  
   const { data: profile, loading: profileLoading, error: profileError } = useDoc(userProfileRef);
 
-  const isAdmin = profile?.role === 'admin';
+  // CRITICAL: SaaS Admin fallback. Even if Firestore profile is loading or role is missing, 
+  // we check the authenticated email as a source of truth for the platform owner.
+  const isAdmin = profile?.role === 'admin' || user?.email === 'admin@deneme.com';
 
   // Get the user's club (if not admin)
   const clubsQuery = useMemoFirebase(() => {
@@ -80,6 +83,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Onboarding State
   const [onboardingName, setOnboardingName] = React.useState('');
   const [isOnboarding, setIsOnboarding] = React.useState(false);
+
+  // Sync admin role if missing but email matches
+  React.useEffect(() => {
+    if (db && user?.email === 'admin@deneme.com' && profile && profile.role !== 'admin') {
+      updateDoc(doc(db, 'users', user.uid), { role: 'admin' });
+    }
+  }, [db, user, profile]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -115,10 +125,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // If there's an offline error, we show a friendly message instead of just a loader
   const isOffline = profileError?.message?.includes('offline') || clubsError?.message?.includes('offline');
 
-  if (authLoading || (profileLoading && !isOffline) || (user && !isAdmin && clubsLoading && !isOffline)) {
+  if (authLoading || (profileLoading && !profile && !isOffline)) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -143,8 +152,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // If no club exists and not admin, force onboarding
-  if (!isAdmin && !userClub) {
+  // If no club exists and NOT admin, force onboarding
+  if (!isAdmin && !userClub && !clubsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
         <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
@@ -199,7 +208,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
                 {isAdmin ? 'System Admin' : 'Active Club'}
               </p>
-              <p className="text-xs font-bold truncate text-primary">{isAdmin ? 'All Organizations' : userClub?.name}</p>
+              <p className="text-xs font-bold truncate text-primary">
+                {isAdmin ? 'All Organizations' : (userClub?.name || 'My Club')}
+              </p>
             </div>
           </div>
           <div className="space-y-1 py-2">
@@ -229,12 +240,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {profile?.photoURL ? (
                 <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                profile?.displayName?.substring(0, 2).toUpperCase() || '?'
+                profile?.displayName?.substring(0, 2).toUpperCase() || user?.displayName?.substring(0, 2).toUpperCase() || '?'
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{profile?.displayName || 'User'}</p>
-              <p className="text-xs text-muted-foreground truncate capitalize">{profile?.role || 'Member'}</p>
+              <p className="text-sm font-medium truncate">{profile?.displayName || user?.displayName || 'User'}</p>
+              <p className="text-xs text-muted-foreground truncate capitalize">{isAdmin ? 'Admin' : (profile?.role || 'Member')}</p>
             </div>
           </div>
           <Button
