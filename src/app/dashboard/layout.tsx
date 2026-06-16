@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useAuth, useDoc, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection, query, where, limit, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, limit, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -97,6 +97,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!db || !user || !onboardingName) return;
     setIsOnboarding(true);
     
+    // Generate references with IDs immediately for fast UI transition
+    const clubRef = doc(collection(db, 'clubs'));
+    const userRef = doc(db, 'users', user.uid);
+
     const newClub = {
       ownerId: user.uid,
       name: onboardingName,
@@ -107,36 +111,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       createdAt: serverTimestamp()
     };
 
-    // Create the club and update user profile immediately for fast UI response
-    addDoc(collection(db, 'clubs'), newClub)
-      .then((clubRef) => {
-        const userRef = doc(db, 'users', user.uid);
-        updateDoc(userRef, {
-          clubId: clubRef.id,
-        }).catch(async (e) => {
-           const error = new FirestorePermissionError({
-            path: userRef.path,
-            operation: 'update',
-            requestResourceData: { clubId: clubRef.id }
-          });
-          errorEmitter.emit('permission-error', error);
-        });
-      })
+    // NON-BLOCKING MUTATIONS: Initiate creation and profile update simultaneously
+    setDoc(clubRef, newClub)
       .catch(async (e) => {
         const error = new FirestorePermissionError({
-          path: 'clubs',
+          path: clubRef.path,
           operation: 'create',
           requestResourceData: newClub
         });
         errorEmitter.emit('permission-error', error);
-      })
-      .finally(() => {
-        // We keep onboarding true until the collection listener picks up the new club
-        // or a timeout occurs to prevent the flickering "hasNoClub" state
       });
+
+    updateDoc(userRef, {
+      clubId: clubRef.id,
+    }).catch(async (e) => {
+       const error = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { clubId: clubRef.id }
+      });
+      errorEmitter.emit('permission-error', error);
+    });
+
+    // We rely on useCollection and useDoc listeners to transition the UI naturally
   };
 
-  // Improved syncing logic
+  // Improved syncing logic: Wait for auth and either admin status or club/profile data
   const isSyncing = authLoading || (!isAdmin && (clubsLoading || profileLoading));
 
   if (isSyncing) {
@@ -150,11 +150,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  // Check if we are in onboarding mode (waiting for the club query to find the newly created club)
-  const isWaitingForNewClub = isOnboarding && !userClub;
-  const hasNoClub = !isAdmin && !userClub && !profile?.clubId;
+  // The onboarding screen only appears if we are CERTAIN no club exists
+  const hasNoClub = !isAdmin && !userClub && !profile?.clubId && !isOnboarding;
 
-  if (hasNoClub || isWaitingForNewClub) {
+  if (hasNoClub) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
         <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">

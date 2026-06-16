@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin } from "lucide-react"
-import { collection, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
+import { collection, doc, setDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -108,6 +108,8 @@ export default function TournamentWizard() {
     if (!db || !clubId) return
     setIsSubmitting(true)
     
+    // Generate a reference with ID immediately
+    const tournamentRef = doc(collection(db, "tournaments"))
     const tournamentData = {
       ...formData,
       clubId,
@@ -115,54 +117,48 @@ export default function TournamentWizard() {
       createdAt: serverTimestamp()
     }
 
-    addDoc(collection(db, "tournaments"), tournamentData)
-      .then((docRef) => {
-        // Automatically create a dummy first match to initialize the tournament view
-        if (formData.categories.length > 0) {
-          const matchData = {
-            clubId,
-            tournamentId: docRef.id,
-            court: 1,
-            category: formData.categories[0].name,
-            teamA: { name: "Team alpha", score: 0, setsWon: 0, players: [] },
-            teamB: { name: "Team beta", score: 0, setsWon: 0, players: [] },
-            status: "live",
-            startTime: serverTimestamp(),
-            durationMinutes: 45
-          };
-          
-          addDoc(collection(db, "matches"), matchData).catch(async (e) => {
-             const error = new FirestorePermissionError({
-              path: "matches",
-              operation: "create",
-              requestResourceData: matchData
-            });
-            errorEmitter.emit("permission-error", error);
-          });
-        }
-        
-        toast({
-          title: "Tournament Launched!",
-          description: `${formData.name} is now live.`
-        });
-        router.push("/dashboard");
-      })
-      .catch(async (e: any) => {
+    // NON-BLOCKING MUTATION: Initiate tournament creation
+    setDoc(tournamentRef, tournamentData)
+      .catch(async (e) => {
         const error = new FirestorePermissionError({
-          path: "tournaments",
+          path: tournamentRef.path,
           operation: "create",
           requestResourceData: tournamentData
         })
         errorEmitter.emit("permission-error", error)
-        toast({
-          variant: "destructive",
-          title: "Launch Failed",
-          description: "Could not create tournament. Check permissions."
-        });
       })
-      .finally(() => {
-        setIsSubmitting(false);
+
+    // Automatically create a dummy first match if categories exist
+    if (formData.categories.length > 0) {
+      const matchRef = doc(collection(db, "matches"))
+      const matchData = {
+        clubId,
+        tournamentId: tournamentRef.id,
+        court: 1,
+        category: formData.categories[0].name,
+        teamA: { name: "Team alpha", score: 0, setsWon: 0, players: [] },
+        teamB: { name: "Team beta", score: 0, setsWon: 0, players: [] },
+        status: "live",
+        startTime: serverTimestamp(),
+        durationMinutes: 45
+      }
+      
+      setDoc(matchRef, matchData).catch(async (e) => {
+         const error = new FirestorePermissionError({
+          path: matchRef.path,
+          operation: "create",
+          requestResourceData: matchData
+        });
+        errorEmitter.emit("permission-error", error);
       });
+    }
+    
+    // Success feedback and immediate redirect
+    toast({
+      title: "Tournament Launched!",
+      description: `${formData.name} is now live.`
+    })
+    router.push("/dashboard")
   }
 
   if (!clubId) {
