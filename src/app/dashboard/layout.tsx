@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -27,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useAuth, useDoc, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection, query, where, limit, addDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, limit, addDoc, updateDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -67,9 +66,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const { data: profile, loading: profileLoading, error: profileError } = useDoc(userProfileRef);
 
-  // CRITICAL: SaaS Admin fallback. Even if Firestore profile is loading or role is missing, 
-  // we check the authenticated email as a source of truth for the platform owner.
-  const isAdmin = profile?.role === 'admin' || user?.email === 'admin@deneme.com';
+  // CRITICAL: Robust Admin Check
+  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
 
   // Get the user's club (if not admin)
   const clubsQuery = useMemoFirebase(() => {
@@ -86,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Sync admin role if missing but email matches
   React.useEffect(() => {
-    if (db && user?.email === 'admin@deneme.com' && profile && profile.role !== 'admin') {
+    if (db && user?.email?.toLowerCase() === 'admin@deneme.com' && profile && profile.role !== 'admin') {
       updateDoc(doc(db, 'users', user.uid), { role: 'admin' });
     }
   }, [db, user, profile]);
