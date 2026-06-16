@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
-  // Get the user's club
+  // Get the user's club by ownerId
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user || isAdmin) return null;
     return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
@@ -105,7 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       createdAt: new Date().toISOString()
     };
 
-    // Non-blocking addDoc
+    // Create the club and update user profile immediately for fast UI response
     addDoc(collection(db, 'clubs'), newClub)
       .then((clubRef) => {
         updateDoc(doc(db, 'users', user.uid), {
@@ -118,22 +118,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
   };
 
-  // Wait for auth and initial data sync
-  const isSyncing = !isAdmin && (clubsLoading || profileLoading) && !userClub && !profile;
+  // Improved syncing logic: Wait for auth, profile, and initial collection check
+  const isSyncing = authLoading || (!isAdmin && (clubsLoading || profileLoading));
 
-  if (authLoading || isSyncing) {
+  if (isSyncing) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium">Synchronizing with CourtControl...</p>
+        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Synchronizing With CourtControl...</p>
       </div>
     );
   }
 
   if (!user) return null;
 
-  // ONLY show onboarding if we are NOT admin AND we are CERTAIN no club exists (loading is false)
-  if (!isAdmin && !userClub && !clubsLoading) {
+  // Onboarding only appears if we are absolutely certain no club exists
+  const hasNoClub = !isAdmin && !userClub && !profile?.clubId;
+
+  if (hasNoClub) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
         <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
@@ -141,24 +143,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
               <PlusCircle className="text-white h-7 w-7" />
             </div>
-            <CardTitle className="text-2xl font-headline font-bold">Register Your Club</CardTitle>
+            <CardTitle className="text-2xl font-headline font-bold uppercase tracking-tight">Register Your Club</CardTitle>
             <CardDescription>
-              To start managing tournaments, you first need to register your sports club or organization.
+              To start managing tournaments and live scores, register your sports organization first.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Club Name</Label>
               <Input
-                placeholder="e.g. Smash Padel Academy"
+                placeholder="e.g. Ace Padel Academy"
                 value={onboardingName}
                 onChange={(e) => setOnboardingName(e.target.value)}
                 className="bg-white/5 border-white/10"
               />
             </div>
-            <Button className="w-full bg-primary" onClick={handleCreateClub} disabled={!onboardingName || isOnboarding}>
+            <Button className="w-full bg-primary h-12 font-bold uppercase" onClick={handleCreateClub} disabled={!onboardingName || isOnboarding}>
               {isOnboarding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
-              Create My Club Dashboard
+              Create Club Dashboard
             </Button>
             <Button variant="ghost" className="w-full text-muted-foreground hover:bg-white/5" onClick={handleSignOut}>
               Sign Out
