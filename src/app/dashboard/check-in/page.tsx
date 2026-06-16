@@ -1,6 +1,7 @@
 
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { QrCode, Share2, Download, ExternalLink, Users, Smartphone } from "lucide-react"
@@ -82,7 +83,7 @@ export default function CheckInPage() {
                     <p className="text-xs text-muted-foreground">Find and verify registrations manually.</p>
                   </div>
                   <Button size="sm" asChild>
-                    <a href="/dashboard/participants">Open Roster</a>
+                    <Link href="/dashboard/participants">Open Roster</Link>
                   </Button>
                 </div>
 
@@ -95,7 +96,7 @@ export default function CheckInPage() {
                     <p className="text-xs text-muted-foreground">Public dashboard for waiting areas.</p>
                   </div>
                   <Button size="sm" variant="ghost" asChild>
-                    <a href="/arena" target="_blank"><ExternalLink className="h-4 w-4" /></a>
+                    <Link href="/arena" target="_blank"><ExternalLink className="h-4 w-4" /></Link>
                   </Button>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -68,9 +69,13 @@ export default function DashboardOverview() {
           <p className="text-muted-foreground mt-1">Real-time pulse of your club and tournaments.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Club Report</Button>
-          <Button className="bg-primary hover:bg-primary/90">
-            <Play className="mr-2 h-4 w-4" /> Start Match Day
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/club">Club Report</Link>
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90" asChild>
+            <Link href="/dashboard/tournaments/new">
+              <Play className="mr-2 h-4 w-4" /> Start Match Day
+            </Link>
           </Button>
         </div>
       </div>
@@ -134,8 +139,10 @@ export default function DashboardOverview() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <Badge className="bg-accent text-accent-foreground mb-2">LIVE NOW</Badge>
-              <Button size="sm" variant="ghost" className="text-primary hover:text-primary hover:bg-primary/10">
-                View Full Bracket <ArrowUpRight className="ml-2 h-4 w-4" />
+              <Button size="sm" variant="ghost" className="text-primary hover:text-primary hover:bg-primary/10" asChild>
+                <Link href="/dashboard/schedule">
+                  View Full Bracket <ArrowUpRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
             </div>
             <CardTitle className="text-3xl font-headline font-bold">
@@ -183,7 +190,9 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground italic">Your smart scheduler is monitoring court usage...</p>
-            <Button variant="outline" className="w-full mt-2">Open Visual Timeline</Button>
+            <Button variant="outline" className="w-full mt-2" asChild>
+              <Link href="/dashboard/schedule">Open Visual Timeline</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
