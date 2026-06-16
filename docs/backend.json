@@ -14,6 +14,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "description": { "type": "string" },
         "imageUrl": { "type": "string" },
+        "numCourts": { "type": "number", "description": "Number of courts allocated for this specific tournament" },
         "categories": {
           "type": "array",
           "items": {
@@ -22,7 +23,7 @@
               "id": { "type": "string" },
               "name": { "type": "string" },
               "format": { "type": "string" },
-              "sets": { "type": "number" },
+              "sets": { "type": "number", "description": "Number of sets per match (e.g., 3 for best of 3)" },
               "ageGroup": { "type": "string" },
               "isTeamBased": { "type": "boolean" }
             }
