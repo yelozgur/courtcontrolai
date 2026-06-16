@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy } from "lucide-react"
-import { useFirestore, useDoc, useUser, useMemoFirebase, useCollection } from "@/firebase"
+import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -50,31 +50,36 @@ export default function ClubSettings() {
     }
   }, [clubData])
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!db || !clubId) return
     setIsSaving(true)
     
-    try {
-      await setDoc(doc(db, "clubs", clubId), formData, { merge: true })
-      toast({
-        title: "Club Settings Updated",
-        description: "Your club profile has been successfully saved."
+    const clubRef = doc(db, "clubs", clubId)
+    
+    // Non-blocking mutation for better UX and cache leveraging
+    setDoc(clubRef, formData, { merge: true })
+      .then(() => {
+        toast({
+          title: "Club Settings Updated",
+          description: "Your club profile has been successfully saved."
+        })
       })
-    } catch (e: any) {
-      const error = new FirestorePermissionError({
-        path: `clubs/${clubId}`,
-        operation: "update",
-        requestResourceData: formData
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: clubRef.path,
+          operation: "update",
+          requestResourceData: formData
+        })
+        errorEmitter.emit("permission-error", error)
       })
-      errorEmitter.emit("permission-error", error)
-    } finally {
-      setIsSaving(false)
-    }
+      .finally(() => {
+        setIsSaving(false)
+      })
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -109,7 +114,7 @@ export default function ClubSettings() {
             <div className="space-y-2">
               <Label htmlFor="primary-sport">Primary Sport Type</Label>
               <div className="relative">
-                <Trophy className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                <Trophy className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
                 <Select 
                   value={formData.primarySport} 
                   onValueChange={(val) => setFormData({...formData, primarySport: val})}
