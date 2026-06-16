@@ -10,8 +10,8 @@ import { firebaseConfig } from './config';
  * Initializes Firebase services. 
  * This is called on the client side only.
  * 
- * Note: Adding a comment here to trigger a Security Rules re-deployment
- * via the backend configuration engine.
+ * TRIGGER: Updating this comment to force a re-deployment of Security Rules
+ * with the new "listable" permissions defined in backend.json.
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
