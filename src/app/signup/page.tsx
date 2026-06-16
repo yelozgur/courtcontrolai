@@ -1,14 +1,13 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, UserPlus, Loader2, Mail, Lock, User, AlertCircle, Circle } from 'lucide-react';
+import { Zap, UserPlus, Loader2, Mail, Lock, User, AlertCircle, Circle, Globe } from 'lucide-react';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
@@ -17,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function SignupPage() {
-  const { loading } = useUser();
+  const { user: existingUser, loading } = useUser();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
@@ -27,7 +26,13 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | null>(null);
+  const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | 'domain' | null>(null);
+
+  useEffect(() => {
+    if (existingUser && !loading) {
+      router.push('/dashboard');
+    }
+  }, [existingUser, loading, router]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,8 +48,6 @@ export default function SignupPage() {
 
       const isAdminEmail = email === 'admin@deneme.com';
 
-      // We don't await the profile creation to ensure the user is not blocked from reaching the dashboard
-      // if Firestore initialization is pending.
       setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         displayName: name,
@@ -58,7 +61,9 @@ export default function SignupPage() {
       });
       router.push('/dashboard');
     } catch (error: any) {
-      if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
+      if (error.code === 'auth/unauthorized-domain') {
+        setErrorType('domain');
+      } else if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
         setErrorType('config');
       }
       toast({
@@ -81,9 +86,8 @@ export default function SignupPage() {
       const user = result.user;
       
       const isAdminEmail = user.email === 'admin@deneme.com';
-
-      // Use a background check/creation for the profile
       const userRef = doc(db, 'users', user.uid);
+      
       getDoc(userRef).then(async (userSnap) => {
         if (!userSnap.exists()) {
           await setDoc(userRef, {
@@ -104,7 +108,9 @@ export default function SignupPage() {
       });
       router.push('/dashboard');
     } catch (error: any) {
-      if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
+      if (error.code === 'auth/unauthorized-domain') {
+        setErrorType('domain');
+      } else if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
         setErrorType('config');
       }
       toast({
@@ -142,6 +148,21 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {errorType === 'domain' && (
+            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+              <Globe className="h-4 w-4" />
+              <AlertTitle className="font-bold">Unauthorized Domain</AlertTitle>
+              <AlertDescription className="mt-2 space-y-2">
+                <p className="text-xs">Your current domain is not authorized in Firebase Console.</p>
+                <div className="text-[10px] bg-black/20 p-2 rounded border border-white/5 space-y-1">
+                  <p>1. Go to Firebase Console</p>
+                  <p>2. Auth > Settings > Authorized domains</p>
+                  <p>3. Add: <span className="text-primary font-mono">{typeof window !== 'undefined' ? window.location.hostname : 'current domain'}</span></p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {errorType === 'config' && (
             <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
               <AlertCircle className="h-4 w-4" />
