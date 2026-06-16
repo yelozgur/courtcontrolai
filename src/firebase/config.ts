@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Firebase configuration object.
+ * These values are loaded from environment variables defined in your project.
+ */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
