@@ -1,186 +1,88 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Zap, Loader2, AlertCircle } from "lucide-react"
-import { doc, updateDoc, collection, query, where, limit, onSnapshot } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
-import { errorEmitter } from "@/firebase/error-emitter"
-import { FirestorePermissionError } from "@/firebase/errors"
+import { Trophy, Zap, Loader2, Search, ArrowRight, Gavel } from "lucide-react"
+import { collection, query, where, orderBy, limit } from "firebase/firestore"
+import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
+import { Input } from "@/components/ui/input"
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
-export default function RefereeConsole() {
+export default function RefereeTournamentSelector() {
   const db = useFirestore()
-  const [matchId, setMatchId] = useState<string | null>(null)
-  const [isVerifying, setIsVerifying] = useState(false)
+  const { user } = useUser()
+  const [search, setSearch] = useState("")
 
-  // Find a live match to referee
-  const liveMatchQuery = useMemoFirebase(() => {
+  const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null
-    return query(collection(db, "matches"), where("status", "==", "live"), limit(1))
+    // If not admin, show only their club's tournaments
+    // (Note: Simplified for SaaS demo, usually you'd check clubId)
+    return query(
+      collection(db, "tournaments"), 
+      where("status", "==", "active"),
+      orderBy("createdAt", "desc"),
+      limit(20)
+    )
   }, [db])
 
-  const { data: matches, loading } = useCollection(liveMatchQuery)
-  const activeMatch = matches?.[0]
+  const { data: tournaments, loading } = useCollection(tournamentsQuery)
 
-  useEffect(() => {
-    if (activeMatch) {
-      setMatchId(activeMatch.id)
-    }
-  }, [activeMatch])
-
-  const updateScore = (team: 'teamA' | 'teamB', increment: number) => {
-    if (!db || !activeMatch || !matchId) return
-    
-    const currentScore = activeMatch[team].score
-    const newScore = Math.max(0, currentScore + increment)
-    
-    const matchRef = doc(db, "matches", matchId)
-    updateDoc(matchRef, {
-      [`${team}.score`]: newScore
-    }).catch(async (e) => {
-      const error = new FirestorePermissionError({
-        path: matchRef.path,
-        operation: "update",
-        requestResourceData: { [`${team}.score`]: newScore }
-      })
-      errorEmitter.emit("permission-error", error)
-    })
-  }
-
-  const handleVerify = () => {
-    setIsVerifying(true)
-    // Simulate verification delay
-    setTimeout(() => setIsVerifying(false), 3000)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  if (!activeMatch) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 text-center">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-bold">No Live Matches</h2>
-        <p className="text-muted-foreground mt-2">Create a tournament or start a match from the dashboard to use the referee console.</p>
-      </div>
-    )
-  }
+  const filtered = tournaments?.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div className="min-h-screen bg-background flex flex-col max-w-md mx-auto border-x border-border">
-      <header className="p-4 border-b border-border flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-10">
-        <div className="flex items-center gap-2">
-          <Zap className="text-primary h-5 w-5" />
-          <span className="font-headline font-bold">Referee Console</span>
-        </div>
-        <Badge variant="outline" className="text-accent border-accent">Court {activeMatch.court}</Badge>
-      </header>
-
-      <main className="flex-1 p-4 flex flex-col gap-6">
-        <div className="text-center space-y-1">
-          <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Live Match</h2>
-          <p className="text-lg font-headline font-bold">{activeMatch.category}</p>
+    <div className="min-h-screen bg-background flex flex-col items-center p-6">
+      <div className="max-w-md w-full space-y-8 py-10">
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Gavel className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-headline font-bold tracking-tight">Referee Console</h1>
+          <p className="text-muted-foreground font-medium">Select a tournament to start officiating.</p>
         </div>
 
-        {/* Team A Card */}
-        <Card className={`overflow-hidden transition-all duration-300 ${activeMatch.teamA.score > activeMatch.teamB.score ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
-          <CardContent className="p-6 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center font-headline text-2xl font-bold">
-              {activeMatch.teamA.name.substring(0, 2).toUpperCase()}
-            </div>
-            <div className="text-center">
-              <h3 className="font-bold text-xl">{activeMatch.teamA.name}</h3>
-            </div>
-            <div className="flex items-center gap-6">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-12 w-12 rounded-full border-2" 
-                onClick={() => updateScore('teamA', -1)}
-              >
-                -
-              </Button>
-              <span className="text-6xl font-headline font-bold">{activeMatch.teamA.score}</span>
-              <Button 
-                variant="default" 
-                size="icon" 
-                className="h-12 w-12 rounded-full bg-primary"
-                onClick={() => updateScore('teamA', 1)}
-              >
-                +
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="relative py-2">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground font-bold">VS</span>
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+          <Input 
+            placeholder="Search tournaments..." 
+            className="pl-10 h-12 bg-secondary/30"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
-        {/* Team B Card */}
-        <Card className={`overflow-hidden transition-all duration-300 ${activeMatch.teamB.score > activeMatch.teamA.score ? 'border-primary ring-1 ring-primary/30' : 'border-border'}`}>
-          <CardContent className="p-6 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center font-headline text-2xl font-bold">
-              {activeMatch.teamB.name.substring(0, 2).toUpperCase()}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center p-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-            <div className="text-center">
-              <h3 className="font-bold text-xl">{activeMatch.teamB.name}</h3>
+          ) : filtered && filtered.length > 0 ? (
+            filtered.map((t) => (
+              <Link key={t.id} href={`/referee/${t.id}`}>
+                <Card className="bg-card hover:border-primary/50 transition-all group">
+                  <CardHeader className="p-4 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-primary">
+                        <Trophy className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg font-bold leading-none">{t.name}</CardTitle>
+                        <CardDescription className="text-xs mt-1 uppercase font-bold tracking-widest text-accent">{t.sport}</CardDescription>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))
+          ) : (
+            <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-2xl">
+              No active tournaments found.
             </div>
-            <div className="flex items-center gap-6">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-12 w-12 rounded-full border-2" 
-                onClick={() => updateScore('teamB', -1)}
-              >
-                -
-              </Button>
-              <span className="text-6xl font-headline font-bold">{activeMatch.teamB.score}</span>
-              <Button 
-                variant="default" 
-                size="icon" 
-                className="h-12 w-12 rounded-full bg-primary"
-                onClick={() => updateScore('teamB', 1)}
-              >
-                +
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {isVerifying ? (
-          <div className="bg-accent/10 border border-accent rounded-xl p-6 text-center animate-in zoom-in-95">
-            <Loader2 className="h-12 w-12 text-accent mx-auto mb-2 animate-spin" />
-            <h4 className="font-bold text-accent">Waiting for Player Approval</h4>
-            <p className="text-xs text-muted-foreground mt-1">Verification request sent via Telegram to both teams.</p>
-          </div>
-        ) : (
-          <Button 
-            className="w-full h-16 text-lg font-bold bg-accent text-accent-foreground hover:bg-accent/90"
-            onClick={handleVerify}
-          >
-            Submit Score & Verify
-          </Button>
-        )}
-      </main>
-
-      <footer className="p-4 border-t border-border bg-card/50 grid grid-cols-2 gap-2">
-        <Button variant="ghost" className="text-xs">Medical Timeout</Button>
-        <Button variant="ghost" className="text-xs">Call Supervisor</Button>
-      </footer>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
