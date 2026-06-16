@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle, Circle } from 'lucide-react';
+import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle, Circle, ShieldCheck } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -17,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
 export default function LoginPage() {
-  const { loading } = useUser();
+  const { user: existingUser, loading } = useUser();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
@@ -28,6 +29,12 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Re-enable dashboard redirect for better UX if already logged in
+  if (existingUser && !loading) {
+    router.push('/dashboard');
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +64,7 @@ export default function LoginPage() {
             createdAt: serverTimestamp(),
           });
         } else if (loginEmail === 'admin@deneme.com' && userSnap.data().role !== 'admin') {
+          // Force admin role for the designated SaaS admin email
           await setDoc(userRef, { role: 'admin' }, { merge: true });
         }
       } catch (firestoreError: any) {
@@ -234,8 +242,14 @@ export default function LoginPage() {
             Don't have an account?{' '}
             <Link href="/signup" className="text-primary hover:underline font-bold">Sign Up</Link>
           </div>
-          <div className="bg-primary/10 p-3 rounded-lg text-[10px] text-primary font-mono text-center">
-            Super Admin: <strong>admin</strong> / <strong>adm</strong>
+          <div className="bg-primary/10 p-4 rounded-xl border border-primary/20 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span className="text-[10px] font-bold text-primary uppercase tracking-widest">SaaS Administrator Access</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground font-mono">
+              User: <span className="text-primary">admin</span> / Pass: <span className="text-primary">adm</span>
+            </p>
           </div>
         </CardFooter>
       </Card>

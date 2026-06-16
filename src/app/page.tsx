@@ -1,15 +1,26 @@
+
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Play, Monitor } from 'lucide-react';
+import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Play, Monitor, Building } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useUser } from '@/firebase';
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 export default function HomePage() {
   const { user, loading } = useUser();
+  const db = useFirestore();
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-tournament');
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user]);
+  
+  const { data: profile } = useDoc(userProfileRef);
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -32,8 +43,11 @@ export default function HomePage() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           ) : user ? (
             <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="hidden sm:flex">
-                <Link href="/dashboard">Dashboard</Link>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/dashboard" className="flex items-center gap-2">
+                  {isAdmin && <ShieldCheck className="h-4 w-4 text-accent" />}
+                  {isAdmin ? 'Admin Panel' : 'Dashboard'}
+                </Link>
               </Button>
             </div>
           ) : (
@@ -60,7 +74,7 @@ export default function HomePage() {
             <div className="flex flex-col items-center space-y-6 text-center">
               <div className="space-y-4">
                 <Badge variant="outline" className="text-accent border-accent px-4 py-1 rounded-full text-sm font-bold uppercase tracking-widest">
-                  The Multi-Tenant Sports SaaS
+                  {isAdmin ? 'Logged in as SaaS Administrator' : 'The Multi-Tenant Sports SaaS'}
                 </Badge>
                 <h1 className="text-4xl font-headline font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl/none">
                   Choose Your <span className="text-primary">Arena</span>
@@ -83,12 +97,22 @@ export default function HomePage() {
                     Enter Live Arena
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="h-16 text-lg font-bold border-primary text-primary hover:bg-primary/10 flex flex-col items-center gap-1 sm:col-span-2 lg:col-span-1">
-                  <Link href={user ? "/dashboard" : "/signup"}>
-                    <Zap className="h-5 w-5" />
-                    {user ? "Go to Dashboard" : "Register Your Club"}
-                  </Link>
-                </Button>
+                
+                {isAdmin ? (
+                  <Button asChild variant="outline" size="lg" className="h-16 text-lg font-bold border-accent text-accent hover:bg-accent/10 flex flex-col items-center gap-1">
+                    <Link href="/dashboard/admin/clubs">
+                      <Building className="h-5 w-5" />
+                      Manage All Clubs
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild variant="outline" size="lg" className="h-16 text-lg font-bold border-primary text-primary hover:bg-primary/10 flex flex-col items-center gap-1">
+                    <Link href={user ? "/dashboard" : "/signup"}>
+                      <Zap className="h-5 w-5" />
+                      {user ? "Go to Dashboard" : "Register Your Club"}
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
