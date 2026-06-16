@@ -13,7 +13,19 @@
         "status": { "type": "string", "enum": ["draft", "active", "finished"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "description": { "type": "string" },
-        "imageUrl": { "type": "string" }
+        "imageUrl": { "type": "string" },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "format": { "type": "string" },
+              "sets": { "type": "number" }
+            }
+          }
+        }
       },
       "required": ["clubId", "name", "startDate", "sport", "status"]
     },
@@ -117,10 +129,7 @@
       "schema": "Match",
       "description": "Collection of individual matches"
     },
-    "/clubs/{clubId}": {
-      "schema": "Club",
-      "description": "Club profile information"
-    },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Club profile information" },
     "/participants/{participantId}": {
       "schema": "Participant",
       "description": "Global list of club participants"
@@ -129,9 +138,6 @@
       "schema": "Sponsor",
       "description": "List of club sponsors"
     },
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "User profiles and roles"
-    }
+    "/users/{userId}": { "schema": "User", "description": "User profiles and roles" }
   }
 }

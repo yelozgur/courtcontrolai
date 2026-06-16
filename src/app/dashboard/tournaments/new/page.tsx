@@ -8,18 +8,40 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2 } from "lucide-react"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2 } from "lucide-react"
 import { collection, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+
+interface Category {
+  id: string;
+  name: string;
+  format: string;
+  sets: number;
+}
 
 export default function TournamentWizard() {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
   const router = useRouter()
   const db = useFirestore()
   const { user } = useUser()
+
+  // New Category State
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [newCategoryFormat, setNewCategoryFormat] = useState("Single Elimination")
+  const [newCategorySets, setNewCategorySets] = useState(3)
 
   // Get current user's clubId
   const clubsQuery = useMemoFirebase(() => {
@@ -33,8 +55,32 @@ export default function TournamentWizard() {
   const [formData, setFormData] = useState({
     name: "",
     startDate: "",
-    sport: "padel"
+    sport: "padel",
+    categories: [] as Category[]
   })
+
+  const handleAddCategory = () => {
+    if (!newCategoryName) return
+    const category: Category = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newCategoryName,
+      format: newCategoryFormat,
+      sets: newCategorySets
+    }
+    setFormData({
+      ...formData,
+      categories: [...formData.categories, category]
+    })
+    setNewCategoryName("")
+    setIsAddingCategory(false)
+  }
+
+  const removeCategory = (id: string) => {
+    setFormData({
+      ...formData,
+      categories: formData.categories.filter(c => c.id !== id)
+    })
+  }
 
   const handleLaunch = async () => {
     if (!db || !clubId) return
@@ -49,18 +95,21 @@ export default function TournamentWizard() {
 
     try {
       const docRef = await addDoc(collection(db, "tournaments"), tournamentData)
-      // Seed a live match linked to the club and tournament
-      await addDoc(collection(db, "matches"), {
-        clubId,
-        tournamentId: docRef.id,
-        court: 1,
-        category: "Pro Men's Singles",
-        teamA: { name: "Player 1", score: 0, players: ["P1"] },
-        teamB: { name: "Player 2", score: 0, players: ["P2"] },
-        status: "live",
-        startTime: serverTimestamp(),
-        durationMinutes: 0
-      })
+      
+      // Seed a live match for the first category if any exist
+      if (formData.categories.length > 0) {
+        await addDoc(collection(db, "matches"), {
+          clubId,
+          tournamentId: docRef.id,
+          court: 1,
+          category: formData.categories[0].name,
+          teamA: { name: "Team 1", score: 0, players: ["P1"] },
+          teamB: { name: "Team 2", score: 0, players: ["P2"] },
+          status: "live",
+          startTime: serverTimestamp(),
+          durationMinutes: 0
+        })
+      }
       
       router.push("/dashboard")
     } catch (e: any) {
@@ -163,17 +212,86 @@ export default function TournamentWizard() {
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-secondary/30 border border-border rounded-xl">
-                  <div>
-                    <h4 className="font-bold">Pro Men's Singles</h4>
-                    <p className="text-sm text-muted-foreground">Single Elimination • Set of 3</p>
+                {formData.categories.length > 0 ? (
+                  <div className="grid gap-4">
+                    {formData.categories.map((category) => (
+                      <div key={category.id} className="flex items-center justify-between p-4 bg-secondary/30 border border-border rounded-xl group">
+                        <div>
+                          <h4 className="font-bold">{category.name}</h4>
+                          <p className="text-sm text-muted-foreground">{category.format} • Best of {category.sets}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => removeCategory(category.id)} className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <Button variant="outline" className="w-full border-dashed border-2 py-8 h-auto">+ Add New Category</Button>
+                ) : (
+                  <div className="p-12 text-center border-2 border-dashed rounded-xl bg-secondary/10">
+                    <p className="text-muted-foreground">No categories added yet. You need at least one to continue.</p>
+                  </div>
+                )}
+
+                <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full border-dashed border-2 py-8 h-auto">
+                      <Plus className="mr-2 h-5 w-5" /> Add New Category
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Tournament Category</DialogTitle>
+                      <DialogDescription>
+                        Define a specific category (e.g., Men's Pro, Women's Intermediate).
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Category Name</Label>
+                        <Input 
+                          placeholder="e.g. Pro Men's Singles" 
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Tournament Format</Label>
+                          <Select value={newCategoryFormat} onValueChange={setNewCategoryFormat}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Single Elimination">Single Elimination</SelectItem>
+                              <SelectItem value="Double Elimination">Double Elimination</SelectItem>
+                              <SelectItem value="Round Robin">Round Robin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Best of Sets</Label>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            max="5" 
+                            value={newCategorySets}
+                            onChange={(e) => setNewCategorySets(parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setIsAddingCategory(false)}>Cancel</Button>
+                      <Button onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="pt-4 flex justify-between">
                 <Button variant="ghost" onClick={() => setStep(1)} className="h-12">Back</Button>
-                <Button onClick={() => setStep(3)} className="h-12 px-10">Next: Venue & Courts</Button>
+                <Button onClick={() => setStep(3)} className="h-12 px-10" disabled={formData.categories.length === 0}>
+                  Next: Venue & Courts
+                </Button>
               </div>
             </CardContent>
           </div>
