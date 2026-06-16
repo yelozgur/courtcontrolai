@@ -44,14 +44,12 @@ export default function TournamentWizard() {
   const { user } = useUser()
   const { toast } = useToast()
 
-  // New Category State
   const [newCategoryName, setNewCategoryName] = useState("")
   const [newCategoryFormat, setNewCategoryFormat] = useState("Single Elimination")
   const [newCategorySets, setNewCategorySets] = useState(3)
   const [newCategoryAge, setNewCategoryAge] = useState("Open")
   const [newCategoryIsTeam, setNewCategoryIsTeam] = useState(false)
 
-  // Get current user's clubId
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
@@ -108,7 +106,6 @@ export default function TournamentWizard() {
     if (!db || !clubId) return
     setIsSubmitting(true)
     
-    // Generate a reference with ID immediately
     const tournamentRef = doc(collection(db, "tournaments"))
     const tournamentData = {
       ...formData,
@@ -128,7 +125,7 @@ export default function TournamentWizard() {
         errorEmitter.emit("permission-error", error)
       })
 
-    // Automatically create a dummy first match if categories exist
+    // Create initial match optimistically
     if (formData.categories.length > 0) {
       const matchRef = doc(collection(db, "matches"))
       const matchData = {
@@ -139,33 +136,35 @@ export default function TournamentWizard() {
         teamA: { name: "Team alpha", score: 0, setsWon: 0, players: [] },
         teamB: { name: "Team beta", score: 0, setsWon: 0, players: [] },
         status: "live",
-        startTime: serverTimestamp(),
-        durationMinutes: 45
+        startTime: serverTimestamp()
       }
-      
       setDoc(matchRef, matchData).catch(async (e) => {
          const error = new FirestorePermissionError({
           path: matchRef.path,
           operation: "create",
           requestResourceData: matchData
         });
-        errorEmitter.emit("permission-error", error);
+        errorEmitter.emit('permission-error', error);
       });
     }
     
-    // Success feedback and immediate redirect
+    // Provide feedback and redirect immediately
     toast({
       title: "Tournament Launched!",
       description: `${formData.name} is now live.`
     })
-    router.push("/dashboard")
+    
+    setTimeout(() => {
+      router.push("/dashboard")
+      setIsSubmitting(false)
+    }, 500)
   }
 
   if (!clubId) {
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-4">
         <Loader2 className="animate-spin h-10 w-10 text-primary" />
-        <p className="text-muted-foreground animate-pulse">Loading club data...</p>
+        <p className="text-muted-foreground animate-pulse">Syncing club data...</p>
       </div>
     )
   }
@@ -383,7 +382,7 @@ export default function TournamentWizard() {
                           ))}
                         </div>
                         <p className="text-xs text-muted-foreground mt-2 italic">
-                          * Best of 3: A team wins by taking 2 sets. If tied 1-1, the 3rd set serves as the decider/tie-break.
+                          * Best of 3: If tied 1-1, the 3rd set serves as the tie-break decider.
                         </p>
                       </div>
                     </div>
@@ -395,7 +394,7 @@ export default function TournamentWizard() {
                 </Dialog>
               </div>
               <div className="pt-4 flex justify-between">
-                <Button variant="ghost" onClick={() => setStep(2)} className="h-12 px-8">Back</Button>
+                <Button variant="ghost" onClick={() => setStep(1)} className="h-12 px-8">Back</Button>
                 <Button onClick={() => setStep(3)} className="h-12 px-10" disabled={formData.categories.length === 0}>
                   Next: Venue Logistics
                 </Button>
@@ -420,7 +419,7 @@ export default function TournamentWizard() {
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-lg">Court Allocation</p>
-                    <p className="text-sm text-muted-foreground">How many courts are available for concurrent matches?</p>
+                    <p className="text-sm text-muted-foreground">Number of concurrent courts available.</p>
                   </div>
                   <div className="w-32">
                     <Input 
@@ -449,7 +448,7 @@ export default function TournamentWizard() {
             </div>
             <h2 className="text-5xl font-headline font-bold mb-4 tracking-tighter">Ready for Launch!</h2>
             <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg">
-              Your <strong>{formData.name}</strong> event is configured across {formData.numCourts} courts for {formData.sport}.
+              Your <strong>{formData.name}</strong> is configured across {formData.numCourts} courts.
             </p>
             <div className="flex justify-center gap-4">
               <Button variant="ghost" onClick={() => setStep(3)} className="h-12" disabled={isSubmitting}>

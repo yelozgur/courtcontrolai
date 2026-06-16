@@ -19,7 +19,6 @@ export default function ClubSettings() {
   const { user } = useUser()
   const { toast } = useToast()
   
-  // Find the club where the current user is the owner
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
@@ -68,7 +67,7 @@ export default function ClubSettings() {
       numCourts: Number(formData.numCourts) || 1
     }
     
-    // NON-BLOCKING MUTATION: Proceed immediately without await
+    // NON-BLOCKING MUTATION: Proceed immediately
     setDoc(clubRef, updateData, { merge: true })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
@@ -79,12 +78,14 @@ export default function ClubSettings() {
         errorEmitter.emit("permission-error", error)
       })
 
-    // Reset UI state immediately
-    setIsSaving(false)
-    toast({
-      title: "Settings Saved",
-      description: "Your club profile has been updated."
-    })
+    // Reset UI state and provide feedback immediately
+    setTimeout(() => {
+      setIsSaving(false)
+      toast({
+        title: "Settings Saved",
+        description: "Your club profile has been updated."
+      })
+    }, 500)
   }
 
   if (loading) {
@@ -143,7 +144,6 @@ export default function ClubSettings() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-xs text-muted-foreground">Sets the default sport for your tournament wizard.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="club-email">Contact Email</Label>
@@ -193,7 +193,6 @@ export default function ClubSettings() {
                 value={formData.numCourts} 
                 onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
               />
-              <p className="text-xs text-muted-foreground">Maximum concurrent matches your club can host.</p>
             </div>
             
             <div className="pt-4">

@@ -13,8 +13,7 @@
         "status": { "type": "string", "enum": ["draft", "active", "finished"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "description": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "numCourts": { "type": "number", "description": "Number of courts allocated for this specific tournament" },
+        "numCourts": { "type": "number" },
         "categories": {
           "type": "array",
           "items": {
@@ -23,7 +22,7 @@
               "id": { "type": "string" },
               "name": { "type": "string" },
               "format": { "type": "string" },
-              "sets": { "type": "number", "description": "Number of sets per match (e.g., 3 for best of 3)" },
+              "sets": { "type": "number" },
               "ageGroup": { "type": "string" },
               "isTeamBased": { "type": "boolean" }
             }
@@ -34,7 +33,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "An individual game or match in a tournament",
+      "description": "An individual match in a tournament",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -45,7 +44,7 @@
           "type": "object",
           "properties": {
             "name": { "type": "string" },
-            "score": { "type": "number", "description": "Current set games or points" },
+            "score": { "type": "number" },
             "setsWon": { "type": "number" },
             "players": { "type": "array", "items": { "type": "string" } }
           }
@@ -54,16 +53,16 @@
           "type": "object",
           "properties": {
             "name": { "type": "string" },
-            "score": { "type": "number", "description": "Current set games or points" },
+            "score": { "type": "number" },
             "setsWon": { "type": "number" },
             "players": { "type": "array", "items": { "type": "string" } }
           }
         },
         "status": { "type": "string", "enum": ["scheduled", "live", "completed"] },
         "startTime": { "type": "string", "format": "date-time" },
-        "durationMinutes": { "type": "number" }
+        "completedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["clubId", "tournamentId", "court", "status"]
+      "required": ["clubId", "tournamentId", "status"]
     },
     "Club": {
       "title": "Club",
@@ -73,51 +72,22 @@
         "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "location": { "type": "string" },
-        "contactEmail": { "type": "string", "format": "email" },
+        "contactEmail": { "type": "string" },
         "numCourts": { "type": "number" },
-        "logoUrl": { "type": "string" },
-        "primarySport": { "type": "string" }
+        "primarySport": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["ownerId", "name", "contactEmail"]
-    },
-    "Participant": {
-      "title": "Participant",
-      "description": "A player registered for tournaments",
-      "type": "object",
-      "properties": {
-        "clubId": { "type": "string" },
-        "tournamentId": { "type": "string" },
-        "userId": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "telegramHandle": { "type": "string" },
-        "skillLevel": { "type": "string", "enum": ["beginner", "intermediate", "pro"] },
-        "registeredAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "email", "clubId", "tournamentId"]
-    },
-    "Sponsor": {
-      "title": "Sponsor",
-      "description": "A tournament or club sponsor",
-      "type": "object",
-      "properties": {
-        "clubId": { "type": "string" },
-        "name": { "type": "string" },
-        "logoUrl": { "type": "string" },
-        "websiteUrl": { "type": "string" },
-        "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] }
-      },
-      "required": ["clubId", "name", "tier"]
+      "required": ["ownerId", "name"]
     },
     "User": {
       "title": "User",
-      "description": "Application user record",
+      "description": "User profile record",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "user"] },
+        "role": { "type": "string" },
         "clubId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
@@ -127,23 +97,9 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": {
-      "schema": "Tournament",
-      "description": "Collection of tournaments"
-    },
-    "/matches/{matchId}": {
-      "schema": "Match",
-      "description": "Collection of individual matches"
-    },
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Collection of tournaments" },
+    "/matches/{matchId}": { "schema": "Match", "description": "Collection of individual matches" },
     "/clubs/{clubId}": { "schema": "Club", "description": "Club profile information" },
-    "/participants/{participantId}": {
-      "schema": "Participant",
-      "description": "Global list of club participants"
-    },
-    "/sponsors/{sponsorId}": {
-      "schema": "Sponsor",
-      "description": "List of club sponsors"
-    },
     "/users/{userId}": { "schema": "User", "description": "User profiles and roles" }
   }
 }
