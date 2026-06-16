@@ -55,20 +55,23 @@ export default function ClubSettings() {
     setIsSaving(true)
     
     const clubRef = doc(db, "clubs", clubId)
+    const updateData = {
+      ...formData,
+      numCourts: Number(formData.numCourts) || 1
+    }
     
-    // Non-blocking mutation for better UX and cache leveraging
-    setDoc(clubRef, formData, { merge: true })
+    setDoc(clubRef, updateData, { merge: true })
       .then(() => {
         toast({
-          title: "Club Settings Updated",
-          description: "Your club profile has been successfully saved."
+          title: "Settings Saved",
+          description: "Your club profile has been updated."
         })
       })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: clubRef.path,
           operation: "update",
-          requestResourceData: formData
+          requestResourceData: updateData
         })
         errorEmitter.emit("permission-error", error)
       })
@@ -114,7 +117,7 @@ export default function ClubSettings() {
             <div className="space-y-2">
               <Label htmlFor="primary-sport">Primary Sport Type</Label>
               <div className="relative">
-                <Trophy className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
+                <Trophy className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
                 <Select 
                   value={formData.primarySport} 
                   onValueChange={(val) => setFormData({...formData, primarySport: val})}
@@ -133,7 +136,7 @@ export default function ClubSettings() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-xs text-muted-foreground">This sets the default type for your tournament wizard.</p>
+              <p className="text-xs text-muted-foreground">Sets the default sport for your tournament wizard.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="club-email">Contact Email</Label>
@@ -183,7 +186,7 @@ export default function ClubSettings() {
                 value={formData.numCourts} 
                 onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
               />
-              <p className="text-xs text-muted-foreground">This defines the max concurrent matches your club can host.</p>
+              <p className="text-xs text-muted-foreground">Maximum concurrent matches your club can host.</p>
             </div>
             
             <div className="pt-4">
