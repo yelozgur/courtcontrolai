@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const db = useFirestore();
   const router = useRouter();
 
-  // CRITICAL: Robust Admin Check (Immediate)
+  // CRITICAL: Robust Admin Check (Immediate via email)
   const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com';
 
   // Get the user profile to check role in DB
@@ -117,7 +117,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         clubId: clubRef.id,
       });
 
-      router.refresh();
+      // Wait a moment for Firestore real-time updates before refreshing
+      setTimeout(() => router.refresh(), 500);
     } catch (e) {
       console.error(e);
     } finally {
@@ -125,34 +126,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  const isOffline = profileError?.message?.includes('offline') || clubsError?.message?.includes('offline') || clubsError?.message?.includes('permission-denied');
+  // Check if we are genuinely offline or facing a permissions error that blocks data
+  const isSyncing = !isAdmin && (clubsLoading || profileLoading) && !userClub && !profile;
+  const hasConnectionIssue = profileError?.message?.includes('offline') || clubsError?.message?.includes('offline') || clubsError?.message?.includes('permission-denied');
 
-  if (authLoading || (profileLoading && !profile && !isOffline)) {
+  if (authLoading || isSyncing) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0F172A]">
+      <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-muted-foreground animate-pulse font-medium">Synchronizing with CourtControl...</p>
       </div>
     );
   }
 
   if (!user) return null;
 
-  if (isOffline) {
+  if (hasConnectionIssue) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
         <Zap className="h-12 w-12 text-amber-500 mb-4 animate-pulse" />
-        <h2 className="text-2xl font-bold text-white mb-2">Syncing with CourtControl...</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Syncing Data...</h2>
         <p className="text-muted-foreground max-w-sm">
-          We're having trouble reaching the database. This usually means the client is offline or Firestore hasn't been enabled in the console.
+          We're having trouble reaching the database. This usually means the client is offline or your initial permissions are being verified.
         </p>
         <Button variant="outline" className="mt-6 border-white/10 hover:bg-white/5" onClick={() => window.location.reload()}>
-          Try Again
+          Check Connection
         </Button>
       </div>
     );
   }
 
-  // If no club exists and NOT admin, force onboarding
+  // ONLY show onboarding if we are NOT admin AND we are CERTAIN no club exists (loading is false)
   if (!isAdmin && !userClub && !clubsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
