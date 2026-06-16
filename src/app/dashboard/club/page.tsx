@@ -51,7 +51,15 @@ export default function ClubSettings() {
   }, [clubData])
 
   const handleSave = () => {
-    if (!db || !clubId) return
+    if (!db || !clubId) {
+      toast({
+        variant: "destructive",
+        title: "Identification Missing",
+        description: "Could not find your club ID. Please refresh."
+      })
+      return
+    }
+    
     setIsSaving(true)
     
     const clubRef = doc(db, "clubs", clubId)
@@ -60,13 +68,8 @@ export default function ClubSettings() {
       numCourts: Number(formData.numCourts) || 1
     }
     
+    // NON-BLOCKING MUTATION: Proceed immediately without await
     setDoc(clubRef, updateData, { merge: true })
-      .then(() => {
-        toast({
-          title: "Settings Saved",
-          description: "Your club profile has been updated."
-        })
-      })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: clubRef.path,
@@ -75,9 +78,13 @@ export default function ClubSettings() {
         })
         errorEmitter.emit("permission-error", error)
       })
-      .finally(() => {
-        setIsSaving(false)
-      })
+
+    // Reset UI state immediately
+    setIsSaving(false)
+    toast({
+      title: "Settings Saved",
+      description: "Your club profile has been updated."
+    })
   }
 
   if (loading) {

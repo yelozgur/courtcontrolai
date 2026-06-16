@@ -74,7 +74,7 @@ export default function TournamentWizard() {
     if (clubSport && !formData.sport) {
       setFormData(prev => ({ ...prev, sport: clubSport }))
     }
-  }, [clubSport])
+  }, [clubSport, formData.sport])
 
   const handleAddCategory = () => {
     if (!newCategoryName) return
@@ -104,7 +104,7 @@ export default function TournamentWizard() {
     })
   }
 
-  const handleLaunch = async () => {
+  const handleLaunch = () => {
     if (!db || !clubId) return
     setIsSubmitting(true)
     
@@ -115,45 +115,40 @@ export default function TournamentWizard() {
       createdAt: serverTimestamp()
     }
 
-    try {
-      const docRef = await addDoc(collection(db, "tournaments"), tournamentData)
-      
-      // Seed a live match if categories exist
-      if (formData.categories.length > 0) {
-        addDoc(collection(db, "matches"), {
-          clubId,
-          tournamentId: docRef.id,
-          court: 1,
-          category: formData.categories[0].name,
-          teamA: { name: "Team alpha", score: 0, players: [] },
-          teamB: { name: "Team beta", score: 0, players: [] },
-          status: "live",
-          startTime: serverTimestamp(),
-          durationMinutes: 45
+    // NON-BLOCKING MUTATION: Initiation
+    addDoc(collection(db, "tournaments"), tournamentData)
+      .then((docRef) => {
+        // Seed a live match if categories exist (also non-blocking)
+        if (formData.categories.length > 0) {
+          addDoc(collection(db, "matches"), {
+            clubId,
+            tournamentId: docRef.id,
+            court: 1,
+            category: formData.categories[0].name,
+            teamA: { name: "Team alpha", score: 0, players: [] },
+            teamB: { name: "Team beta", score: 0, players: [] },
+            status: "live",
+            startTime: serverTimestamp(),
+            durationMinutes: 45
+          })
+        }
+      })
+      .catch(async (e: any) => {
+        const error = new FirestorePermissionError({
+          path: "tournaments",
+          operation: "create",
+          requestResourceData: tournamentData
         })
-      }
+        errorEmitter.emit("permission-error", error)
+      })
 
-      toast({
-        title: "Tournament Launched!",
-        description: `${formData.name} is now live and accepting registrations.`
-      })
-      
-      router.push("/dashboard")
-    } catch (e: any) {
-      const error = new FirestorePermissionError({
-        path: "tournaments",
-        operation: "create",
-        requestResourceData: tournamentData
-      })
-      errorEmitter.emit("permission-error", error)
-      toast({
-        variant: "destructive",
-        title: "Launch Failed",
-        description: "There was an error launching your tournament."
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
+    // Immediate resolution (Optimistic)
+    setIsSubmitting(false)
+    toast({
+      title: "Tournament Launched!",
+      description: `${formData.name} is now live and accepting registrations.`
+    })
+    router.push("/dashboard")
   }
 
   if (!clubId) {

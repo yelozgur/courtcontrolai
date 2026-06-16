@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -58,36 +59,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const db = useFirestore();
   const router = useRouter();
 
-  // CRITICAL: Robust Admin Check (Immediate via email)
+  // Robust Admin Check
   const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com';
 
-  // Get the user profile to check role in DB
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
   
-  const { data: profile, loading: profileLoading, error: profileError } = useDoc(userProfileRef);
+  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
-  // Get the user's club (if not admin)
+  // Get the user's club
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user || isAdmin) return null;
     return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
   }, [db, user, isAdmin]);
 
-  const { data: userClubs, loading: clubsLoading, error: clubsError } = useCollection(clubsQuery);
+  const { data: userClubs, loading: clubsLoading } = useCollection(clubsQuery);
   const userClub = userClubs?.[0];
 
-  // Onboarding State
   const [onboardingName, setOnboardingName] = React.useState('');
   const [isOnboarding, setIsOnboarding] = React.useState(false);
-
-  // Sync admin role if missing but email matches
-  React.useEffect(() => {
-    if (db && isAdmin && profile && profile.role !== 'admin') {
-      updateDoc(doc(db, 'users', user!.uid), { role: 'admin' });
-    }
-  }, [db, user, profile, isAdmin]);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -99,36 +91,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     signOut(auth).then(() => router.push('/'));
   };
 
-  const handleCreateClub = async () => {
+  const handleCreateClub = () => {
     if (!db || !user || !onboardingName) return;
     setIsOnboarding(true);
-    try {
-      const clubRef = await addDoc(collection(db, 'clubs'), {
-        ownerId: user.uid,
-        name: onboardingName,
-        contactEmail: user.email || '',
-        numCourts: 1,
-        location: 'Pending Set-up',
-        primarySport: 'padel',
-        createdAt: new Date().toISOString()
-      });
+    
+    const newClub = {
+      ownerId: user.uid,
+      name: onboardingName,
+      contactEmail: user.email || '',
+      numCourts: 1,
+      location: 'Pending Set-up',
+      primarySport: 'padel',
+      createdAt: new Date().toISOString()
+    };
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        clubId: clubRef.id,
+    // Non-blocking addDoc
+    addDoc(collection(db, 'clubs'), newClub)
+      .then((clubRef) => {
+        updateDoc(doc(db, 'users', user.uid), {
+          clubId: clubRef.id,
+        });
+      })
+      .catch((e) => console.error("Club creation failed:", e))
+      .finally(() => {
+        setIsOnboarding(false);
       });
-
-      // Wait a moment for Firestore real-time updates before refreshing
-      setTimeout(() => router.refresh(), 500);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsOnboarding(false);
-    }
   };
 
-  // Check if we are genuinely offline or facing a permissions error that blocks data
+  // Wait for auth and initial data sync
   const isSyncing = !isAdmin && (clubsLoading || profileLoading) && !userClub && !profile;
-  const hasConnectionIssue = profileError?.message?.includes('offline') || clubsError?.message?.includes('offline') || clubsError?.message?.includes('permission-denied');
 
   if (authLoading || isSyncing) {
     return (
@@ -140,21 +131,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   if (!user) return null;
-
-  if (hasConnectionIssue) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
-        <Zap className="h-12 w-12 text-amber-500 mb-4 animate-pulse" />
-        <h2 className="text-2xl font-bold text-white mb-2">Syncing Data...</h2>
-        <p className="text-muted-foreground max-w-sm">
-          We're having trouble reaching the database. This usually means the client is offline or your initial permissions are being verified.
-        </p>
-        <Button variant="outline" className="mt-6 border-white/10 hover:bg-white/5" onClick={() => window.location.reload()}>
-          Check Connection
-        </Button>
-      </div>
-    );
-  }
 
   // ONLY show onboarding if we are NOT admin AND we are CERTAIN no club exists (loading is false)
   if (!isAdmin && !userClub && !clubsLoading) {
