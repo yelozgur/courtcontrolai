@@ -115,18 +115,16 @@ export default function TournamentWizard() {
       createdAt: serverTimestamp()
     }
 
-    // NON-BLOCKING MUTATION: Initiation
     addDoc(collection(db, "tournaments"), tournamentData)
       .then((docRef) => {
-        // Seed a live match if categories exist (also non-blocking)
         if (formData.categories.length > 0) {
           addDoc(collection(db, "matches"), {
             clubId,
             tournamentId: docRef.id,
             court: 1,
             category: formData.categories[0].name,
-            teamA: { name: "Team alpha", score: 0, players: [] },
-            teamB: { name: "Team beta", score: 0, players: [] },
+            teamA: { name: "Team alpha", score: 0, setsWon: 0, players: [] },
+            teamB: { name: "Team beta", score: 0, setsWon: 0, players: [] },
             status: "live",
             startTime: serverTimestamp(),
             durationMinutes: 45
@@ -142,11 +140,10 @@ export default function TournamentWizard() {
         errorEmitter.emit("permission-error", error)
       })
 
-    // Immediate resolution (Optimistic)
     setIsSubmitting(false)
     toast({
       title: "Tournament Launched!",
-      description: `${formData.name} is now live and accepting registrations.`
+      description: `${formData.name} is now live.`
     })
     router.push("/dashboard")
   }
@@ -218,7 +215,6 @@ export default function TournamentWizard() {
                       <SelectItem value="basketball">Basketball</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Matches will follow the rules of this sport.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="t-date">Start Date</Label>
@@ -290,7 +286,7 @@ export default function TournamentWizard() {
                 ) : (
                   <div className="p-16 text-center border-2 border-dashed rounded-2xl bg-secondary/10 flex flex-col items-center gap-4">
                     <Layout className="h-12 w-12 text-muted-foreground/30" />
-                    <p className="text-muted-foreground max-w-xs">No categories added yet. Define at least one category to continue.</p>
+                    <p className="text-muted-foreground max-w-xs">No categories added yet.</p>
                   </div>
                 )}
 
@@ -326,7 +322,6 @@ export default function TournamentWizard() {
                               <SelectItem value="U12">Junior (U12)</SelectItem>
                               <SelectItem value="U18">Junior (U18)</SelectItem>
                               <SelectItem value="35+">Senior (35+)</SelectItem>
-                              <SelectItem value="45+">Senior (45+)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -349,8 +344,8 @@ export default function TournamentWizard() {
                         <div className="flex items-center gap-3">
                           <Users className="h-5 w-5 text-primary" />
                           <div className="flex flex-col">
-                            <span className="font-bold text-sm">Team-Based Registration</span>
-                            <span className="text-xs text-muted-foreground">Select for Doubles or Teams</span>
+                            <span className="font-bold text-sm">Team-Based Entry</span>
+                            <span className="text-xs text-muted-foreground">Doubles or Team events</span>
                           </div>
                         </div>
                         <Switch 
@@ -374,6 +369,9 @@ export default function TournamentWizard() {
                             </Button>
                           ))}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-2 italic">
+                          * Best of 3: A team wins by taking 2 sets. If tied 1-1, the 3rd set serves as the decider/tie-break.
+                        </p>
                       </div>
                     </div>
                     <DialogFooter>

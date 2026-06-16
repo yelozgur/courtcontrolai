@@ -45,7 +45,8 @@
           "type": "object",
           "properties": {
             "name": { "type": "string" },
-            "score": { "type": "number" },
+            "score": { "type": "number", "description": "Current set games or points" },
+            "setsWon": { "type": "number" },
             "players": { "type": "array", "items": { "type": "string" } }
           }
         },
@@ -53,7 +54,8 @@
           "type": "object",
           "properties": {
             "name": { "type": "string" },
-            "score": { "type": "number" },
+            "score": { "type": "number", "description": "Current set games or points" },
+            "setsWon": { "type": "number" },
             "players": { "type": "array", "items": { "type": "string" } }
           }
         },
