@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-sports",
+      "description": "Professional sports arena with dynamic lighting",
+      "imageUrl": "https://picsum.photos/seed/sports1/1200/600",
+      "imageHint": "sports arena"
+    },
+    {
+      "id": "club-logo-placeholder",
+      "description": "Minimalist sports club logo",
+      "imageUrl": "https://picsum.photos/seed/logo1/400/400",
+      "imageHint": "sports logo"
+    },
+    {
+      "id": "player-avatar",
+      "description": "Professional athlete profile",
+      "imageUrl": "https://picsum.photos/seed/player1/200/200",
+      "imageHint": "athlete portrait"
+    },
+    {
+      "id": "tournament-banner",
+      "description": "Exciting tournament bracket graphic",
+      "imageUrl": "https://picsum.photos/seed/bracket1/800/400",
+      "imageHint": "tournament bracket"
+    }
+  ]
+}
