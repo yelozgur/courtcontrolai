@@ -23,7 +23,7 @@ export function FirebaseErrorListener() {
       });
       
       // Centralized error handling. We don't use console.error here to avoid triggering 
-      // duplicate error overlays in development.
+      // duplicate error overlays in development as requested by the user.
     };
 
     errorEmitter.on('permission-error', handlePermissionError);

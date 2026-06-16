@@ -114,14 +114,8 @@ export default function TournamentWizard() {
       createdAt: serverTimestamp()
     }
 
+    // Optimistic: Initiate write and redirect immediately
     setDoc(tournamentRef, tournamentData)
-      .then(() => {
-        toast({
-          title: "Tournament Launched!",
-          description: `${formData.name} is now live.`
-        })
-        router.push("/dashboard")
-      })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: tournamentRef.path,
@@ -129,10 +123,14 @@ export default function TournamentWizard() {
           requestResourceData: tournamentData
         })
         errorEmitter.emit("permission-error", error)
-      })
-      .finally(() => {
         setIsSubmitting(false)
-      })
+      });
+
+    toast({
+      title: "Tournament Launched!",
+      description: `${formData.name} is being deployed.`
+    })
+    router.push("/dashboard")
   }
 
   if (!clubId) {
@@ -240,7 +238,7 @@ export default function TournamentWizard() {
             <CardHeader className="bg-accent/10 py-8">
               <Layout className="w-12 h-12 text-accent mb-4" />
               <CardTitle className="text-2xl font-headline text-accent">Step 2: Format & Categories</CardTitle>
-              <CardDescription>Define competition brackets and age groups.</CardDescription>
+              <CardDescription>Define competition brackets and age groups. For best-of matches, the third set is the decider.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-4">
