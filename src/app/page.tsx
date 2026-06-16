@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, Users, Zap, ShieldCheck, LayoutDashboard } from 'lucide-react';
+import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, MapPin } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -15,17 +15,20 @@ export default function HomePage() {
           <span className="font-headline font-bold text-xl tracking-tighter">CourtControl AI</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
-          <Link className="text-sm font-medium hover:text-primary transition-colors" href="/dashboard">
-            Dashboard
+          <Link className="text-sm font-medium hover:text-primary transition-colors" href="/tournaments">
+            Events
           </Link>
-          <Link className="text-sm font-medium hover:text-primary transition-colors" href="/referee">
-            Referee
+          <Link className="text-sm font-medium hover:text-primary transition-colors" href="/sponsors">
+            Partners
           </Link>
           <Link className="text-sm font-medium hover:text-primary transition-colors" href="/arena">
-            Arena View
+            Arena
           </Link>
-          <Button asChild variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Link href="/dashboard">Get Started</Link>
+          <Button asChild variant="outline" className="border-primary text-primary hover:bg-primary/10">
+            <Link href="/login">Sign In</Link>
+          </Button>
+          <Button asChild variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90 hidden md:flex">
+            <Link href="/dashboard">Dashboard</Link>
           </Button>
         </nav>
       </header>
@@ -47,11 +50,11 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="space-x-4">
-                <Button size="lg" className="h-12 px-8 font-bold">
-                  Start New Tournament
+                <Button asChild size="lg" className="h-12 px-8 font-bold">
+                  <Link href="/tournaments">Find Tournaments</Link>
                 </Button>
-                <Button variant="outline" size="lg" className="h-12 px-8 border-primary text-primary hover:bg-primary/10">
-                  View Demo
+                <Button asChild variant="outline" size="lg" className="h-12 px-8 border-primary text-primary hover:bg-primary/10">
+                  <Link href="/login">Club Access</Link>
                 </Button>
               </div>
             </div>
@@ -95,9 +98,14 @@ export default function HomePage() {
 
       <footer className="border-t border-border bg-card py-6 md:px-8 md:py-0">
         <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row mx-auto">
-          <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-            Built by CourtControl AI. The future of sports tournament management.
-          </p>
+          <div className="flex items-center gap-4">
+             <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
+              Built by CourtControl AI. The future of sports tournament management.
+            </p>
+            <Link href="/sponsors" className="text-xs text-muted-foreground flex items-center gap-1 hover:text-primary">
+              <Heart className="h-3 w-3" /> Support our partners
+            </Link>
+          </div>
           <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
             <Link href="#" className="underline underline-offset-4">Terms</Link>
             <Link href="#" className="underline underline-offset-4">Privacy</Link>

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Tournament": {
@@ -9,7 +10,9 @@
         "startDate": { "type": "string", "format": "date" },
         "sport": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "active", "finished"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" }
       },
       "required": ["name", "startDate", "sport", "status"]
     },
@@ -61,6 +64,7 @@
       "description": "A player registered for tournaments",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "telegramHandle": { "type": "string" },
@@ -68,6 +72,30 @@
         "registeredAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "email"]
+    },
+    "Sponsor": {
+      "title": "Sponsor",
+      "description": "A tournament or club sponsor",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "websiteUrl": { "type": "string" },
+        "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] }
+      },
+      "required": ["name", "tier"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Application user record",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -89,6 +117,14 @@
     "/participants/{participantId}": {
       "schema": "Participant",
       "description": "Global list of club participants"
+    },
+    "/sponsors/{sponsorId}": {
+      "schema": "Sponsor",
+      "description": "List of club sponsors"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles"
     }
   }
 }

@@ -1,0 +1,99 @@
+
+"use client"
+
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Calendar, Trophy, MapPin, Loader2, Search } from "lucide-react"
+import { collection, query, where, orderBy } from "firebase/firestore"
+import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { useState } from "react"
+import { Input } from "@/components/ui/input"
+
+export default function PublicTournaments() {
+  const db = useFirestore()
+  const [search, setSearch] = useState("")
+
+  const tournamentsQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "tournaments"), where("status", "==", "active"))
+  }, [db])
+
+  const { data: tournaments, loading } = useCollection(tournamentsQuery)
+
+  const filtered = tournaments?.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+
+  return (
+    <div className="min-h-screen bg-[#0F172A] text-white">
+      <header className="p-6 border-b border-white/5 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <Trophy className="text-primary h-6 w-6" />
+          <span className="font-headline font-bold text-xl uppercase">Tournaments</span>
+        </Link>
+        <div className="relative w-64 hidden md:block">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search events..." 
+            className="pl-10 bg-white/5 border-white/10" 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <Button asChild variant="outline" className="border-primary text-primary">
+          <Link href="/login">Club Login</Link>
+        </Button>
+      </header>
+
+      <main className="container max-w-6xl mx-auto py-12 px-6">
+        <div className="mb-12 text-center md:text-left">
+          <h1 className="text-4xl md:text-6xl font-headline font-bold mb-4 tracking-tighter">Live Competitions</h1>
+          <p className="text-xl text-muted-foreground">Find and register for the next epic tournament in your area.</p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center p-20"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>
+        ) : filtered && filtered.length > 0 ? (
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((t) => (
+              <Card key={t.id} className="bg-card/50 border-white/5 overflow-hidden group hover:border-primary/50 transition-all">
+                <div className="h-48 bg-slate-800 relative">
+                  <img 
+                    src={t.imageUrl || `https://picsum.photos/seed/${t.id}/800/400`} 
+                    alt={t.name}
+                    className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                  />
+                  <Badge className="absolute top-4 right-4 bg-primary">{t.sport.toUpperCase()}</Badge>
+                </div>
+                <CardHeader>
+                  <CardTitle className="text-2xl font-headline font-bold">{t.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    <span>Starts {t.startDate}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>Ace Padel Club</span>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className="w-full bg-primary hover:bg-primary/90">
+                    <Link href={`/tournaments/${t.id}/register`}>Register Now</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-white/5 rounded-3xl border-dashed border-2 border-white/10">
+            <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-20" />
+            <h3 className="text-2xl font-bold">No active tournaments</h3>
+            <p className="text-muted-foreground mt-2">Check back later or visit our social media for updates.</p>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
