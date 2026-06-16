@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const clubRef = await addDoc(collection(db, 'clubs'), {
         ownerId: user.uid,
         name: onboardingName,
-        contactEmail: user.email,
+        contactEmail: user.email || '',
         numCourts: 1,
         location: 'Pending Set-up',
       });
@@ -211,7 +211,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {profile?.photoURL ? (
                 <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                profile?.displayName?.substring(0, 2).toUpperCase()
+                profile?.displayName?.substring(0, 2).toUpperCase() || '?'
               )}
             </div>
             <div className="flex-1 min-w-0">

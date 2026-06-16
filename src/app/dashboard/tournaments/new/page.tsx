@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin } from "lucide-react"
 import { collection, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
+import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +42,7 @@ export default function TournamentWizard() {
   const router = useRouter()
   const db = useFirestore()
   const { user } = useUser()
+  const { toast } = useToast()
 
   // New Category State
   const [newCategoryName, setNewCategoryName] = useState("")
@@ -59,8 +62,10 @@ export default function TournamentWizard() {
 
   const [formData, setFormData] = useState({
     name: "",
+    description: "",
     startDate: "",
     sport: "padel",
+    numCourts: 1,
     categories: [] as Category[]
   })
 
@@ -80,6 +85,7 @@ export default function TournamentWizard() {
     })
     setNewCategoryName("")
     setNewCategoryAge("Open")
+    setNewCategorySets(3)
     setNewCategoryIsTeam(false)
     setIsAddingCategory(false)
   }
@@ -105,20 +111,25 @@ export default function TournamentWizard() {
     try {
       const docRef = await addDoc(collection(db, "tournaments"), tournamentData)
       
-      // Seed a live match for the first category if any exist
+      // Seed a live match if categories exist
       if (formData.categories.length > 0) {
-        await addDoc(collection(db, "matches"), {
+        addDoc(collection(db, "matches"), {
           clubId,
           tournamentId: docRef.id,
           court: 1,
           category: formData.categories[0].name,
-          teamA: { name: "Team A", score: 0, players: ["P1"] },
-          teamB: { name: "Team B", score: 0, players: ["P2"] },
+          teamA: { name: "Team alpha", score: 0, players: [] },
+          teamB: { name: "Team beta", score: 0, players: [] },
           status: "live",
           startTime: serverTimestamp(),
-          durationMinutes: 0
+          durationMinutes: 45
         })
       }
+
+      toast({
+        title: "Tournament Launched!",
+        description: `${formData.name} is now live and accepting registrations.`
+      })
       
       router.push("/dashboard")
     } catch (e: any) {
@@ -128,6 +139,11 @@ export default function TournamentWizard() {
         requestResourceData: tournamentData
       })
       errorEmitter.emit("permission-error", error)
+      toast({
+        variant: "destructive",
+        title: "Launch Failed",
+        description: "There was an error launching your tournament."
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -177,10 +193,20 @@ export default function TournamentWizard() {
                 <Label htmlFor="t-name">Tournament Name</Label>
                 <Input 
                   id="t-name" 
-                  placeholder="e.g. Summer Padel Series 2024" 
+                  placeholder="e.g. Summer Championship 2024" 
                   className="bg-secondary/50 h-12 text-lg"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="t-desc">Description</Label>
+                <Textarea 
+                  id="t-desc" 
+                  placeholder="Event details, rules, and entry fees..." 
+                  className="bg-secondary/50 min-h-[100px]"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-6">
@@ -198,15 +224,18 @@ export default function TournamentWizard() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="t-sport">Sport Category</Label>
+                  <Label htmlFor="t-sport">Sport</Label>
                   <Select value={formData.sport} onValueChange={(val) => setFormData({ ...formData, sport: val })}>
                     <SelectTrigger className="bg-secondary/50 h-12">
                       <SelectValue placeholder="Select Sport" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="padel">Padel</SelectItem>
+                      <SelectItem value="badminton">Badminton</SelectItem>
                       <SelectItem value="tennis">Tennis</SelectItem>
                       <SelectItem value="pickleball">Pickleball</SelectItem>
+                      <SelectItem value="table-tennis">Table Tennis</SelectItem>
+                      <SelectItem value="squash">Squash</SelectItem>
                       <SelectItem value="basketball">Basketball</SelectItem>
                     </SelectContent>
                   </Select>
@@ -226,7 +255,7 @@ export default function TournamentWizard() {
             <CardHeader className="bg-accent/10 py-8">
               <Layout className="w-12 h-12 text-accent mb-4" />
               <CardTitle className="text-2xl font-headline text-accent">Step 2: Format & Categories</CardTitle>
-              <CardDescription>Define age groups and whether it's an individual or team competition.</CardDescription>
+              <CardDescription>Define competition brackets and age groups.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-4">
@@ -245,7 +274,7 @@ export default function TournamentWizard() {
                               <span>•</span>
                               <span>{category.format}</span>
                               <span>•</span>
-                              <span>Best of {category.sets}</span>
+                              <span>Best of {category.sets} Sets</span>
                             </div>
                           </div>
                         </div>
@@ -258,31 +287,27 @@ export default function TournamentWizard() {
                 ) : (
                   <div className="p-16 text-center border-2 border-dashed rounded-2xl bg-secondary/10 flex flex-col items-center gap-4">
                     <Layout className="h-12 w-12 text-muted-foreground/30" />
-                    <p className="text-muted-foreground max-w-xs">No categories added yet. Define at least one category to continue with the tournament launch.</p>
+                    <p className="text-muted-foreground max-w-xs">No categories added yet. Define at least one category to continue.</p>
                   </div>
                 )}
 
                 <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="w-full border-dashed border-2 py-8 h-auto hover:bg-accent/5 hover:border-accent/40">
-                      <Plus className="mr-2 h-5 w-5" /> Add New Competition Category
+                      <Plus className="mr-2 h-5 w-5" /> Add Category
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Competition Category Configuration</DialogTitle>
-                      <DialogDescription>
-                        Set rules for age, teams, and match formats.
-                      </DialogDescription>
+                      <DialogTitle>Competition Configuration</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-5 py-4">
                       <div className="space-y-2">
                         <Label>Category Name</Label>
                         <Input 
-                          placeholder="e.g. Pro Men's Singles" 
+                          placeholder="e.g. Men's Doubles Pro" 
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
-                          className="h-11"
                         />
                       </div>
                       
@@ -290,28 +315,26 @@ export default function TournamentWizard() {
                         <div className="space-y-2">
                           <Label>Age Group</Label>
                           <Select value={newCategoryAge} onValueChange={setNewCategoryAge}>
-                            <SelectTrigger className="h-11">
+                            <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Open">Open (All Ages)</SelectItem>
-                              <SelectItem value="Junior (U12)">Junior (U12)</SelectItem>
-                              <SelectItem value="Junior (U16)">Junior (U16)</SelectItem>
-                              <SelectItem value="Junior (U18)">Junior (U18)</SelectItem>
-                              <SelectItem value="Senior (35+)">Senior (35+)</SelectItem>
-                              <SelectItem value="Senior (45+)">Senior (45+)</SelectItem>
+                              <SelectItem value="Open">Open</SelectItem>
+                              <SelectItem value="U12">Junior (U12)</SelectItem>
+                              <SelectItem value="U18">Junior (U18)</SelectItem>
+                              <SelectItem value="35+">Senior (35+)</SelectItem>
+                              <SelectItem value="45+">Senior (45+)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Competition Format</Label>
+                          <Label>Format</Label>
                           <Select value={newCategoryFormat} onValueChange={setNewCategoryFormat}>
-                            <SelectTrigger className="h-11">
+                            <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Single Elimination">Single Elimination</SelectItem>
-                              <SelectItem value="Double Elimination">Double Elimination</SelectItem>
                               <SelectItem value="Round Robin">Round Robin</SelectItem>
                               <SelectItem value="Groups + Brackets">Groups + Brackets</SelectItem>
                             </SelectContent>
@@ -323,8 +346,8 @@ export default function TournamentWizard() {
                         <div className="flex items-center gap-3">
                           <Users className="h-5 w-5 text-primary" />
                           <div className="flex flex-col">
-                            <span className="font-bold text-sm">Team-Based Entry</span>
-                            <span className="text-xs text-muted-foreground">Toggle for Doubles or Team events</span>
+                            <span className="font-bold text-sm">Team-Based Registration</span>
+                            <span className="text-xs text-muted-foreground">Select for Doubles or Teams</span>
                           </div>
                         </div>
                         <Switch 
@@ -341,7 +364,7 @@ export default function TournamentWizard() {
                               key={s}
                               type="button"
                               variant={newCategorySets === s ? "default" : "outline"}
-                              className="flex-1 h-11"
+                              className="flex-1"
                               onClick={() => setNewCategorySets(s)}
                             >
                               {s} Sets
@@ -351,8 +374,8 @@ export default function TournamentWizard() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="ghost" onClick={() => setIsAddingCategory(false)} className="h-11">Cancel</Button>
-                      <Button onClick={handleAddCategory} disabled={!newCategoryName} className="h-11 px-8">Add Category</Button>
+                      <Button variant="ghost" onClick={() => setIsAddingCategory(false)}>Cancel</Button>
+                      <Button onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -360,7 +383,7 @@ export default function TournamentWizard() {
               <div className="pt-4 flex justify-between">
                 <Button variant="ghost" onClick={() => setStep(1)} className="h-12 px-8">Back</Button>
                 <Button onClick={() => setStep(3)} className="h-12 px-10" disabled={formData.categories.length === 0}>
-                  Next: Participant Engine
+                  Next: Venue Logistics
                 </Button>
               </div>
             </CardContent>
@@ -370,29 +393,31 @@ export default function TournamentWizard() {
         {step === 3 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
             <CardHeader className="bg-primary/10 py-8">
-              <Users className="w-12 h-12 text-primary mb-4" />
-              <CardTitle className="text-2xl font-headline">Step 3: Participant Engine</CardTitle>
-              <CardDescription>Configure registration fields and preference collection.</CardDescription>
+              <Building2 className="w-12 h-12 text-primary mb-4" />
+              <CardTitle className="text-2xl font-headline">Step 3: Venue Logistics</CardTitle>
+              <CardDescription>Allocate courts for this specific event.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center gap-4 p-5 border rounded-2xl bg-card">
-                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center">
-                    <Zap className="text-accent h-6 w-6" />
+                <Label>Courts Dedicated to Tournament</Label>
+                <div className="flex items-center gap-6 p-6 bg-secondary/30 rounded-2xl border border-border">
+                  <div className="p-4 bg-primary/20 rounded-xl">
+                    <MapPin className="h-8 w-8 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-bold">Telegram Automation</h4>
-                    <p className="text-sm text-muted-foreground">Players receive match court assignments and final score prompts via Telegram.</p>
+                    <p className="font-bold text-lg">Court Allocation</p>
+                    <p className="text-sm text-muted-foreground">How many courts are available for concurrent matches?</p>
                   </div>
-                  <Select defaultValue="on">
-                    <SelectTrigger className="w-36 h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="on">Smart Sync ON</SelectItem>
-                      <SelectItem value="off">Disabled</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="w-32">
+                    <Input 
+                      type="number" 
+                      min="1" 
+                      max={userClubs?.[0]?.numCourts || 10}
+                      value={formData.numCourts}
+                      onChange={(e) => setFormData({ ...formData, numCourts: parseInt(e.target.value) || 1 })}
+                      className="h-12 text-center text-xl font-bold"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="pt-4 flex justify-between">
@@ -410,11 +435,11 @@ export default function TournamentWizard() {
             </div>
             <h2 className="text-5xl font-headline font-bold mb-4 tracking-tighter">Ready for Launch!</h2>
             <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg">
-              Your tournament is configured for <span className="text-primary font-bold">{userClubs?.[0]?.name}</span>. The OR-Tools engine is ready to compute the bracket.
+              Your <strong>{formData.name}</strong> event is configured across {formData.numCourts} courts for {formData.sport}.
             </p>
             <div className="flex justify-center gap-4">
               <Button variant="ghost" onClick={() => setStep(3)} className="h-12" disabled={isSubmitting}>
-                Final Adjustments
+                Back
               </Button>
               <Button 
                 className="h-12 px-12 bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 text-lg font-bold"
