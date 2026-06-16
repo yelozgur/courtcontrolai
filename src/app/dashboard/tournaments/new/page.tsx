@@ -114,8 +114,14 @@ export default function TournamentWizard() {
       createdAt: serverTimestamp()
     }
 
-    // Optimistic: Initiate write and redirect immediately
     setDoc(tournamentRef, tournamentData)
+      .then(() => {
+         toast({
+          title: "Tournament Launched!",
+          description: `${formData.name} is being deployed.`
+        })
+        router.push("/dashboard")
+      })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: tournamentRef.path,
@@ -123,14 +129,10 @@ export default function TournamentWizard() {
           requestResourceData: tournamentData
         })
         errorEmitter.emit("permission-error", error)
+      })
+      .finally(() => {
         setIsSubmitting(false)
-      });
-
-    toast({
-      title: "Tournament Launched!",
-      description: `${formData.name} is being deployed.`
-    })
-    router.push("/dashboard")
+      })
   }
 
   if (!clubId) {

@@ -109,7 +109,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       createdAt: serverTimestamp()
     };
 
-    // Optimistic: Initiate write and UI will update via listeners
     setDoc(clubRef, newClub)
       .catch(async (e) => {
         const error = new FirestorePermissionError({
@@ -144,14 +143,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Handle case where permissions are denied or connection fails
   if (clubsError || profileError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
         <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="h-12 w-12 text-destructive" />
         </div>
-        <h2 className="text-3xl font-headline font-bold uppercase tracking-tight text-white mb-2">Database Connection Error</h2>
+        <h2 className="text-3xl font-headline font-bold uppercase tracking-tight text-white mb-2 leading-none">DATABASE CONNECTION<br/>ERROR</h2>
         <p className="text-muted-foreground max-w-md mx-auto mb-10 leading-relaxed text-sm">
           We encountered an issue connecting to your club data. This can happen if database services are still provisioning or security rules are being updated.
         </p>
