@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -23,13 +23,25 @@ import {
   Trash2,
   Loader2
 } from "lucide-react"
-import { collection, addDoc, deleteDoc, doc, query, limit } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { collection, addDoc, deleteDoc, doc, query, where, limit } from "firebase/firestore"
+import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function SponsorManagement() {
   const db = useFirestore()
+  const { user } = useUser()
   const { toast } = useToast()
+  
+  // Get current user's clubId
+  const clubsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
+  }, [db, user])
+
+  const { data: userClubs } = useCollection(clubsQuery)
+  const clubId = userClubs?.[0]?.id
+
   const [isAdding, setIsAdding] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -38,22 +50,23 @@ export default function SponsorManagement() {
   })
 
   const sponsorsQuery = useMemoFirebase(() => {
-    if (!db) return null
-    return query(collection(db, "sponsors"), limit(50))
-  }, [db])
+    if (!db || !clubId) return null
+    return query(collection(db, "sponsors"), where("clubId", "==", clubId), limit(50))
+  }, [db, clubId])
 
   const { data: sponsors, loading } = useCollection(sponsorsQuery)
 
   const handleAddSponsor = async () => {
-    if (!db || !formData.name) return
+    if (!db || !clubId || !formData.name) return
     setIsAdding(true)
     try {
       await addDoc(collection(db, "sponsors"), {
         ...formData,
+        clubId,
         logoUrl: `https://picsum.photos/seed/${formData.name}/200/100`
       })
       setFormData({ name: "", websiteUrl: "", tier: "bronze" })
-      toast({ title: "Sponsor Added", description: `${formData.name} is now a partner.` })
+      toast({ title: "Partner Added", description: `${formData.name} is now a partner.` })
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: "Could not add sponsor." })
     } finally {
@@ -65,18 +78,20 @@ export default function SponsorManagement() {
     if (!db) return
     try {
       await deleteDoc(doc(db, "sponsors", id))
-      toast({ title: "Sponsor Removed" })
+      toast({ title: "Partner Removed" })
     } catch (e) {
       toast({ variant: "destructive", title: "Error" })
     }
   }
+
+  if (!clubId && !loading) return <div className="p-8">No club found. Please register your club first.</div>
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold">Partners & Sponsors</h1>
-          <p className="text-muted-foreground">Manage the brands supporting your club.</p>
+          <p className="text-muted-foreground">Manage the brands supporting <span className="text-primary font-bold">{userClubs?.[0]?.name}</span>.</p>
         </div>
       </div>
 
@@ -85,12 +100,12 @@ export default function SponsorManagement() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
-              Add New Sponsor
+              Add New Partner
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Sponsor Name</Label>
+              <Label>Brand Name</Label>
               <Input 
                 value={formData.name} 
                 onChange={e => setFormData({...formData, name: e.target.value})}
@@ -106,7 +121,7 @@ export default function SponsorManagement() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Tier</Label>
+              <Label>Partner Tier</Label>
               <Select value={formData.tier} onValueChange={val => setFormData({...formData, tier: val})}>
                 <SelectTrigger>
                   <SelectValue />
@@ -120,14 +135,14 @@ export default function SponsorManagement() {
             </div>
             <Button className="w-full" onClick={handleAddSponsor} disabled={isAdding || !formData.name}>
               {isAdding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
-              Add Partner
+              Register Partner
             </Button>
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2 bg-card/50 border-border">
           <CardHeader>
-            <CardTitle>Current Partners</CardTitle>
+            <CardTitle>Current Partnerships</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -172,7 +187,7 @@ export default function SponsorManagement() {
                 </TableBody>
               </Table>
             ) : (
-              <div className="text-center py-12 text-muted-foreground italic">No sponsors added yet.</div>
+              <div className="text-center py-12 text-muted-foreground italic">No partners added yet for this club.</div>
             )}
           </CardContent>
         </Card>

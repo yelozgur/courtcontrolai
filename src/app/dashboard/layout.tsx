@@ -14,18 +14,21 @@ import {
   BarChart3, 
   Monitor, 
   Zap,
-  ChevronRight,
   LogOut,
   Loader2,
-  Heart
+  Heart,
+  PlusCircle
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useUser, useAuth, useDoc, useFirestore } from "@/firebase"
+import { useUser, useAuth, useDoc, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { signOut } from "firebase/auth"
-import { doc } from "firebase/firestore"
+import { doc, collection, query, where, limit, addDoc, updateDoc } from "firebase/firestore"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 
 const sidebarItems = [
   { name: "Overview", icon: LayoutDashboard, href: "/dashboard" },
@@ -35,7 +38,6 @@ const sidebarItems = [
   { name: "Sponsors", icon: Heart, href: "/dashboard/sponsors" },
   { name: "Check-In (QR)", icon: QrCode, href: "/dashboard/check-in" },
   { name: "Arena Dashboard", icon: Monitor, href: "/arena" },
-  { name: "Player Stats", icon: BarChart3, href: "/player/stats" },
   { name: "Club Settings", icon: Settings, href: "/dashboard/club" },
 ]
 
@@ -46,9 +48,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const db = useFirestore()
   const router = useRouter()
 
-  // Get user profile for roles
-  const userRef = (db && user) ? doc(db, "users", user.uid) : null
-  const { data: userProfile, loading: profileLoading } = useDoc(userRef)
+  // Get the user's club
+  const clubsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
+  }, [db, user])
+
+  const { data: userClubs, loading: clubsLoading } = useCollection(clubsQuery)
+  const userClub = userClubs?.[0]
+
+  // Onboarding State
+  const [onboardingName, setOnboardingName] = React.useState("")
+  const [isOnboarding, setIsOnboarding] = React.useState(false)
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -60,7 +71,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     signOut(auth).then(() => router.push("/"))
   }
 
-  if (authLoading || profileLoading) {
+  const handleCreateClub = async () => {
+    if (!db || !user || !onboardingName) return
+    setIsOnboarding(true)
+    try {
+      const clubRef = await addDoc(collection(db, "clubs"), {
+        ownerId: user.uid,
+        name: onboardingName,
+        contactEmail: user.email,
+        numCourts: 1,
+        location: "Pending Set-up"
+      })
+      
+      // Update user profile with clubId
+      await updateDoc(doc(db, "users", user.uid), {
+        clubId: clubRef.id,
+        role: "admin"
+      })
+      
+      router.refresh()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsOnboarding(false)
+    }
+  }
+
+  if (authLoading || clubsLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -70,8 +107,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null
 
-  // For prototype, the first user is admin or we can check role
-  const isAdmin = userProfile?.role === "admin" || user.email === "admin@courtcontrol.ai"
+  // If no club exists, force onboarding
+  if (!userClub && pathname !== "/dashboard/onboarding") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
+        <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
+          <CardHeader className="text-center">
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
+              <PlusCircle className="text-white h-7 w-7" />
+            </div>
+            <CardTitle className="text-2xl font-headline font-bold">Register Your Club</CardTitle>
+            <CardDescription>
+              To start managing tournaments, you first need to register your sports club or organization.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Club Name</Label>
+              <Input 
+                placeholder="e.g. Smash Padel Academy" 
+                value={onboardingName} 
+                onChange={(e) => setOnboardingName(e.target.value)}
+              />
+            </div>
+            <Button className="w-full" onClick={handleCreateClub} disabled={!onboardingName || isOnboarding}>
+              {isOnboarding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
+              Create My Club Dashboard
+            </Button>
+            <Button variant="ghost" className="w-full text-muted-foreground" onClick={handleSignOut}>
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -84,30 +154,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="font-headline font-bold text-lg tracking-tight">CourtControl</span>
         </div>
         <ScrollArea className="flex-1 px-3">
+          <div className="px-3 mb-4">
+            <div className="p-2 rounded-lg bg-secondary/50 border border-white/5">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Active Club</p>
+              <p className="text-xs font-bold truncate text-primary">{userClub?.name}</p>
+            </div>
+          </div>
           <div className="space-y-1 py-2">
-            {sidebarItems.map((item) => {
-              // Only admins see management routes
-              if (!isAdmin && (item.href.includes('/new') || item.href.includes('/club') || item.href.includes('/sponsors'))) {
-                return null
-              }
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary",
-                    pathname === item.href ? "bg-primary/20 text-primary shadow-sm" : "text-muted-foreground"
-                  )}
-                >
-                  <item.icon className={cn(
-                    "mr-3 h-5 w-5 transition-colors",
-                    pathname === item.href ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                  )} />
-                  {item.name}
-                </Link>
-              )
-            })}
+            {sidebarItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary",
+                  pathname === item.href ? "bg-primary/20 text-primary shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                <item.icon className={cn(
+                  "mr-3 h-5 w-5 transition-colors",
+                  pathname === item.href ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                )} />
+                {item.name}
+              </Link>
+            ))}
           </div>
         </ScrollArea>
         <div className="p-4 mt-auto border-t border-border space-y-2">
@@ -117,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user.displayName || "User"}</p>
-              <p className="text-xs text-muted-foreground truncate capitalize">{userProfile?.role || "Player"}</p>
+              <p className="text-xs text-muted-foreground truncate capitalize">Club Owner</p>
             </div>
           </div>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={handleSignOut}>

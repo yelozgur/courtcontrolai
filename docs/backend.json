@@ -6,6 +6,7 @@
       "description": "A sports tournament entity",
       "type": "object",
       "properties": {
+        "clubId": { "type": "string" },
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
         "sport": { "type": "string" },
@@ -14,13 +15,14 @@
         "description": { "type": "string" },
         "imageUrl": { "type": "string" }
       },
-      "required": ["name", "startDate", "sport", "status"]
+      "required": ["clubId", "name", "startDate", "sport", "status"]
     },
     "Match": {
       "title": "Match",
       "description": "An individual game or match in a tournament",
       "type": "object",
       "properties": {
+        "clubId": { "type": "string" },
         "tournamentId": { "type": "string" },
         "court": { "type": "number" },
         "category": { "type": "string" },
@@ -44,26 +46,29 @@
         "startTime": { "type": "string", "format": "date-time" },
         "durationMinutes": { "type": "number" }
       },
-      "required": ["tournamentId", "court", "status"]
+      "required": ["clubId", "tournamentId", "court", "status"]
     },
     "Club": {
       "title": "Club",
       "description": "Information about the sports club",
       "type": "object",
       "properties": {
+        "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "location": { "type": "string" },
         "contactEmail": { "type": "string", "format": "email" },
         "numCourts": { "type": "number" },
         "logoUrl": { "type": "string" }
       },
-      "required": ["name", "contactEmail"]
+      "required": ["ownerId", "name", "contactEmail"]
     },
     "Participant": {
       "title": "Participant",
       "description": "A player registered for tournaments",
       "type": "object",
       "properties": {
+        "clubId": { "type": "string" },
+        "tournamentId": { "type": "string" },
         "userId": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
@@ -71,19 +76,20 @@
         "skillLevel": { "type": "string", "enum": ["beginner", "intermediate", "pro"] },
         "registeredAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "email"]
+      "required": ["name", "email", "clubId", "tournamentId"]
     },
     "Sponsor": {
       "title": "Sponsor",
       "description": "A tournament or club sponsor",
       "type": "object",
       "properties": {
+        "clubId": { "type": "string" },
         "name": { "type": "string" },
         "logoUrl": { "type": "string" },
         "websiteUrl": { "type": "string" },
         "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] }
       },
-      "required": ["name", "tier"]
+      "required": ["clubId", "name", "tier"]
     },
     "User": {
       "title": "User",
@@ -94,6 +100,7 @@
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
         "role": { "type": "string", "enum": ["admin", "user"] },
+        "clubId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     }

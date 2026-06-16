@@ -1,7 +1,8 @@
+
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,17 +23,27 @@ import {
   MoreVertical,
   Loader2
 } from "lucide-react"
-import { collection, query, limit, orderBy } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { collection, query, limit, where } from "firebase/firestore"
+import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 
 export default function ParticipantManagement() {
   const db = useFirestore()
+  const { user } = useUser()
   const [searchTerm, setSearchTerm] = useState("")
 
+  // Get current user's clubId
+  const clubsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
+  }, [db, user])
+
+  const { data: userClubs } = useCollection(clubsQuery)
+  const clubId = userClubs?.[0]?.id
+
   const participantsQuery = useMemoFirebase(() => {
-    if (!db) return null
-    return query(collection(db, "participants"), orderBy("name"), limit(50))
-  }, [db])
+    if (!db || !clubId) return null
+    return query(collection(db, "participants"), where("clubId", "==", clubId), limit(50))
+  }, [db, clubId])
 
   const { data: participants, loading } = useCollection(participantsQuery)
 
@@ -41,12 +52,14 @@ export default function ParticipantManagement() {
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  if (!clubId && !loading) return <div className="p-8">No club found. Please register your club first.</div>
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Participants Hub</h1>
-          <p className="text-muted-foreground">Manage your club's global player database.</p>
+          <h1 className="text-3xl font-headline font-bold">Club Roster</h1>
+          <p className="text-muted-foreground">Manage players registered for your club's tournaments.</p>
         </div>
         <Button className="bg-primary">
           <UserPlus className="mr-2 h-4 w-4" /> Add Player
@@ -126,7 +139,7 @@ export default function ParticipantManagement() {
           ) : (
             <div className="text-center py-20 bg-secondary/10 rounded-xl border-dashed border-2 border-border">
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-              <p className="text-muted-foreground">No players found. Start adding participants to your club.</p>
+              <p className="text-muted-foreground">No players found in your club roster yet.</p>
             </div>
           )}
         </CardContent>

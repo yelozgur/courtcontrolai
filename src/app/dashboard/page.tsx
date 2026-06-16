@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { 
   Trophy, 
   Users, 
-  Calendar, 
   Activity, 
   Play, 
   Clock, 
@@ -18,94 +17,116 @@ import {
   Loader2
 } from "lucide-react"
 import { collection, query, where, limit } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 
 export default function DashboardOverview() {
   const db = useFirestore()
+  const { user } = useUser()
 
+  // First, get the user's club ID
+  const clubsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
+  }, [db, user])
+
+  const { data: userClubs } = useCollection(clubsQuery)
+  const clubId = userClubs?.[0]?.id
+
+  // Then, filter all data by that club ID
   const tournamentQuery = useMemoFirebase(() => {
-    if (!db) return null
-    return query(collection(db, "tournaments"), limit(10))
-  }, [db])
+    if (!db || !clubId) return null
+    return query(collection(db, "tournaments"), where("clubId", "==", clubId), limit(10))
+  }, [db, clubId])
 
   const matchQuery = useMemoFirebase(() => {
-    if (!db) return null
-    return query(collection(db, "matches"), where("status", "==", "live"), limit(5))
-  }, [db])
+    if (!db || !clubId) return null
+    return query(collection(db, "matches"), where("clubId", "==", clubId), where("status", "==", "live"), limit(5))
+  }, [db, clubId])
+
+  const playersQuery = useMemoFirebase(() => {
+    if (!db || !clubId) return null
+    return query(collection(db, "participants"), where("clubId", "==", clubId), limit(1))
+  }, [db, clubId])
 
   const { data: tournaments, loading: loadingTours } = useCollection(tournamentQuery)
   const { data: liveMatches, loading: loadingMatches } = useCollection(matchQuery)
+  const { data: participants } = useCollection(playersQuery)
+
+  if (!clubId) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-headline font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Real-time pulse of your sports club and tournaments.</p>
+          <h1 className="text-4xl font-headline font-bold">{userClubs?.[0]?.name}</h1>
+          <p className="text-muted-foreground mt-1">Real-time pulse of your club and tournaments.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Export Data</Button>
+          <Button variant="outline">Club Report</Button>
           <Button className="bg-primary hover:bg-primary/90">
-            <Play className="mr-2 h-4 w-4" /> Start Live Mode
+            <Play className="mr-2 h-4 w-4" /> Start Match Day
           </Button>
         </div>
       </div>
 
-      {/* Stats Quick View */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-card/50 border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Tournaments</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">My Tournaments</CardTitle>
             <Trophy className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{tournaments?.length || 0}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <Activity className="mr-1 h-3 w-3 text-accent" /> {liveMatches?.length || 0} live matches now
+              <Activity className="mr-1 h-3 w-3 text-accent" /> {liveMatches?.length || 0} live now
             </p>
           </CardContent>
         </Card>
         <Card className="bg-card/50 border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Registered Players</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Club Players</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">128</div>
+            <div className="text-2xl font-bold">{participants?.length || 0}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1 text-accent">
-              <TrendingUp className="mr-1 h-3 w-3" /> +12% from last month
+              <TrendingUp className="mr-1 h-3 w-3" /> Growth monitoring active
             </p>
           </CardContent>
         </Card>
         <Card className="bg-card/50 border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Courts Available</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Venues</CardTitle>
             <MapPin className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">6 / 8</div>
+            <div className="text-2xl font-bold">{userClubs?.[0]?.numCourts || 0} Courts</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <Clock className="mr-1 h-3 w-3" /> 2 scheduled for maintenance
+              <Clock className="mr-1 h-3 w-3" /> Fully operational
             </p>
           </CardContent>
         </Card>
         <Card className="bg-card/50 border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Score Verifications</CardTitle>
-            <Activity className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">System Status</CardTitle>
+            <Zap className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">98.4%</div>
+            <div className="text-2xl font-bold">OPTIMIZED</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1 text-accent">
-              Accuracy verified via Telegram
+              OR-Tools scheduler is ready
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Bento Grid Content */}
       <div className="grid gap-6 md:grid-cols-6 lg:grid-cols-12 auto-rows-[200px]">
-        {/* Active Tournament Card */}
         <Card className="md:col-span-3 lg:col-span-8 row-span-2 bg-gradient-to-br from-card to-background border-border overflow-hidden group">
           <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
             <Trophy className="w-32 h-32" />
@@ -121,7 +142,7 @@ export default function DashboardOverview() {
               {tournaments && tournaments.length > 0 ? tournaments[0].name : "No Active Tournament"}
             </CardTitle>
             <CardDescription>
-              {tournaments && tournaments.length > 0 ? `Started ${tournaments[0].startDate}` : "Create a tournament to get started"}
+              Manage your club's current competition and live scoring.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -144,55 +165,26 @@ export default function DashboardOverview() {
                         <span className="text-muted-foreground font-bold">{match.teamB.score}</span>
                       </div>
                     </div>
-                    <div className="h-10 w-[2px] bg-border"></div>
-                    <div className="text-center px-2">
-                      <span className="block text-[10px] text-muted-foreground uppercase font-bold">Live</span>
-                      <span className="block font-headline font-bold text-lg">ON</span>
-                    </div>
                   </div>
                 ))
               ) : (
                 <div className="p-4 bg-secondary/10 rounded-xl border border-border/50 text-center">
-                  <p className="text-muted-foreground text-sm">No live matches currently in progress.</p>
+                  <p className="text-muted-foreground text-sm">No live matches currently in progress for this club.</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Schedule Insights */}
         <Card className="md:col-span-3 lg:col-span-4 row-span-2 bg-card border-border">
           <CardHeader>
-            <CardTitle className="font-headline font-bold">Schedule Snapshot</CardTitle>
-            <CardDescription>Upcoming matches</CardDescription>
+            <CardTitle className="font-headline font-bold">Upcoming</CardTitle>
+            <CardDescription>Next 48 hours</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground italic">Schedule optimizer is monitoring court usage...</p>
+            <p className="text-sm text-muted-foreground italic">Your smart scheduler is monitoring court usage...</p>
             <Button variant="outline" className="w-full mt-2">Open Visual Timeline</Button>
           </CardContent>
-        </Card>
-
-        {/* Player Stats Hub Snapshot */}
-        <Card className="md:col-span-3 lg:col-span-6 row-span-1 bg-card border-border flex items-center p-6 gap-6">
-          <div className="p-4 bg-primary/20 rounded-full">
-            <Activity className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <h4 className="font-headline font-bold text-xl">Global Player Hub</h4>
-            <p className="text-sm text-muted-foreground">Player statistics and social assets hub.</p>
-          </div>
-        </Card>
-
-        {/* Smart Scheduler Status */}
-        <Card className="md:col-span-3 lg:col-span-6 row-span-1 bg-card border-border border-l-4 border-l-accent flex items-center p-6 gap-6">
-          <div className="p-4 bg-accent/20 rounded-full">
-            <Zap className="h-8 w-8 text-accent" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-headline font-bold text-xl">OR-Tools Optimizer</h4>
-            <p className="text-sm text-muted-foreground">Scheduling engine is active and monitoring court usage.</p>
-          </div>
-          <Badge variant="outline" className="text-accent border-accent">Optimized</Badge>
         </Card>
       </div>
     </div>

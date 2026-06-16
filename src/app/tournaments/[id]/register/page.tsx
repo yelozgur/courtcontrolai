@@ -34,12 +34,13 @@ export default function TournamentRegistration() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!db) return
+    if (!db || !tournament) return
     setIsSubmitting(true)
     
     try {
       await addDoc(collection(db, "participants"), {
         ...formData,
+        clubId: tournament.clubId, // Tag with the tournament's clubId
         tournamentId: id,
         registeredAt: serverTimestamp()
       })

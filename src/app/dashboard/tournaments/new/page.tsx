@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2 } from "lucide-react"
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"
-import { useFirestore } from "@/firebase"
+import { collection, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
+import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 
@@ -19,6 +19,16 @@ export default function TournamentWizard() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
   const db = useFirestore()
+  const { user } = useUser()
+
+  // Get current user's clubId
+  const clubsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
+  }, [db, user])
+
+  const { data: userClubs } = useCollection(clubsQuery)
+  const clubId = userClubs?.[0]?.id
 
   const [formData, setFormData] = useState({
     name: "",
@@ -27,24 +37,26 @@ export default function TournamentWizard() {
   })
 
   const handleLaunch = async () => {
-    if (!db) return
+    if (!db || !clubId) return
     setIsSubmitting(true)
     
     const tournamentData = {
       ...formData,
+      clubId,
       status: "active",
       createdAt: serverTimestamp()
     }
 
     try {
       const docRef = await addDoc(collection(db, "tournaments"), tournamentData)
-      // For MVP, we'll also seed a dummy match for this tournament so the arena view has something to show
+      // Seed a live match linked to the club and tournament
       await addDoc(collection(db, "matches"), {
+        clubId,
         tournamentId: docRef.id,
         court: 1,
         category: "Pro Men's Singles",
-        teamA: { name: "Team Smith / Jones", score: 0, players: ["Smith", "Jones"] },
-        teamB: { name: "Team Brown / White", score: 0, players: ["Brown", "White"] },
+        teamA: { name: "Player 1", score: 0, players: ["P1"] },
+        teamB: { name: "Player 2", score: 0, players: ["P2"] },
         status: "live",
         startTime: serverTimestamp(),
         durationMinutes: 0
@@ -63,12 +75,16 @@ export default function TournamentWizard() {
     }
   }
 
+  if (!clubId) {
+    return <div className="flex items-center justify-center p-20"><Loader2 className="animate-spin" /></div>
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 py-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold">Tournament Wizard</h1>
-          <p className="text-muted-foreground">Configure your event in 4 easy steps.</p>
+          <p className="text-muted-foreground">Configure an event for <span className="text-primary font-bold">{userClubs?.[0]?.name}</span>.</p>
         </div>
         <div className="flex items-center gap-2">
           {[1, 2, 3, 4].map((s) => (
@@ -152,7 +168,6 @@ export default function TournamentWizard() {
                     <h4 className="font-bold">Pro Men's Singles</h4>
                     <p className="text-sm text-muted-foreground">Single Elimination • Set of 3</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-destructive">Remove</Button>
                 </div>
                 <Button variant="outline" className="w-full border-dashed border-2 py-8 h-auto">+ Add New Category</Button>
               </div>
@@ -207,7 +222,7 @@ export default function TournamentWizard() {
             </div>
             <h2 className="text-4xl font-headline font-bold mb-4">Ready for Launch!</h2>
             <p className="text-muted-foreground max-w-md mx-auto mb-10">
-              Your tournament is configured and optimized. The OR-Tools Smart Scheduler is ready to build your brackets.
+              Your tournament is configured for your club. The OR-Tools Smart Scheduler is ready to build your brackets.
             </p>
             <div className="flex justify-center gap-4">
               <Button variant="ghost" onClick={() => setStep(3)} className="h-12" disabled={isSubmitting}>

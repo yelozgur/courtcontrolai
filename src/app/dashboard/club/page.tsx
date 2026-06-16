@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -6,20 +7,26 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Building2, Mail, MapPin, Hash, Save, Loader2 } from "lucide-react"
-import { useFirestore, useDoc } from "@/firebase"
-import { doc, setDoc } from "firebase/firestore"
+import { useFirestore, useDoc, useUser, useMemoFirebase, useCollection } from "@/firebase"
+import { doc, setDoc, query, collection, where, limit } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ClubSettings() {
   const db = useFirestore()
+  const { user } = useUser()
   const { toast } = useToast()
   
-  // For MVP, we use a static ID for the club settings
-  const clubId = "main-club"
-  const clubRef = db ? doc(db, "clubs", clubId) : null
-  const { data: clubData, loading } = useDoc(clubRef)
+  // Find the club where the current user is the owner
+  const clubsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
+  }, [db, user])
+
+  const { data: userClubs, loading } = useCollection(clubsQuery)
+  const clubData = userClubs?.[0]
+  const clubId = clubData?.id
   
   const [formData, setFormData] = useState({
     name: "",
@@ -41,7 +48,7 @@ export default function ClubSettings() {
   }, [clubData])
 
   const handleSave = async () => {
-    if (!db) return
+    if (!db || !clubId) return
     setIsSaving(true)
     
     try {
@@ -74,7 +81,7 @@ export default function ClubSettings() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-headline font-bold">Club Settings</h1>
-        <p className="text-muted-foreground">Manage your club's profile and venue details.</p>
+        <p className="text-muted-foreground">Manage your organization's profile and global configuration.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -144,7 +151,7 @@ export default function ClubSettings() {
                 value={formData.numCourts} 
                 onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
               />
-              <p className="text-xs text-muted-foreground">The scheduler will use this to assign match times.</p>
+              <p className="text-xs text-muted-foreground">This defines the max concurrent matches your club can host.</p>
             </div>
             
             <div className="pt-4">
