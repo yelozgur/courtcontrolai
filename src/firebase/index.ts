@@ -10,8 +10,8 @@ import { firebaseConfig } from './config';
  * Initializes Firebase services. 
  * This is called on the client side only.
  * 
- * TRIGGER: Updating this comment to force a re-deployment of Security Rules
- * with the new "listable" permissions defined in backend.json.
+ * TRIGGER: Rule synchronization triggered. Setting all collections to be 
+ * "readable and listable" to resolve dashboard connectivity issues.
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
