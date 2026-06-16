@@ -29,7 +29,6 @@ export default function LoginPage() {
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Use useEffect for side-effect navigation to avoid "setState in render" error
   useEffect(() => {
     if (existingUser && !loading) {
       router.push('/dashboard');
@@ -44,6 +43,7 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
+      // Logic: mapping "admin" shortcut to the designated SaaS admin email
       const isAdminShortcut = email === 'admin';
       const loginEmail = isAdminShortcut ? 'admin@deneme.com' : email;
       const loginPassword = isAdminShortcut && password === 'adm' ? 'password' : password;
@@ -53,18 +53,21 @@ export default function LoginPage() {
 
       const userRef = doc(db, 'users', loggedUser.uid);
       
+      // Ensure the admin account ALWAYS has the admin role
+      const isAdminEmail = loggedUser.email === 'admin@deneme.com';
+      
       try {
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
           await setDoc(userRef, {
             email: loggedUser.email,
-            displayName: loggedUser.displayName || email.split('@')[0],
-            role: (loginEmail === 'admin@deneme.com') ? 'admin' : 'user',
+            displayName: loggedUser.displayName || loginEmail.split('@')[0],
+            role: isAdminEmail ? 'admin' : 'user',
             createdAt: serverTimestamp(),
           });
-        } else if (loginEmail === 'admin@deneme.com' && userSnap.data().role !== 'admin') {
-          // Force admin role for the designated SaaS admin email
+        } else if (isAdminEmail && userSnap.data().role !== 'admin') {
+          // Force fix the role if it's the admin email but missing the claim
           await setDoc(userRef, { role: 'admin' }, { merge: true });
         }
       } catch (firestoreError: any) {
@@ -73,7 +76,7 @@ export default function LoginPage() {
 
       toast({
         title: 'Welcome Back',
-        description: 'You have successfully signed in.',
+        description: isAdminEmail ? 'Logged in as System Administrator.' : 'Successfully signed in.',
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -107,6 +110,8 @@ export default function LoginPage() {
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);
+      const isAdminEmail = user.email === 'admin@deneme.com';
+
       try {
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
@@ -114,9 +119,11 @@ export default function LoginPage() {
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
-            role: (user.email === 'admin@deneme.com') ? 'admin' : 'user',
+            role: isAdminEmail ? 'admin' : 'user',
             createdAt: serverTimestamp(),
           });
+        } else if (isAdminEmail && userSnap.data().role !== 'admin') {
+          await setDoc(userRef, { role: 'admin' }, { merge: true });
         }
       } catch (e) {
         console.warn('Firestore profile sync failed:', e);
@@ -124,7 +131,7 @@ export default function LoginPage() {
 
       toast({
         title: 'Welcome Back',
-        description: 'Signed in with Google.',
+        description: isAdminEmail ? 'Admin Access Granted.' : 'Signed in with Google.',
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -138,7 +145,6 @@ export default function LoginPage() {
     }
   };
 
-  // Prevent UI flicker by showing a loader while checking auth state or during redirect
   if (loading || (existingUser && !loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">

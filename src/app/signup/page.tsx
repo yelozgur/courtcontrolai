@@ -37,16 +37,18 @@ export default function SignupPage() {
 
       await updateProfile(user, { displayName: name });
 
+      const isAdminEmail = email === 'admin@deneme.com';
+
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         displayName: name,
-        role: 'user',
+        role: isAdminEmail ? 'admin' : 'user',
         createdAt: serverTimestamp(),
       });
 
       toast({
-        title: 'Account Created',
-        description: "Welcome! You can now manage your club.",
+        title: isAdminEmail ? 'Admin Account Created' : 'Account Created',
+        description: isAdminEmail ? "SaaS controls unlocked." : "Welcome! You can now manage your club.",
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -70,20 +72,24 @@ export default function SignupPage() {
       
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
+      const isAdminEmail = user.email === 'admin@deneme.com';
 
       if (!userSnap.exists()) {
         await setDoc(userRef, {
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          role: 'user',
+          role: isAdminEmail ? 'admin' : 'user',
           createdAt: serverTimestamp(),
         });
+      } else if (isAdminEmail && userSnap.data().role !== 'admin') {
+        // Enforce role for admin email even if profile existed
+        await setDoc(userRef, { role: 'admin' }, { merge: true });
       }
 
       toast({
         title: 'Account Created',
-        description: 'Welcome to CourtControl via Google!',
+        description: isAdminEmail ? 'SaaS Admin access granted via Google.' : 'Welcome to CourtControl via Google!',
       });
       router.push('/dashboard');
     } catch (error: any) {
