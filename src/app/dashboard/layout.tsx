@@ -19,6 +19,7 @@ import {
   PlusCircle,
   ShieldCheck,
   Building,
+  Gavel,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ const clubItems = [
   { name: 'Tournament Wizard', icon: Trophy, href: '/dashboard/tournaments/new' },
   { name: 'Scheduling', icon: Calendar, href: '/dashboard/schedule' },
   { name: 'Participants', icon: Users, href: '/dashboard/participants' },
+  { name: 'Referee Console', icon: Gavel, href: '/referee' },
   { name: 'Sponsors', icon: Heart, href: '/dashboard/sponsors' },
   { name: 'Check-In (QR)', icon: QrCode, href: '/dashboard/check-in' },
   { name: 'Arena Dashboard', icon: Monitor, href: '/arena' },
