@@ -18,20 +18,19 @@ import {
   Loader2,
   Building
 } from "lucide-react"
-import { collection, query, where, limit } from "firebase/firestore"
+import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
-import { doc } from "firebase/firestore"
 
 export default function DashboardOverview() {
   const db = useFirestore()
-  const { user } = useUser()
+  const { user, loading: authLoading } = useUser()
 
   // Get user profile for role check
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
-  const { data: profile } = useDoc(userProfileRef);
+  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
   const isAdmin = profile?.role === 'admin' || user?.email === 'admin@deneme.com';
 
@@ -44,7 +43,7 @@ export default function DashboardOverview() {
   const { data: userClubs, loading: loadingClub } = useCollection(clubsQuery)
   const clubId = userClubs?.[0]?.id
 
-  // Queries for Club Owners
+  // Queries for Dashboard Data
   const tournamentQuery = useMemoFirebase(() => {
     if (!db) return null
     if (isAdmin) return query(collection(db, "tournaments"), limit(10))
@@ -66,7 +65,6 @@ export default function DashboardOverview() {
     return query(collection(db, "participants"), where("clubId", "==", clubId), limit(1))
   }, [db, clubId, isAdmin])
 
-  // Global query for admin stats
   const allClubsQuery = useMemoFirebase(() => {
     if (!db || !isAdmin) return null
     return collection(db, "clubs")
@@ -77,16 +75,16 @@ export default function DashboardOverview() {
   const { data: participants } = useCollection(playersQuery)
   const { data: allClubs } = useCollection(allClubsQuery)
 
-  if (!isAdmin && !clubId && loadingClub) {
+  if (authLoading || (loadingClub && !isAdmin)) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-headline font-bold">
