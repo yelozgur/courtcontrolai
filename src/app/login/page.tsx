@@ -44,8 +44,10 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
-      const loginEmail = email === 'admin' ? 'admin@platform.com' : email;
-      const loginPassword = email === 'admin' && password === 'adm' ? 'password' : password;
+      // SAA-Level Admin override logic
+      const isAdminShortcut = email === 'admin';
+      const loginEmail = isAdminShortcut ? 'admin@deneme.com' : email;
+      const loginPassword = isAdminShortcut && password === 'adm' ? 'password' : password;
 
       const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       const loggedUser = result.user;
@@ -53,13 +55,18 @@ export default function LoginPage() {
       const userRef = doc(db, 'users', loggedUser.uid);
       const userSnap = await getDoc(userRef);
 
+      // If profile doesn't exist, create it. 
+      // Ensure admin@deneme.com always gets the admin role.
       if (!userSnap.exists()) {
         await setDoc(userRef, {
           email: loggedUser.email,
           displayName: loggedUser.displayName || email.split('@')[0],
-          role: email === 'admin' ? 'admin' : 'user',
+          role: (loginEmail === 'admin@deneme.com') ? 'admin' : 'user',
           createdAt: serverTimestamp(),
         });
+      } else if (loginEmail === 'admin@deneme.com' && userSnap.data().role !== 'admin') {
+        // Migration/Safety check: Ensure this specific email is ALWAYS admin
+        await setDoc(userRef, { role: 'admin' }, { merge: true });
       }
 
       toast({
@@ -104,7 +111,7 @@ export default function LoginPage() {
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          role: 'user',
+          role: (user.email === 'admin@deneme.com') ? 'admin' : 'user',
           createdAt: serverTimestamp(),
         });
       }
@@ -258,7 +265,7 @@ export default function LoginPage() {
           <div className="bg-primary/10 p-3 rounded-lg text-[10px] text-primary font-mono text-center">
             Super Admin: <strong>admin</strong> / <strong>adm</strong>
             <br />
-            (Requires account creation via signup first)
+            (Mapped to admin@deneme.com)
           </div>
         </CardFooter>
       </Card>
