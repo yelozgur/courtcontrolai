@@ -3,7 +3,7 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "A sports tournament entity. Publicly readable, writeable by club owners.",
+      "description": "A sports tournament entity. Publicly readable, writeable by the club owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
@@ -33,7 +33,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "An individual match in a tournament. Publicly readable, writeable by club owners and referees.",
+      "description": "An individual match. Readable by all, writeable by the tournament's club owner or assigned referees.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -66,7 +66,7 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Information about the sports club. Owned by a user. clubId is a unique document ID.",
+      "description": "Sports club profile. Publicly readable, writeable only by the ownerId.",
       "type": "object",
       "properties": {
         "ownerId": { "type": "string", "description": "The UID of the user who owns this club" },
@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile record. userId matches the auth UID. Only accessible by the user themselves.",
+      "description": "User profile. Readable and writeable by the user themselves (auth.uid == userId).",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -94,7 +94,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "A player registered for a tournament. Readable and writeable by the club owner.",
+      "description": "Tournament player. Writeable by club owners or the participant themselves.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -111,7 +111,7 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "A club partner or sponsor. Publicly readable.",
+      "description": "Club partner. Publicly readable, writeable by the club owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -127,11 +127,11 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Collection of tournaments" },
-    "/matches/{matchId}": { "schema": "Match", "description": "Collection of individual matches" },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Club profile information. clubId is a unique ID." },
-    "/users/{userId}": { "schema": "User", "description": "User profiles and roles. userId matches the auth UID." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament participant records" },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club sponsorship records" }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global tournament registry" },
+    "/matches/{matchId}": { "schema": "Match", "description": "Match score records" },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Sports organization profiles" },
+    "/users/{userId}": { "schema": "User", "description": "Individual user accounts" },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament entries" },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club partnership details" }
   }
 }

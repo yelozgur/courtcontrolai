@@ -147,14 +147,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (clubsError || profileError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
-        <AlertCircle className="h-16 w-16 text-destructive mb-4" />
-        <h2 className="text-2xl font-headline font-bold uppercase tracking-tight text-white">Database Connection Error</h2>
-        <p className="text-muted-foreground max-w-md mt-2 mb-8">
+        <AlertCircle className="h-20 w-20 text-destructive mb-6" />
+        <h2 className="text-3xl font-headline font-bold uppercase tracking-tight text-white mb-2">Database Connection Error</h2>
+        <p className="text-muted-foreground max-w-md mx-auto mb-10 leading-relaxed">
           We encountered an issue connecting to your club data. This can happen if the database services are still being provisioned or security rules are being updated.
         </p>
-        <div className="flex gap-4">
-           <Button onClick={() => window.location.reload()}>Retry Connection</Button>
-           <Button variant="ghost" onClick={handleSignOut}>Sign Out</Button>
+        <div className="flex items-center justify-center gap-6">
+           <Button onClick={() => window.location.reload()} size="lg" className="bg-primary hover:bg-primary/90 min-w-[160px] font-bold">Retry Connection</Button>
+           <Button variant="ghost" onClick={handleSignOut} className="text-white hover:bg-white/5 font-medium">Sign Out</Button>
         </div>
       </div>
     );

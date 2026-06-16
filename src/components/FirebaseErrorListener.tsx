@@ -6,12 +6,16 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * Listens for specialized FirestorePermissionErrors emitted from hooks or mutations.
+ * Surfaced as a contextual toast notification to aid in security rule debugging.
+ */
 export function FirebaseErrorListener() {
   const { toast } = useToast();
 
   useEffect(() => {
     const handlePermissionError = (error: FirestorePermissionError) => {
-      // Show a toast with the contextual error details
+      // Show a toast with the contextual error details as requested
       toast({
         variant: 'destructive',
         title: 'Security Rule Denied',
@@ -19,7 +23,7 @@ export function FirebaseErrorListener() {
       });
       
       // Centralized error handling. We don't use console.error here to avoid triggering 
-      // multiple error overlays in development, as the error is handled centrally.
+      // duplicate error overlays in development.
     };
 
     errorEmitter.on('permission-error', handlePermissionError);
