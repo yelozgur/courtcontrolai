@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
-  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
+  const { data: profile, loading: profileLoading, error: profileError } = useDoc(userProfileRef);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -74,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
   }, [db, user, isAdmin]);
 
-  const { data: userClubs, loading: clubsLoading } = useCollection(clubsQuery);
+  const { data: userClubs, loading: clubsLoading, error: clubsError } = useCollection(clubsQuery);
   const userClub = userClubs?.[0];
 
   // Onboarding State
@@ -115,7 +115,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  if (authLoading || profileLoading || (user && !isAdmin && clubsLoading)) {
+  // If there's an offline error, we show a friendly message instead of just a loader
+  const isOffline = profileError?.message?.includes('offline') || clubsError?.message?.includes('offline');
+
+  if (authLoading || (profileLoading && !isOffline) || (user && !isAdmin && clubsLoading && !isOffline)) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -124,6 +127,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   if (!user) return null;
+
+  if (isOffline) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
+        <Zap className="h-12 w-12 text-amber-500 mb-4 animate-pulse" />
+        <h2 className="text-2xl font-bold text-white mb-2">Syncing with CourtControl...</h2>
+        <p className="text-muted-foreground max-w-sm">
+          We're having trouble reaching the database. This usually means the client is offline or Firestore hasn't been enabled in the console.
+        </p>
+        <Button variant="outline" className="mt-6" onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   // If no club exists and not admin, force onboarding
   if (!isAdmin && !userClub) {

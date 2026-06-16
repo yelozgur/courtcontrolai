@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorType, setErrorType] = useState<'config' | 'creds' | null>(null);
+  const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,20 +53,26 @@ export default function LoginPage() {
       const loggedUser = result.user;
 
       const userRef = doc(db, 'users', loggedUser.uid);
-      const userSnap = await getDoc(userRef);
+      
+      try {
+        const userSnap = await getDoc(userRef);
 
-      // If profile doesn't exist, create it. 
-      // Ensure admin@deneme.com always gets the admin role.
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: loggedUser.email,
-          displayName: loggedUser.displayName || email.split('@')[0],
-          role: (loginEmail === 'admin@deneme.com') ? 'admin' : 'user',
-          createdAt: serverTimestamp(),
-        });
-      } else if (loginEmail === 'admin@deneme.com' && userSnap.data().role !== 'admin') {
-        // Migration/Safety check: Ensure this specific email is ALWAYS admin
-        await setDoc(userRef, { role: 'admin' }, { merge: true });
+        // If profile doesn't exist, create it. 
+        // Ensure admin@deneme.com always gets the admin role.
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: loggedUser.email,
+            displayName: loggedUser.displayName || email.split('@')[0],
+            role: (loginEmail === 'admin@deneme.com') ? 'admin' : 'user',
+            createdAt: serverTimestamp(),
+          });
+        } else if (loginEmail === 'admin@deneme.com' && userSnap.data().role !== 'admin') {
+          await setDoc(userRef, { role: 'admin' }, { merge: true });
+        }
+      } catch (firestoreError: any) {
+        console.warn('Firestore profile check failed, proceeding to dashboard:', firestoreError);
+        // If Firestore is "offline" or unavailable, we still proceed to dashboard
+        // because the user is successfully authenticated with Auth.
       }
 
       toast({
@@ -80,6 +86,9 @@ export default function LoginPage() {
       if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
         setErrorType('config');
         setErrorMessage(error.message);
+      } else if (error.message?.includes('offline') || error.code === 'unavailable') {
+        setErrorType('firestore');
+        setErrorMessage('Firestore service is currently unavailable or offline. Please ensure Firestore is enabled in your Firebase Console.');
       } else {
         setErrorType('creds');
         setErrorMessage(error.message);
@@ -104,16 +113,20 @@ export default function LoginPage() {
       const user = result.user;
       
       const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
+      try {
+        const userSnap = await getDoc(userRef);
 
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          role: (user.email === 'admin@deneme.com') ? 'admin' : 'user',
-          createdAt: serverTimestamp(),
-        });
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            role: (user.email === 'admin@deneme.com') ? 'admin' : 'user',
+            createdAt: serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        console.warn('Firestore profile sync failed during Google login:', e);
       }
 
       toast({
@@ -168,6 +181,21 @@ export default function LoginPage() {
                   <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Select <strong>Build {'>'} Authentication</strong></li>
                   <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Click <strong>Get Started</strong></li>
                   <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Enable <strong>Email/Password</strong> & <strong>Google</strong></li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {errorType === 'firestore' && (
+            <Alert variant="destructive" className="bg-amber-500/10 border-amber-500/20 text-amber-500">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="font-bold">Firestore Offline</AlertTitle>
+              <AlertDescription className="mt-2 space-y-2">
+                <p className="text-xs">Database connectivity issues. Please ensure Firestore is initialized:</p>
+                <ul className="text-[11px] space-y-1 bg-black/20 p-2 rounded border border-white/5">
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-amber-500" /> Go to Firebase Console</li>
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-amber-500" /> Select <strong>Build {'>'} Firestore Database</strong></li>
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-amber-500" /> Click <strong>Create Database</strong></li>
                 </ul>
               </AlertDescription>
             </Alert>
