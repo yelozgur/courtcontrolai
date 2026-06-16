@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
+import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle, Circle } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -119,7 +119,7 @@ export default function LoginPage() {
                 <p className="text-xs">Your Firebase project is connected, but the Auth service is not enabled. Please do the following:</p>
                 <ul className="text-[11px] space-y-1 bg-black/20 p-2 rounded border border-white/5">
                   <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Go to Firebase Console</li>
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Select <strong>Build > Authentication</strong></li>
+                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Select <strong>Build {'>'} Authentication</strong></li>
                   <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Click <strong>Get Started</strong></li>
                   <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Enable <strong>Email/Password</strong></li>
                 </ul>
