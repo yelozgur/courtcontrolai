@@ -11,7 +11,8 @@ import {
   Clock, 
   ArrowUpRight,
   TrendingUp,
-  MapPin
+  MapPin,
+  Zap
 } from "lucide-react"
 
 export default function DashboardOverview() {
