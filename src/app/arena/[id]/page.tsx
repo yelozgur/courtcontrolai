@@ -54,7 +54,6 @@ export default function TournamentArena() {
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white p-8 font-body overflow-hidden flex flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between mb-12">
         <div className="flex items-center gap-6">
           <Button variant="ghost" size="icon" onClick={() => router.push("/arena")} className="text-white hover:bg-white/10">
@@ -80,9 +79,7 @@ export default function TournamentArena() {
         </div>
       </div>
 
-      {/* Main Grid */}
       <div className="grid grid-cols-3 gap-8 flex-1 overflow-hidden">
-        {/* Left Column: Live Scores */}
         <div className="col-span-2 space-y-8 overflow-y-auto pr-4">
           <h2 className="text-3xl font-headline font-bold flex items-center gap-4">
             <span className="w-4 h-4 rounded-full bg-accent animate-pulse"></span>
@@ -146,7 +143,6 @@ export default function TournamentArena() {
           </div>
         </div>
 
-        {/* Right Column: Recent Results & Hub */}
         <div className="space-y-8 overflow-y-auto pr-2">
           <div className="bg-[#1E293B] rounded-3xl p-8 border border-white/5">
             <h2 className="text-3xl font-headline font-bold mb-8 flex items-center gap-4 text-accent">
@@ -184,7 +180,6 @@ export default function TournamentArena() {
               )}
             </div>
           </div>
-
           <div className="bg-[#1E293B]/50 rounded-3xl p-8 border border-white/5">
             <div className="bg-primary/10 rounded-3xl p-6 text-center">
                 <Users className="h-10 w-10 text-primary mx-auto mb-4" />

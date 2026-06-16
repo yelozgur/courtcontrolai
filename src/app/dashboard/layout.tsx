@@ -61,7 +61,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const db = useFirestore();
   const router = useRouter();
 
-  // Robust Admin Check
   const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com';
 
   const userProfileRef = useMemoFirebase(() => {
@@ -71,7 +70,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
-  // Get the user's club by ownerId
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user || isAdmin) return null;
     return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
@@ -97,7 +95,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!db || !user || !onboardingName) return;
     setIsOnboarding(true);
     
-    // Generate references with IDs immediately for fast UI transition
     const clubRef = doc(collection(db, 'clubs'));
     const userRef = doc(db, 'users', user.uid);
 
@@ -111,7 +108,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       createdAt: serverTimestamp()
     };
 
-    // NON-BLOCKING MUTATIONS: Initiate creation and profile update simultaneously
     setDoc(clubRef, newClub)
       .catch(async (e) => {
         const error = new FirestorePermissionError({
@@ -132,11 +128,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
       errorEmitter.emit('permission-error', error);
     });
-
-    // We rely on useCollection and useDoc listeners to transition the UI naturally
   };
 
-  // Improved syncing logic: Wait for auth and either admin status or club/profile data
   const isSyncing = authLoading || (!isAdmin && (clubsLoading || profileLoading));
 
   if (isSyncing) {
@@ -150,7 +143,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  // The onboarding screen only appears if we are CERTAIN no club exists
   const hasNoClub = !isAdmin && !userClub && !profile?.clubId && !isOnboarding;
 
   if (hasNoClub) {
@@ -193,7 +185,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0F172A]">
-      {/* Sidebar */}
       <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
         <div className="p-6 flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3">
@@ -258,8 +249,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Button>
         </div>
       </aside>
-
-      {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         <div className="container max-w-7xl mx-auto p-6 md:p-8">{children}</div>
       </main>

@@ -49,7 +49,6 @@ export default function TournamentRegistration() {
       clubId: tournament.clubId,
       tournamentId: id,
       registeredAt: serverTimestamp(),
-      // Store category name for display convenience
       categoryName: tournament.categories?.find((c: any) => c.id === formData.categoryId)?.name || "Default"
     };
 

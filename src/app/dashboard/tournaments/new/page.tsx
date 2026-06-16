@@ -114,7 +114,6 @@ export default function TournamentWizard() {
       createdAt: serverTimestamp()
     }
 
-    // NON-BLOCKING MUTATION: Initiate tournament creation
     setDoc(tournamentRef, tournamentData)
       .catch(async (e) => {
         const error = new FirestorePermissionError({
@@ -125,7 +124,6 @@ export default function TournamentWizard() {
         errorEmitter.emit("permission-error", error)
       })
 
-    // Create initial match optimistically
     if (formData.categories.length > 0) {
       const matchRef = doc(collection(db, "matches"))
       const matchData = {
@@ -148,7 +146,6 @@ export default function TournamentWizard() {
       });
     }
     
-    // Provide feedback and redirect immediately
     toast({
       title: "Tournament Launched!",
       description: `${formData.name} is now live.`
@@ -260,7 +257,6 @@ export default function TournamentWizard() {
             </CardContent>
           </div>
         )}
-
         {step === 2 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
             <CardHeader className="bg-accent/10 py-8">
@@ -301,7 +297,6 @@ export default function TournamentWizard() {
                     <p className="text-muted-foreground max-w-xs">No categories added yet.</p>
                   </div>
                 )}
-
                 <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="w-full border-dashed border-2 py-8 h-auto hover:bg-accent/5 hover:border-accent/40">
@@ -321,7 +316,6 @@ export default function TournamentWizard() {
                           onChange={(e) => setNewCategoryName(e.target.value)}
                         />
                       </div>
-                      
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Age Group</Label>
@@ -351,7 +345,6 @@ export default function TournamentWizard() {
                           </Select>
                         </div>
                       </div>
-
                       <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl">
                         <div className="flex items-center gap-3">
                           <Users className="h-5 w-5 text-primary" />
@@ -365,7 +358,6 @@ export default function TournamentWizard() {
                           onCheckedChange={setNewCategoryIsTeam} 
                         />
                       </div>
-
                       <div className="space-y-2">
                         <Label>Sets per Match (Best of)</Label>
                         <div className="flex gap-2">
@@ -402,7 +394,6 @@ export default function TournamentWizard() {
             </CardContent>
           </div>
         )}
-
         {step === 3 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
             <CardHeader className="bg-primary/10 py-8">
@@ -440,7 +431,6 @@ export default function TournamentWizard() {
             </CardContent>
           </div>
         )}
-
         {step === 4 && (
           <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-24 px-8">
             <div className="w-28 h-28 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">

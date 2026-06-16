@@ -20,7 +20,6 @@ export default function RefereeConsole() {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Find a live match to referee for THIS tournament
   const liveMatchQuery = useMemoFirebase(() => {
     if (!db || !id) return null
     return query(
@@ -93,7 +92,6 @@ export default function RefereeConsole() {
 
     const matchRef = doc(db, "matches", activeMatch.id)
     
-    // Mutation: Mark match as completed
     updateDoc(matchRef, {
       status: "completed",
       completedAt: new Date().toISOString()

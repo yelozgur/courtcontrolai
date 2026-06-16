@@ -67,7 +67,6 @@ export default function ClubSettings() {
       numCourts: Number(formData.numCourts) || 1
     }
     
-    // NON-BLOCKING MUTATION: Proceed immediately
     setDoc(clubRef, updateData, { merge: true })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
@@ -78,7 +77,6 @@ export default function ClubSettings() {
         errorEmitter.emit("permission-error", error)
       })
 
-    // Reset UI state and provide feedback immediately
     setTimeout(() => {
       setIsSaving(false)
       toast({
@@ -194,7 +192,6 @@ export default function ClubSettings() {
                 onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
               />
             </div>
-            
             <div className="pt-4">
               <Button 
                 onClick={handleSave} 
