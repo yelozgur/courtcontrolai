@@ -156,7 +156,7 @@ export default function SignupPage() {
                 <p className="text-xs">Your current domain is not authorized in Firebase Console.</p>
                 <div className="text-[10px] bg-black/20 p-2 rounded border border-white/5 space-y-1">
                   <p>1. Go to Firebase Console</p>
-                  <p>2. Auth > Settings > Authorized domains</p>
+                  <p>2. Auth &gt; Settings &gt; Authorized domains</p>
                   <p>3. Add: <span className="text-primary font-mono">{typeof window !== 'undefined' ? window.location.hostname : 'current domain'}</span></p>
                 </div>
               </AlertDescription>
