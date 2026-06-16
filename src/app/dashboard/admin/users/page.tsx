@@ -12,15 +12,38 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ShieldCheck, Mail, Calendar, Loader2, Search, User } from 'lucide-react';
-import { collection } from 'firebase/firestore';
+import { 
+  ShieldCheck, 
+  Mail, 
+  Calendar, 
+  Loader2, 
+  Search, 
+  User, 
+  MoreVertical,
+  Settings2,
+  Check
+} from 'lucide-react';
+import { collection, doc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AdminUsersPage() {
   const db = useFirestore();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -28,6 +51,29 @@ export default function AdminUsersPage() {
   }, [db]);
 
   const { data: users, loading } = useCollection(usersQuery);
+
+  const handleUpdateRole = async (userId: string, newRole: 'admin' | 'user') => {
+    if (!db) return;
+    setUpdatingId(userId);
+    const userRef = doc(db, 'users', userId);
+    
+    updateDoc(userRef, { role: newRole })
+      .then(() => {
+        toast({
+          title: "Role Updated",
+          description: `User role changed to ${newRole}.`,
+        });
+      })
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: { role: newRole }
+        });
+        errorEmitter.emit('permission-error', error);
+      })
+      .finally(() => setUpdatingId(null));
+  };
 
   const filtered = users?.filter((u) =>
     u.displayName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -98,7 +144,31 @@ export default function AdminUsersPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm">Edit Role</Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled={updatingId === user.id}>
+                            {updatingId === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MoreVertical className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleUpdateRole(user.id, 'admin')}>
+                            <ShieldCheck className="mr-2 h-4 w-4 text-accent" />
+                            Make Admin
+                            {user.role === 'admin' && <Check className="ml-auto h-4 w-4" />}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateRole(user.id, 'user')}>
+                            <User className="mr-2 h-4 w-4" />
+                            Standard User
+                            {user.role === 'user' && <Check className="ml-auto h-4 w-4" />}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
