@@ -4,8 +4,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2 } from "lucide-react"
-import { collection, query, where, limit, doc } from "firebase/firestore"
+import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle } from "lucide-react"
+import { collection, query, where, limit, doc, orderBy } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { Button } from "@/components/ui/button"
 
@@ -28,7 +28,7 @@ export default function TournamentArena() {
 
   const { data: tournament } = useDoc(tournamentRef)
 
-  const matchesQuery = useMemoFirebase(() => {
+  const liveMatchesQuery = useMemoFirebase(() => {
     if (!db || !id) return null
     return query(
       collection(db, "matches"), 
@@ -38,7 +38,19 @@ export default function TournamentArena() {
     )
   }, [db, id])
 
-  const { data: liveMatches, loading } = useCollection(matchesQuery)
+  const finishedMatchesQuery = useMemoFirebase(() => {
+    if (!db || !id) return null
+    return query(
+      collection(db, "matches"), 
+      where("tournamentId", "==", id),
+      where("status", "==", "completed"),
+      orderBy("completedAt", "desc"),
+      limit(3)
+    )
+  }, [db, id])
+
+  const { data: liveMatches, loading: liveLoading } = useCollection(liveMatchesQuery)
+  const { data: finishedMatches, loading: finishedLoading } = useCollection(finishedMatchesQuery)
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white p-8 font-body overflow-hidden flex flex-col">
@@ -69,16 +81,16 @@ export default function TournamentArena() {
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-3 gap-8 flex-1">
+      <div className="grid grid-cols-3 gap-8 flex-1 overflow-hidden">
         {/* Left Column: Live Scores */}
-        <div className="col-span-2 space-y-8">
+        <div className="col-span-2 space-y-8 overflow-y-auto pr-4">
           <h2 className="text-3xl font-headline font-bold flex items-center gap-4">
             <span className="w-4 h-4 rounded-full bg-accent animate-pulse"></span>
             Live On Courts
           </h2>
           
           <div className="grid gap-6">
-            {loading ? (
+            {liveLoading ? (
               <div className="flex items-center justify-center p-20">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
               </div>
@@ -87,7 +99,7 @@ export default function TournamentArena() {
                 <div key={match.id} className="bg-card/40 border border-white/5 rounded-3xl p-8 flex items-center gap-12 backdrop-blur-md relative overflow-hidden group">
                   <div className="absolute top-0 left-0 h-full w-2 bg-accent"></div>
                   
-                  <div className="text-center">
+                  <div className="text-center w-24">
                     <span className="block text-sm text-muted-foreground uppercase font-bold tracking-[0.2em] mb-2">Court</span>
                     <span className="block text-7xl font-headline font-bold">{match.court}</span>
                   </div>
@@ -96,21 +108,27 @@ export default function TournamentArena() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold">
-                          {match.teamA.name.substring(0, 2).toUpperCase()}
+                          {match.teamA.name?.substring(0, 2).toUpperCase() || "??"}
                         </div>
                         <span className="text-3xl font-bold">{match.teamA.name}</span>
                       </div>
-                      <span className="text-6xl font-mono font-bold text-accent">{match.teamA.score}</span>
+                      <div className="flex items-center gap-8">
+                        <span className="text-2xl font-mono font-bold text-muted-foreground">({match.teamA.setsWon || 0})</span>
+                        <span className="text-6xl font-mono font-bold text-accent">{match.teamA.score}</span>
+                      </div>
                     </div>
                     <div className="h-px bg-white/5"></div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold">
-                          {match.teamB.name.substring(0, 2).toUpperCase()}
+                          {match.teamB.name?.substring(0, 2).toUpperCase() || "??"}
                         </div>
                         <span className="text-3xl font-bold">{match.teamB.name}</span>
                       </div>
-                      <span className="text-6xl font-mono font-bold opacity-50">{match.teamB.score}</span>
+                      <div className="flex items-center gap-8">
+                        <span className="text-2xl font-mono font-bold text-muted-foreground">({match.teamB.setsWon || 0})</span>
+                        <span className="text-6xl font-mono font-bold opacity-50">{match.teamB.score}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -128,32 +146,56 @@ export default function TournamentArena() {
           </div>
         </div>
 
-        {/* Right Column: Upcoming & Stats */}
-        <div className="space-y-12">
-          <div className="bg-[#1E293B] rounded-3xl p-8 h-full border border-white/5">
-            <h2 className="text-3xl font-headline font-bold mb-8 flex items-center gap-4">
-              <Clock className="h-8 w-8 text-primary" />
-              Upcoming
+        {/* Right Column: Recent Results & Hub */}
+        <div className="space-y-8 overflow-y-auto pr-2">
+          <div className="bg-[#1E293B] rounded-3xl p-8 border border-white/5">
+            <h2 className="text-3xl font-headline font-bold mb-8 flex items-center gap-4 text-accent">
+              <CheckCircle className="h-8 w-8" />
+              Recent Results
             </h2>
-            <div className="space-y-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-6 items-center p-4 rounded-2xl hover:bg-white/5 transition-colors opacity-50">
-                  <div className="w-20 text-center py-3 bg-white/5 rounded-2xl">
-                    <span className="block text-lg font-bold">1{i}:00</span>
+            <div className="space-y-6">
+              {finishedLoading ? (
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted-foreground" /></div>
+              ) : finishedMatches && finishedMatches.length > 0 ? (
+                finishedMatches.map((m) => (
+                  <div key={m.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in duration-500">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{m.category}</span>
+                      <Badge variant="outline" className="text-[10px] h-5 border-emerald-500/30 text-emerald-400">FINAL</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className={m.teamA.setsWon > m.teamB.setsWon ? "font-bold text-white" : "text-muted-foreground"}>
+                          {m.teamA.name}
+                        </span>
+                        <span className="font-mono font-bold text-accent">{m.teamA.setsWon}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={m.teamB.setsWon > m.teamA.setsWon ? "font-bold text-white" : "text-muted-foreground"}>
+                          {m.teamB.name}
+                        </span>
+                        <span className="font-mono font-bold text-accent">{m.teamB.setsWon}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="text-xl font-bold">TBD Match</h4>
-                    <p className="text-muted-foreground text-sm uppercase tracking-wide">Pending Schedule</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground italic py-10">No matches finished yet.</p>
+              )}
             </div>
+          </div>
 
-            <div className="mt-12 pt-12 border-t border-white/5">
-                <div className="bg-primary/10 rounded-3xl p-6 text-center">
-                    <Users className="h-10 w-10 text-primary mx-auto mb-4" />
-                    <h3 className="text-2xl font-headline font-bold">Tournament Hub</h3>
-                    <p className="text-muted-foreground mt-2">Scan the QR code at the reception for real-time schedule updates and match-ready notifications via Telegram.</p>
+          <div className="bg-[#1E293B]/50 rounded-3xl p-8 border border-white/5">
+            <div className="bg-primary/10 rounded-3xl p-6 text-center">
+                <Users className="h-10 w-10 text-primary mx-auto mb-4" />
+                <h3 className="text-2xl font-headline font-bold">Tournament Hub</h3>
+                <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                  Scan the QR code at the reception for real-time schedule updates and match-ready notifications.
+                </p>
+                <div className="mt-6 flex justify-center">
+                  <div className="w-32 h-32 bg-white rounded-xl p-2">
+                     <svg viewBox="0 0 24 24" fill="black"><path d="M3 3h7v7H3zm2 2v3h3V5zm8-2h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zm10 0h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4-2h2v2h-2zm0-4h2v2h-2z"/></svg>
+                  </div>
                 </div>
             </div>
           </div>

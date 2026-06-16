@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Zap, Loader2, AlertCircle, ArrowLeft, Gavel, Trophy } from "lucide-react"
+import { Zap, Loader2, AlertCircle, ArrowLeft, Gavel, Trophy, CheckCircle2 } from "lucide-react"
 import { doc, updateDoc, collection, query, where, limit, onSnapshot } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -18,8 +18,7 @@ export default function RefereeConsole() {
   const router = useRouter()
   const db = useFirestore()
   const { toast } = useToast()
-  const [matchId, setMatchId] = useState<string | null>(null)
-  const [isVerifying, setIsVerifying] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Find a live match to referee for THIS tournament
   const liveMatchQuery = useMemoFirebase(() => {
@@ -42,19 +41,13 @@ export default function RefereeConsole() {
 
   const { data: tournament } = useDoc(tournamentRef)
 
-  useEffect(() => {
-    if (activeMatch) {
-      setMatchId(activeMatch.id)
-    }
-  }, [activeMatch])
-
   const updateScore = (team: 'teamA' | 'teamB', increment: number) => {
-    if (!db || !activeMatch || !matchId) return
+    if (!db || !activeMatch) return
     
     const currentScore = activeMatch[team].score || 0
     const newScore = Math.max(0, currentScore + increment)
     
-    const matchRef = doc(db, "matches", matchId)
+    const matchRef = doc(db, "matches", activeMatch.id)
     updateDoc(matchRef, {
       [`${team}.score`]: newScore
     }).catch(async (e) => {
@@ -68,10 +61,10 @@ export default function RefereeConsole() {
   }
 
   const awardSet = (team: 'teamA' | 'teamB') => {
-    if (!db || !activeMatch || !matchId) return
+    if (!db || !activeMatch) return
     
     const currentSets = activeMatch[team].setsWon || 0
-    const matchRef = doc(db, "matches", matchId)
+    const matchRef = doc(db, "matches", activeMatch.id)
     
     const updateData = {
       [`${team}.setsWon`]: currentSets + 1,
@@ -94,13 +87,30 @@ export default function RefereeConsole() {
     })
   }
 
-  const handleVerify = () => {
-    setIsVerifying(true)
-    setTimeout(() => setIsVerifying(false), 3000)
-    toast({
-      title: "Verification Sent",
-      description: "Match results sent to players for final approval."
+  const handleFinalSubmit = () => {
+    if (!db || !activeMatch) return
+    setIsSubmitting(true)
+
+    const matchRef = doc(db, "matches", activeMatch.id)
+    
+    // Mutation: Mark match as completed
+    updateDoc(matchRef, {
+      status: "completed",
+      completedAt: new Date().toISOString()
+    }).catch(async (e) => {
+      const error = new FirestorePermissionError({
+        path: matchRef.path,
+        operation: "update",
+        requestResourceData: { status: "completed" }
+      })
+      errorEmitter.emit('permission-error', error)
     })
+
+    toast({
+      title: "Match Completed",
+      description: "Final scores submitted and verified."
+    })
+    setIsSubmitting(false)
   }
 
   if (loading) {
@@ -142,7 +152,6 @@ export default function RefereeConsole() {
           <p className="text-lg font-headline font-bold">{activeMatch.category}</p>
         </div>
 
-        {/* Scoring Panels */}
         <div className="grid gap-6">
           {[
             { key: 'teamA' as const, other: 'teamB' as const },
@@ -153,7 +162,7 @@ export default function RefereeConsole() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-headline font-bold">
-                      {activeMatch[key].name.substring(0, 2).toUpperCase()}
+                      {activeMatch[key].name?.substring(0, 2).toUpperCase() || "??"}
                     </div>
                     <div>
                       <h3 className="font-bold text-lg">{activeMatch[key].name}</h3>
@@ -195,7 +204,7 @@ export default function RefereeConsole() {
                   </div>
                   <Button 
                     variant="ghost" 
-                    className="h-14 px-6 border-l border-white/10 text-accent font-bold hover:bg-accent/10"
+                    className="h-14 px-4 border-l border-white/10 text-accent font-bold hover:bg-accent/10 text-xs text-center"
                     onClick={() => awardSet(key)}
                   >
                     AWARD<br/>SET
@@ -206,22 +215,14 @@ export default function RefereeConsole() {
           ))}
         </div>
 
-        {isVerifying ? (
-          <div className="bg-accent/10 border border-accent/20 rounded-2xl p-8 text-center animate-in zoom-in-95">
-            <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
-            <h4 className="font-bold text-accent uppercase tracking-widest">Pending Verification</h4>
-            <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              Waiting for player confirmation. If tied 1-1, the final decider set will begin once confirmed.
-            </p>
-          </div>
-        ) : (
-          <Button 
-            className="w-full h-20 text-xl font-bold bg-accent text-accent-foreground hover:bg-accent/90 shadow-xl shadow-accent/20 rounded-2xl"
-            onClick={handleVerify}
-          >
-            SUBMIT MATCH SCORE
-          </Button>
-        )}
+        <Button 
+          className="w-full h-20 text-xl font-bold bg-accent text-accent-foreground hover:bg-accent/90 shadow-xl shadow-accent/20 rounded-2xl"
+          onClick={handleFinalSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-6 w-6" />}
+          SUBMIT MATCH SCORE
+        </Button>
       </main>
 
       <footer className="p-4 border-t border-border bg-card/50 grid grid-cols-2 gap-3 sticky bottom-0">
