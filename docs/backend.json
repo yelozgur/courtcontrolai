@@ -22,7 +22,9 @@
               "id": { "type": "string" },
               "name": { "type": "string" },
               "format": { "type": "string" },
-              "sets": { "type": "number" }
+              "sets": { "type": "number" },
+              "ageGroup": { "type": "string" },
+              "isTeamBased": { "type": "boolean" }
             }
           }
         }
