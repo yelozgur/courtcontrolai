@@ -117,8 +117,9 @@ export default function TournamentWizard() {
 
     addDoc(collection(db, "tournaments"), tournamentData)
       .then((docRef) => {
+        // Automatically create a dummy first match to initialize the tournament view
         if (formData.categories.length > 0) {
-          addDoc(collection(db, "matches"), {
+          const matchData = {
             clubId,
             tournamentId: docRef.id,
             court: 1,
@@ -128,8 +129,23 @@ export default function TournamentWizard() {
             status: "live",
             startTime: serverTimestamp(),
             durationMinutes: 45
-          })
+          };
+          
+          addDoc(collection(db, "matches"), matchData).catch(async (e) => {
+             const error = new FirestorePermissionError({
+              path: "matches",
+              operation: "create",
+              requestResourceData: matchData
+            });
+            errorEmitter.emit("permission-error", error);
+          });
         }
+        
+        toast({
+          title: "Tournament Launched!",
+          description: `${formData.name} is now live.`
+        });
+        router.push("/dashboard");
       })
       .catch(async (e: any) => {
         const error = new FirestorePermissionError({
@@ -138,14 +154,15 @@ export default function TournamentWizard() {
           requestResourceData: tournamentData
         })
         errorEmitter.emit("permission-error", error)
+        toast({
+          variant: "destructive",
+          title: "Launch Failed",
+          description: "Could not create tournament. Check permissions."
+        });
       })
-
-    setIsSubmitting(false)
-    toast({
-      title: "Tournament Launched!",
-      description: `${formData.name} is now live.`
-    })
-    router.push("/dashboard")
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   }
 
   if (!clubId) {
@@ -382,7 +399,7 @@ export default function TournamentWizard() {
                 </Dialog>
               </div>
               <div className="pt-4 flex justify-between">
-                <Button variant="ghost" onClick={() => setStep(1)} className="h-12 px-8">Back</Button>
+                <Button variant="ghost" onClick={() => setStep(2)} className="h-12 px-8">Back</Button>
                 <Button onClick={() => setStep(3)} className="h-12 px-10" disabled={formData.categories.length === 0}>
                   Next: Venue Logistics
                 </Button>

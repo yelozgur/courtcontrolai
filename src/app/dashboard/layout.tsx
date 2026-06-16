@@ -27,10 +27,12 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useAuth, useDoc, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection, query, where, limit, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, collection, query, where, limit, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const commonItems = [
   { name: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
@@ -102,23 +104,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       numCourts: 1,
       location: 'Pending Set-up',
       primarySport: 'padel',
-      createdAt: new Date().toISOString()
+      createdAt: serverTimestamp()
     };
 
     // Create the club and update user profile immediately for fast UI response
     addDoc(collection(db, 'clubs'), newClub)
       .then((clubRef) => {
-        updateDoc(doc(db, 'users', user.uid), {
+        const userRef = doc(db, 'users', user.uid);
+        updateDoc(userRef, {
           clubId: clubRef.id,
+        }).catch(async (e) => {
+           const error = new FirestorePermissionError({
+            path: userRef.path,
+            operation: 'update',
+            requestResourceData: { clubId: clubRef.id }
+          });
+          errorEmitter.emit('permission-error', error);
         });
       })
-      .catch((e) => console.error("Club creation failed:", e))
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: 'clubs',
+          operation: 'create',
+          requestResourceData: newClub
+        });
+        errorEmitter.emit('permission-error', error);
+      })
       .finally(() => {
-        setIsOnboarding(false);
+        // We keep onboarding true until the collection listener picks up the new club
+        // or a timeout occurs to prevent the flickering "hasNoClub" state
       });
   };
 
-  // Improved syncing logic: Wait for auth, profile, and initial collection check
+  // Improved syncing logic
   const isSyncing = authLoading || (!isAdmin && (clubsLoading || profileLoading));
 
   if (isSyncing) {
@@ -132,10 +150,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  // Onboarding only appears if we are absolutely certain no club exists
+  // Check if we are in onboarding mode (waiting for the club query to find the newly created club)
+  const isWaitingForNewClub = isOnboarding && !userClub;
   const hasNoClub = !isAdmin && !userClub && !profile?.clubId;
 
-  if (hasNoClub) {
+  if (hasNoClub || isWaitingForNewClub) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
         <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">

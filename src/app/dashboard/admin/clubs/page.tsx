@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Building, MapPin, Mail, ExternalLink, Loader2, Search } from 'lucide-react';
-import { collection, query, limit } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ export default function AdminClubsPage() {
 
   const clubsQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return collection(db, 'clubs');
+    return query(collection(db, 'clubs'), orderBy('createdAt', 'desc'));
   }, [db]);
   
   const { data: clubs, loading } = useCollection(clubsQuery);
