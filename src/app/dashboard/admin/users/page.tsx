@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { ShieldCheck, Mail, Calendar, Loader2, Search, User } from 'lucide-react';
 import { collection } from 'firebase/firestore';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 
@@ -22,7 +22,11 @@ export default function AdminUsersPage() {
   const db = useFirestore();
   const [search, setSearch] = useState('');
 
-  const usersQuery = collection(db!, 'users');
+  const usersQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'users');
+  }, [db]);
+
   const { data: users, loading } = useCollection(usersQuery);
 
   const filtered = users?.filter((u) =>
