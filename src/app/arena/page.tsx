@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { Trophy, Zap, Clock, Users, ArrowRight } from "lucide-react"
 
 export default function ArenaDashboard() {
-  const [time, setTime] = useState(new Date())
+  const [time, setTime] = useState<Date | null>(null)
 
   useEffect(() => {
+    setTime(new Date())
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
@@ -27,7 +28,9 @@ export default function ArenaDashboard() {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-5xl font-mono font-bold">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          <div className="text-5xl font-mono font-bold">
+            {time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
+          </div>
           <div className="text-xl text-accent font-bold uppercase tracking-widest mt-1">Arena Mode Active</div>
         </div>
       </div>
