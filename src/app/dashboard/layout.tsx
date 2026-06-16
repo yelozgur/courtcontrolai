@@ -126,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   // If no club exists and not admin, force onboarding
-  if (!isAdmin && !userClub && pathname !== '/dashboard/onboarding') {
+  if (!isAdmin && !userClub) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
         <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
@@ -168,10 +168,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
         <div className="p-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Zap className="text-primary-foreground h-5 w-5" />
-          </div>
-          <span className="font-headline font-bold text-lg tracking-tight">CourtControl</span>
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Zap className="text-primary-foreground h-5 w-5" />
+            </div>
+            <span className="font-headline font-bold text-lg tracking-tight">CourtControl</span>
+          </Link>
         </div>
         <ScrollArea className="flex-1 px-3">
           <div className="px-3 mb-4">
@@ -207,7 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 px-3 py-2 bg-secondary/50 rounded-xl">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
               {profile?.photoURL ? (
-                <img src={profile.photoURL} alt="Avatar" />
+                <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 profile?.displayName?.substring(0, 2).toUpperCase()
               )}
