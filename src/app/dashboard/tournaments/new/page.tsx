@@ -129,8 +129,6 @@ export default function TournamentWizard() {
           requestResourceData: tournamentData
         })
         errorEmitter.emit("permission-error", error)
-      })
-      .finally(() => {
         setIsSubmitting(false)
       })
   }
@@ -139,7 +137,7 @@ export default function TournamentWizard() {
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-4">
         <Loader2 className="animate-spin h-10 w-10 text-primary" />
-        <p className="text-muted-foreground animate-pulse">Syncing club data...</p>
+        <p className="text-muted-foreground animate-pulse">Syncing club context...</p>
       </div>
     )
   }

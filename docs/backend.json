@@ -127,11 +127,11 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global tournament registry. Publicly readable. Writable by the owner of the club (ownerId) associated with the clubId." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Match score records. Publicly readable. Writable by the owner of the club associated with the clubId." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Club profiles. Publicly readable. Writable only by the user specified in the ownerId field." },
-    "/users/{userId}": { "schema": "User", "description": "User profile data. A user can read and write their own document (userId == auth.uid). Admins have global read/list access." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament entries. Publicly readable. Writable by the club owner or the player themselves." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club partnership details. Publicly readable. Writable only by the club owner (clubId)." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global tournament registry. Publicly readable and listable. Writable by the owner of the club associated with the clubId." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Match records. Publicly readable and listable. Writable by the owner of the club associated with the clubId." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Club profiles. Publicly readable and listable. Writable only by the user specified in the ownerId field." },
+    "/users/{userId}": { "schema": "User", "description": "User profiles. A user can read and write their own document (userId == auth.uid). Admins have global read access to all users." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament entries. Publicly readable and listable. Writable by the club owner or the player themselves." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club partnership details. Publicly readable and listable. Writable only by the club owner (clubId)." }
   }
 }

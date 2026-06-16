@@ -21,6 +21,7 @@ import {
   Building,
   Gavel,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -138,12 +139,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Synchronizing Your Club...</p>
+        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Synchronizing Connection...</p>
       </div>
     );
   }
 
-  // Handle error state gracefully. If profileError or clubsError exists, it's likely a security rule issue.
   if (profileError || clubsError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
@@ -152,11 +152,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <h2 className="text-3xl font-headline font-bold uppercase tracking-tight text-white mb-2 leading-none">DATABASE CONNECTION<br/>ERROR</h2>
         <p className="text-muted-foreground max-w-md mx-auto mb-10 leading-relaxed text-sm">
-          We encountered an issue connecting to your club data. This often happens if the project services are still provisioning or if security rules were just updated.
+          Security rules or network conditions are preventing access to your profile. This usually resolves after a few seconds as rules propagate.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
            <Button onClick={() => window.location.reload()} size="lg" className="bg-[#8B5CF6] hover:bg-[#7C3AED] min-w-[200px] font-bold rounded-xl h-12">
-             Retry Connection
+             <RefreshCw className="mr-2 h-4 w-4" /> Retry Connection
            </Button>
            <Button variant="ghost" onClick={handleSignOut} className="text-white hover:bg-white/5 font-medium px-8 h-12">
              Sign Out
