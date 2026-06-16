@@ -3,7 +3,7 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "A sports tournament entity. Publicly readable, writeable by the club owner.",
+      "description": "A sports tournament entity. Publicly readable. Writeable by the club owner whose clubId matches the document's clubId.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
@@ -33,7 +33,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "An individual match. Readable by all, writeable by the tournament's club owner or assigned referees.",
+      "description": "An individual match. Readable by all. Writeable by users who own the club associated with this match (clubId).",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -66,7 +66,7 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Sports club profile. Publicly readable, writeable only by the ownerId.",
+      "description": "Sports club profile. Publicly readable. Writeable only by the user whose auth.uid matches ownerId.",
       "type": "object",
       "properties": {
         "ownerId": { "type": "string", "description": "The UID of the user who owns this club" },
@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. Readable and writeable by the user themselves (auth.uid == userId).",
+      "description": "User profile. Readable and writeable only by the user themselves (auth.uid == userId). Admins have global read access.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -94,7 +94,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament player. Writeable by club owners or the participant themselves.",
+      "description": "Tournament player. Publicly readable. Writeable by club owners or the participant themselves.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -111,7 +111,7 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Club partner. Publicly readable, writeable by the club owner.",
+      "description": "Club partner. Publicly readable. Writeable by the club owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },

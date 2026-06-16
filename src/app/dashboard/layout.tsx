@@ -110,6 +110,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     setDoc(clubRef, newClub)
+      .then(() => {
+        return updateDoc(userRef, {
+          clubId: clubRef.id,
+        });
+      })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: clubRef.path,
@@ -117,21 +122,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           requestResourceData: newClub
         });
         errorEmitter.emit('permission-error', error);
+      })
+      .finally(() => {
         setIsOnboarding(false);
       });
-
-    updateDoc(userRef, {
-      clubId: clubRef.id,
-    }).catch(async (e) => {
-       const error = new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'update',
-        requestResourceData: { clubId: clubRef.id }
-      });
-      errorEmitter.emit('permission-error', error);
-    });
   };
 
+  // Only show loading if we are truly fetching initial essential data
   const isSyncing = authLoading || (!isAdmin && (clubsLoading || profileLoading));
 
   if (isSyncing) {
@@ -143,14 +140,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Handle case where permissions are denied (e.g. database not fully ready or rules misconfigured)
+  // Handle case where permissions are denied
   if (clubsError || profileError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
         <AlertCircle className="h-20 w-20 text-destructive mb-6" />
         <h2 className="text-3xl font-headline font-bold uppercase tracking-tight text-white mb-2">Database Connection Error</h2>
         <p className="text-muted-foreground max-w-md mx-auto mb-10 leading-relaxed">
-          We encountered an issue connecting to your club data. This can happen if the database services are still being provisioned or security rules are being updated.
+          We encountered an issue connecting to your club data. This can happen if database services are still provisioning or security rules are being updated.
         </p>
         <div className="flex items-center justify-center gap-6">
            <Button onClick={() => window.location.reload()} size="lg" className="bg-primary hover:bg-primary/90 min-w-[160px] font-bold">Retry Connection</Button>

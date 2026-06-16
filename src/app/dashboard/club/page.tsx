@@ -68,6 +68,12 @@ export default function ClubSettings() {
     }
     
     setDoc(clubRef, updateData, { merge: true })
+      .then(() => {
+        toast({
+          title: "Settings Saved",
+          description: "Your club profile has been updated."
+        })
+      })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: clubRef.path,
@@ -76,14 +82,9 @@ export default function ClubSettings() {
         })
         errorEmitter.emit("permission-error", error)
       })
-
-    setTimeout(() => {
-      setIsSaving(false)
-      toast({
-        title: "Settings Saved",
-        description: "Your club profile has been updated."
+      .finally(() => {
+        setIsSaving(false)
       })
-    }, 500)
   }
 
   if (loading) {

@@ -115,6 +115,13 @@ export default function TournamentWizard() {
     }
 
     setDoc(tournamentRef, tournamentData)
+      .then(() => {
+        toast({
+          title: "Tournament Launched!",
+          description: `${formData.name} is now live.`
+        })
+        router.push("/dashboard")
+      })
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: tournamentRef.path,
@@ -123,38 +130,9 @@ export default function TournamentWizard() {
         })
         errorEmitter.emit("permission-error", error)
       })
-
-    if (formData.categories.length > 0) {
-      const matchRef = doc(collection(db, "matches"))
-      const matchData = {
-        clubId,
-        tournamentId: tournamentRef.id,
-        court: 1,
-        category: formData.categories[0].name,
-        teamA: { name: "Team alpha", score: 0, setsWon: 0, players: [] },
-        teamB: { name: "Team beta", score: 0, setsWon: 0, players: [] },
-        status: "live",
-        startTime: serverTimestamp()
-      }
-      setDoc(matchRef, matchData).catch(async (e) => {
-         const error = new FirestorePermissionError({
-          path: matchRef.path,
-          operation: "create",
-          requestResourceData: matchData
-        });
-        errorEmitter.emit('permission-error', error);
-      });
-    }
-    
-    toast({
-      title: "Tournament Launched!",
-      description: `${formData.name} is now live.`
-    })
-    
-    setTimeout(() => {
-      router.push("/dashboard")
-      setIsSubmitting(false)
-    }, 500)
+      .finally(() => {
+        setIsSubmitting(false)
+      })
   }
 
   if (!clubId) {
@@ -373,9 +351,6 @@ export default function TournamentWizard() {
                             </Button>
                           ))}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2 italic">
-                          * Best of 3: If tied 1-1, the 3rd set serves as the tie-break decider.
-                        </p>
                       </div>
                     </div>
                     <DialogFooter>
