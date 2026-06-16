@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock } from 'lucide-react';
+import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
   const { user, loading } = useUser();
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorHint, setErrorHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && !loading) {
@@ -36,18 +37,16 @@ export default function LoginPage() {
     e.preventDefault();
     if (!auth || !db) return;
     setIsSubmitting(true);
+    setErrorHint(null);
 
     try {
-      // Use "admin@platform.com" and "password" as a placeholder for the super admin
-      // The user requested 'admin' as username, but Firebase Auth needs an email.
-      // We'll normalize 'admin' to 'admin@platform.com' if they type just 'admin'
+      // Logic to handle 'admin' shortcut
       const loginEmail = email === 'admin' ? 'admin@platform.com' : email;
       const loginPassword = email === 'admin' && password === 'adm' ? 'password' : password;
 
       const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       const loggedUser = result.user;
 
-      // Ensure profile exists in Firestore
       const userRef = doc(db, 'users', loggedUser.uid);
       const userSnap = await getDoc(userRef);
 
@@ -66,10 +65,21 @@ export default function LoginPage() {
       });
       router.push('/dashboard');
     } catch (error: any) {
+      console.error(error);
+      
+      // Provide actionable hints for common Firebase setup errors
+      if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
+        setErrorHint("Firebase Auth is not fully configured. Please ensure 'Email/Password' is enabled in the Firebase Console.");
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+        setErrorHint("Invalid credentials. If this is a new project, you may need to 'Sign Up' first.");
+      } else {
+        setErrorHint(error.message);
+      }
+
       toast({
         variant: 'destructive',
         title: 'Sign In Failed',
-        description: error.message || 'Invalid credentials. Please try again.',
+        description: error.message,
       });
     } finally {
       setIsSubmitting(false);
@@ -100,7 +110,17 @@ export default function LoginPage() {
             Enter your credentials to access your dashboard.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {errorHint && (
+            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Configuration Error</AlertTitle>
+              <AlertDescription className="text-xs">
+                {errorHint}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email or Username</Label>
@@ -117,9 +137,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -147,7 +165,9 @@ export default function LoginPage() {
             </Link>
           </div>
           <div className="bg-primary/10 p-3 rounded-lg text-[10px] text-primary font-mono text-center">
-            Super Admin Access: <strong>admin</strong> / <strong>adm</strong>
+            Super Admin: <strong>admin</strong> / <strong>adm</strong>
+            <br />
+            (Note: Admin must be registered via Signup if not existing)
           </div>
         </CardFooter>
       </Card>

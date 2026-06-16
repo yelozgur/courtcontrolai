@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Firebase configuration using the project credentials provided by the user.
+ * Firebase configuration using the project credentials provided.
  */
 export const firebaseConfig = {
   apiKey: "AIzaSyDjhD-rqQOoxCktV3KCHqWuxZ9iPm7wWgY",

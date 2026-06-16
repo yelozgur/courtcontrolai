@@ -5,12 +5,18 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
+/**
+ * Initializes Firebase services. 
+ * This is called on the client side only.
+ */
 export function initializeFirebase(): {
   app: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
 } {
+  // Ensure we don't initialize multiple times
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  
   const firestore = getFirestore(app);
   const auth = getAuth(app);
 
