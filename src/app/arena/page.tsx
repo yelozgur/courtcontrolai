@@ -3,16 +3,26 @@
 
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Zap, Clock, Users, ArrowRight } from "lucide-react"
+import { Trophy, Zap, Clock, Users, ArrowRight, Loader2 } from "lucide-react"
+import { collection, query, where, limit, orderBy } from "firebase/firestore"
+import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 
 export default function ArenaDashboard() {
   const [time, setTime] = useState<Date | null>(null)
+  const db = useFirestore()
 
   useEffect(() => {
     setTime(new Date())
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  const matchesQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "matches"), where("status", "==", "live"), limit(4))
+  }, [db])
+
+  const { data: liveMatches, loading } = useCollection(matchesQuery)
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white p-8 font-body overflow-hidden flex flex-col">
@@ -24,7 +34,7 @@ export default function ArenaDashboard() {
           </div>
           <div>
             <h1 className="text-5xl font-headline font-bold tracking-tighter uppercase">CourtControl AI</h1>
-            <p className="text-xl text-muted-foreground font-medium">Spring Padel Open • Live Results</p>
+            <p className="text-xl text-muted-foreground font-medium">Tournament Arena • Live Results</p>
           </div>
         </div>
         <div className="text-right">
@@ -45,39 +55,53 @@ export default function ArenaDashboard() {
           </h2>
           
           <div className="grid gap-6">
-            {[1, 2, 3, 4].map((court) => (
-              <div key={court} className="bg-card/40 border border-white/5 rounded-3xl p-8 flex items-center gap-12 backdrop-blur-md relative overflow-hidden group">
-                <div className="absolute top-0 left-0 h-full w-2 bg-accent"></div>
-                
-                <div className="text-center">
-                  <span className="block text-sm text-muted-foreground uppercase font-bold tracking-[0.2em] mb-2">Court</span>
-                  <span className="block text-7xl font-headline font-bold">{court}</span>
-                </div>
-
-                <div className="flex-1 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold">AB</div>
-                      <span className="text-3xl font-bold">Team Smith / Jones</span>
-                    </div>
-                    <span className="text-6xl font-mono font-bold text-accent">6</span>
-                  </div>
-                  <div className="h-px bg-white/5"></div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold">XY</div>
-                      <span className="text-3xl font-bold">Team Brown / White</span>
-                    </div>
-                    <span className="text-6xl font-mono font-bold opacity-50">4</span>
-                  </div>
-                </div>
-
-                <div className="text-right pl-12 border-l border-white/5">
-                  <Badge className="bg-primary/20 text-primary border-primary mb-4 text-lg px-6 py-2">SET 2</Badge>
-                  <p className="text-muted-foreground font-mono">24m played</p>
-                </div>
+            {loading ? (
+              <div className="flex items-center justify-center p-20">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
               </div>
-            ))}
+            ) : liveMatches && liveMatches.length > 0 ? (
+              liveMatches.map((match) => (
+                <div key={match.id} className="bg-card/40 border border-white/5 rounded-3xl p-8 flex items-center gap-12 backdrop-blur-md relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 h-full w-2 bg-accent"></div>
+                  
+                  <div className="text-center">
+                    <span className="block text-sm text-muted-foreground uppercase font-bold tracking-[0.2em] mb-2">Court</span>
+                    <span className="block text-7xl font-headline font-bold">{match.court}</span>
+                  </div>
+
+                  <div className="flex-1 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold">
+                          {match.teamA.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-3xl font-bold">{match.teamA.name}</span>
+                      </div>
+                      <span className="text-6xl font-mono font-bold text-accent">{match.teamA.score}</span>
+                    </div>
+                    <div className="h-px bg-white/5"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold">
+                          {match.teamB.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-3xl font-bold">{match.teamB.name}</span>
+                      </div>
+                      <span className="text-6xl font-mono font-bold opacity-50">{match.teamB.score}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right pl-12 border-l border-white/5">
+                    <Badge className="bg-primary/20 text-primary border-primary mb-4 text-lg px-6 py-2 uppercase">{match.category}</Badge>
+                    <p className="text-muted-foreground font-mono">LIVE</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="bg-card/40 border border-white/5 rounded-3xl p-20 text-center">
+                <p className="text-2xl text-muted-foreground">Waiting for matches to start...</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -86,17 +110,17 @@ export default function ArenaDashboard() {
           <div className="bg-[#1E293B] rounded-3xl p-8 h-full border border-white/5">
             <h2 className="text-3xl font-headline font-bold mb-8 flex items-center gap-4">
               <Clock className="h-8 w-8 text-primary" />
-              Next Up
+              Upcoming
             </h2>
             <div className="space-y-8">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex gap-6 items-center p-4 rounded-2xl hover:bg-white/5 transition-colors">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-6 items-center p-4 rounded-2xl hover:bg-white/5 transition-colors opacity-50">
                   <div className="w-20 text-center py-3 bg-white/5 rounded-2xl">
                     <span className="block text-lg font-bold">1{i}:00</span>
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-xl font-bold">Semi-Finals</h4>
-                    <p className="text-muted-foreground text-sm uppercase tracking-wide">Category B • Court {i}</p>
+                    <h4 className="text-xl font-bold">TBD Match</h4>
+                    <p className="text-muted-foreground text-sm uppercase tracking-wide">Pending Schedule</p>
                   </div>
                   <ArrowRight className="h-6 w-6 text-muted-foreground" />
                 </div>

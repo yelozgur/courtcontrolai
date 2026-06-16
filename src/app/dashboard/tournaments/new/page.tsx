@@ -2,16 +2,66 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, Users, Layout, Zap, CheckCircle2 } from "lucide-react"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2 } from "lucide-react"
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"
+import { useFirestore } from "@/firebase"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 export default function TournamentWizard() {
   const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter()
+  const db = useFirestore()
+
+  const [formData, setFormData] = useState({
+    name: "",
+    startDate: "",
+    sport: "padel"
+  })
+
+  const handleLaunch = async () => {
+    if (!db) return
+    setIsSubmitting(true)
+    
+    const tournamentData = {
+      ...formData,
+      status: "active",
+      createdAt: serverTimestamp()
+    }
+
+    try {
+      const docRef = await addDoc(collection(db, "tournaments"), tournamentData)
+      // For MVP, we'll also seed a dummy match for this tournament so the arena view has something to show
+      await addDoc(collection(db, "matches"), {
+        tournamentId: docRef.id,
+        court: 1,
+        category: "Pro Men's Singles",
+        teamA: { name: "Team Smith / Jones", score: 0, players: ["Smith", "Jones"] },
+        teamB: { name: "Team Brown / White", score: 0, players: ["Brown", "White"] },
+        status: "live",
+        startTime: serverTimestamp(),
+        durationMinutes: 0
+      })
+      
+      router.push("/dashboard")
+    } catch (e: any) {
+      const error = new FirestorePermissionError({
+        path: "tournaments",
+        operation: "create",
+        requestResourceData: tournamentData
+      })
+      errorEmitter.emit("permission-error", error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 py-6">
@@ -46,16 +96,28 @@ export default function TournamentWizard() {
             <CardContent className="p-8 space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="t-name">Tournament Name</Label>
-                <Input id="t-name" placeholder="e.g. Summer Padel Series 2024" className="bg-secondary/50 h-12" />
+                <Input 
+                  id="t-name" 
+                  placeholder="e.g. Summer Padel Series 2024" 
+                  className="bg-secondary/50 h-12"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="t-date">Start Date</Label>
-                  <Input id="t-date" type="date" className="bg-secondary/50 h-12" />
+                  <Input 
+                    id="t-date" 
+                    type="date" 
+                    className="bg-secondary/50 h-12" 
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="t-sport">Sport Category</Label>
-                  <Select>
+                  <Select value={formData.sport} onValueChange={(val) => setFormData({ ...formData, sport: val })}>
                     <SelectTrigger className="bg-secondary/50 h-12">
                       <SelectValue placeholder="Select Sport" />
                     </SelectTrigger>
@@ -68,7 +130,9 @@ export default function TournamentWizard() {
                 </div>
               </div>
               <div className="pt-4 flex justify-end">
-                <Button onClick={() => setStep(2)} className="h-12 px-10">Next: Categories & Rules</Button>
+                <Button onClick={() => setStep(2)} className="h-12 px-10" disabled={!formData.name || !formData.startDate}>
+                  Next: Categories & Rules
+                </Button>
               </div>
             </CardContent>
           </div>
@@ -127,15 +191,6 @@ export default function TournamentWizard() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Additional Data to Collect</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" className="justify-start">T-Shirt Sizes</Button>
-                    <Button variant="outline" className="justify-start">Sponsor Preference</Button>
-                    <Button variant="outline" className="justify-start">Food Allergies</Button>
-                    <Button variant="outline" className="justify-start">Ranking History</Button>
-                  </div>
-                </div>
               </div>
               <div className="pt-4 flex justify-between">
                 <Button variant="ghost" onClick={() => setStep(2)} className="h-12">Back</Button>
@@ -155,8 +210,15 @@ export default function TournamentWizard() {
               Your tournament is configured and optimized. The OR-Tools Smart Scheduler is ready to build your brackets.
             </p>
             <div className="flex justify-center gap-4">
-              <Button variant="ghost" onClick={() => setStep(3)} className="h-12">Final Adjustments</Button>
-              <Button className="h-12 px-10 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+              <Button variant="ghost" onClick={() => setStep(3)} className="h-12" disabled={isSubmitting}>
+                Final Adjustments
+              </Button>
+              <Button 
+                className="h-12 px-10 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+                onClick={handleLaunch}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Launch Tournament Live
               </Button>
             </div>

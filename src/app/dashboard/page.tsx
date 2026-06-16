@@ -1,4 +1,6 @@
 
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,10 +14,28 @@ import {
   ArrowUpRight,
   TrendingUp,
   MapPin,
-  Zap
+  Zap,
+  Loader2
 } from "lucide-react"
+import { collection, query, where, limit } from "firebase/firestore"
+import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 
 export default function DashboardOverview() {
+  const db = useFirestore()
+
+  const tournamentQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "tournaments"), limit(10))
+  }, [db])
+
+  const matchQuery = useMemoFirebase(() => {
+    if (!db) return null
+    return query(collection(db, "matches"), where("status", "==", "live"), limit(5))
+  }, [db])
+
+  const { data: tournaments, loading: loadingTours } = useCollection(tournamentQuery)
+  const { data: liveMatches, loading: loadingMatches } = useCollection(matchQuery)
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -39,9 +59,9 @@ export default function DashboardOverview() {
             <Trophy className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{tournaments?.length || 0}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <Activity className="mr-1 h-3 w-3 text-accent" /> 2 live matches now
+              <Activity className="mr-1 h-3 w-3 text-accent" /> {liveMatches?.length || 0} live matches now
             </p>
           </CardContent>
         </Card>
@@ -97,40 +117,45 @@ export default function DashboardOverview() {
                 View Full Bracket <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
-            <CardTitle className="text-3xl font-headline font-bold">Spring Padel Open 2024</CardTitle>
-            <CardDescription>Multi-Category Elimination Tournament • 48 Teams</CardDescription>
+            <CardTitle className="text-3xl font-headline font-bold">
+              {tournaments && tournaments.length > 0 ? tournaments[0].name : "No Active Tournament"}
+            </CardTitle>
+            <CardDescription>
+              {tournaments && tournaments.length > 0 ? `Started ${tournaments[0].startDate}` : "Create a tournament to get started"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mt-4 space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl pulse-active">
-                <div className="flex flex-col flex-1">
-                  <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Court 1 • Pro Men</span>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="font-bold">Team Smith/Doe</span>
-                    <span className="text-accent font-bold">6 - 4 - 15</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold">Team Brown/White</span>
-                    <span className="text-muted-foreground font-bold">4 - 6 - 0</span>
-                  </div>
+              {loadingMatches ? (
+                <div className="flex justify-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
-                <div className="h-10 w-[2px] bg-border"></div>
-                <div className="text-center px-2">
-                  <span className="block text-[10px] text-muted-foreground uppercase font-bold">Set 3</span>
-                  <span className="block font-headline font-bold text-lg">LIVE</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-secondary/10 rounded-xl border border-border/50">
-                <div className="flex flex-col flex-1">
-                  <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Court 2 • Mixed Doubles</span>
-                  <div className="flex items-center justify-between mt-1 opacity-50">
-                    <span className="font-bold">Team Rossi/Lopez</span>
-                    <span className="font-bold">Waiting...</span>
+              ) : liveMatches && liveMatches.length > 0 ? (
+                liveMatches.map((match) => (
+                  <div key={match.id} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl pulse-active">
+                    <div className="flex flex-col flex-1">
+                      <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Court {match.court} • {match.category}</span>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="font-bold">{match.teamA.name}</span>
+                        <span className="text-accent font-bold">{match.teamA.score}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{match.teamB.name}</span>
+                        <span className="text-muted-foreground font-bold">{match.teamB.score}</span>
+                      </div>
+                    </div>
+                    <div className="h-10 w-[2px] bg-border"></div>
+                    <div className="text-center px-2">
+                      <span className="block text-[10px] text-muted-foreground uppercase font-bold">Live</span>
+                      <span className="block font-headline font-bold text-lg">ON</span>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="p-4 bg-secondary/10 rounded-xl border border-border/50 text-center">
+                  <p className="text-muted-foreground text-sm">No live matches currently in progress.</p>
                 </div>
-                <Button size="sm" variant="outline" className="border-accent text-accent hover:bg-accent/10">Assign Ref</Button>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -139,20 +164,10 @@ export default function DashboardOverview() {
         <Card className="md:col-span-3 lg:col-span-4 row-span-2 bg-card border-border">
           <CardHeader>
             <CardTitle className="font-headline font-bold">Schedule Snapshot</CardTitle>
-            <CardDescription>Upcoming 4 matches</CardDescription>
+            <CardDescription>Upcoming matches</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-start gap-3 p-2 hover:bg-secondary/20 rounded-lg transition-colors cursor-pointer group">
-                <div className="w-12 text-center py-1 bg-secondary rounded font-mono text-sm">
-                  1{i}:00
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold group-hover:text-primary transition-colors">Quarter Finals - Cat B</p>
-                  <p className="text-xs text-muted-foreground">Court {i} • Ref: Mark Wilson</p>
-                </div>
-              </div>
-            ))}
+            <p className="text-sm text-muted-foreground italic">Schedule optimizer is monitoring court usage...</p>
             <Button variant="outline" className="w-full mt-2">Open Visual Timeline</Button>
           </CardContent>
         </Card>
@@ -164,7 +179,7 @@ export default function DashboardOverview() {
           </div>
           <div>
             <h4 className="font-headline font-bold text-xl">Global Player Hub</h4>
-            <p className="text-sm text-muted-foreground">12 new social assets generated this hour by players.</p>
+            <p className="text-sm text-muted-foreground">Player statistics and social assets hub.</p>
           </div>
         </Card>
 

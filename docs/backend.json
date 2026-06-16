@@ -1,0 +1,61 @@
+
+{
+  "entities": {
+    "Tournament": {
+      "title": "Tournament",
+      "description": "A sports tournament entity",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "sport": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "active", "finished"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "startDate", "sport", "status"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "An individual game or match in a tournament",
+      "type": "object",
+      "properties": {
+        "tournamentId": { "type": "string" },
+        "court": { "type": "number" },
+        "category": { "type": "string" },
+        "teamA": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "score": { "type": "number" },
+            "players": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "teamB": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "score": { "type": "number" },
+            "players": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "status": { "type": "string", "enum": ["scheduled", "live", "completed"] },
+        "startTime": { "type": "string", "format": "date-time" },
+        "durationMinutes": { "type": "number" }
+      },
+      "required": ["tournamentId", "court", "status"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/tournaments/{tournamentId}": {
+      "schema": "Tournament",
+      "description": "Collection of tournaments"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Collection of individual matches"
+    }
+  }
+}
