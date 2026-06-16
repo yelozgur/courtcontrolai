@@ -9,6 +9,9 @@ import { firebaseConfig } from './config';
 /**
  * Initializes Firebase services. 
  * This is called on the client side only.
+ * 
+ * Note: Adding a comment here to trigger a Security Rules re-deployment
+ * via the backend configuration engine.
  */
 export function initializeFirebase(): {
   app: FirebaseApp;

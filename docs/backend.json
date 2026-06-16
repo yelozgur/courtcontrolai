@@ -3,7 +3,7 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "A sports tournament entity. Publicly readable and listable. Writable by the owner of the club that owns this tournament (clubId).",
+      "description": "A sports tournament entity. Publicly readable and listable. Writable only by the owner of the club that owns this tournament (verified by clubId).",
       "type": "object",
       "properties": {
         "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
@@ -33,7 +33,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "An individual match. Publicly readable and listable. Writeable by users who own the club associated with this match (clubId).",
+      "description": "An individual match record. Publicly readable and listable. Writable by the owner of the club associated with this match (verified by clubId).",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -66,7 +66,7 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Sports club profile. Publicly readable and listable. Writable only by the user specified in the ownerId field.",
+      "description": "Sports club profile. Publicly readable and listable. Writable only by the user specified in the ownerId field (ownerId == auth.uid).",
       "type": "object",
       "properties": {
         "ownerId": { "type": "string", "description": "The UID of the user who owns this club" },
@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. A user can read and write their own profile document where the document ID matches their auth.uid. Admins have global read access.",
+      "description": "User profile. Every authenticated user can read and write their own document (document ID must match auth.uid). Platform admins have read access to all profiles.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -94,7 +94,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament player. Publicly readable and listable. Writeable by club owners or the participant themselves.",
+      "description": "Tournament player. Publicly readable. Writable by the participant themselves or the owner of the club hosting the tournament.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -111,7 +111,7 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Club partner. Publicly readable and listable. Writeable by the club owner.",
+      "description": "Club partner. Publicly readable. Writable only by the owner of the club (verified by clubId).",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -127,11 +127,11 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global tournament registry. Publicly readable and listable. Writable by the owner of the club associated with the clubId." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Match records. Publicly readable and listable. Writable by the owner of the club associated with the clubId." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Club profiles. Publicly readable and listable. Writable only by the user specified in the ownerId field." },
-    "/users/{userId}": { "schema": "User", "description": "User profiles. A user can read and write their own document (userId == auth.uid). Admins have global read access to all users." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament entries. Publicly readable and listable. Writable by the club owner or the player themselves." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club partnership details. Publicly readable and listable. Writable only by the club owner (clubId)." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global tournament registry. Open read. Owner write." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Match records. Open read. Owner write." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Club profiles. Open read. Owner write." },
+    "/users/{userId}": { "schema": "User", "description": "User profiles. Owner read/write. Admin read." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament entries. Open read. Participant or Owner write." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club partnership details. Open read. Owner write." }
   }
 }

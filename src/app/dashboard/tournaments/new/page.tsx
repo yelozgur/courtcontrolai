@@ -118,7 +118,7 @@ export default function TournamentWizard() {
       .then(() => {
          toast({
           title: "Tournament Launched!",
-          description: `${formData.name} is being deployed.`
+          description: `${formData.name} is now live.`
         })
         router.push("/dashboard")
       })

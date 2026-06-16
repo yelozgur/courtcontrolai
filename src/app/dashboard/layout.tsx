@@ -133,17 +133,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   };
 
-  const isSyncing = authLoading || profileLoading || (user && !isAdmin && clubsLoading);
+  // We are more patient with the loading states to avoid onboarding flicker
+  const isSyncing = authLoading || (user && profileLoading && !profileError);
 
   if (isSyncing) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Synchronizing Connection...</p>
+        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Syncing Identity...</p>
       </div>
     );
   }
 
+  // Handle actual connection errors (like security rules blocking read)
   if (profileError || clubsError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
@@ -168,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  const hasNoClub = !isAdmin && !userClub && !profile?.clubId && !isOnboarding;
+  const hasNoClub = !isAdmin && !userClub && !profile?.clubId && !isOnboarding && !clubsLoading;
 
   if (hasNoClub) {
     return (
