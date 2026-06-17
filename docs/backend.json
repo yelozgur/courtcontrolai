@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. PERMISSIONS: Allow 'get', 'create', 'update' if request.auth.uid == userId. Platform admins have global 'get' and 'list' access.",
+      "description": "User profile. PERMISSIONS: Allow 'get', 'list', 'create', 'update' if request.auth.uid == userId. Platform admins have global 'get' and 'list' access.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -128,11 +128,11 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. Allow 'get' and 'list' for all. Writable by club owner." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Match scores. Allow 'get' and 'list' for all. Writable by club owner." },
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Match scores. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Organizations. PUBLICLY LISTABLE AND READABLE. Writable by ownerId." },
-    "/users/{userId}": { "schema": "User", "description": "Private profile. Owner read/write only. Admins can list and read all." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Registrations. Allow 'get' and 'list' for all. Writable by participant/owner." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info. Allow 'get' and 'list' for all. Writable by club owner." }
+    "/users/{userId}": { "schema": "User", "description": "Private profile. Owner get/list/write only. Admins can list and read all." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Registrations. GLOBAL READ AND LIST ACCESS. Writable by participant/owner." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info. GLOBAL READ AND LIST ACCESS. Writable by club owner." }
   }
 }
