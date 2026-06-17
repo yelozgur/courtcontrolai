@@ -12,7 +12,7 @@ import { firebaseConfig } from './config';
  * TRIGGER: Security Rules Deployment for Global Access.
  * Logic: Club owners verified via ownerId check. Admin bypass for admin@deneme.com.
  * Global List Access: Enabled for tournaments and public collections.
- * Deployment Nonce: 2024-06-18T19:30:00Z (Fixing Global Tournament Listing)
+ * Deployment Nonce: 2024-06-18T20:15:00Z (Standalone Global Permission Fix)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
@@ -34,3 +34,5 @@ export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './auth/use-user';
 export * from './use-memo-firebase';
+
+    

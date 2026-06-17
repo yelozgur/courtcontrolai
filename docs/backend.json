@@ -114,7 +114,7 @@
     },
     "CheckIn": {
       "title": "Check-In",
-      "description": "Arrival confirmation at venue. Publicly readable and listable. Writable by any authenticated user for their own record or by club owner/admin.",
+      "description": "Arrival confirmation at venue. Publicly readable and listable. Writable by any user for check-in creation.",
       "type": "object",
       "properties": {
         "participantId": { "type": "string" },
@@ -147,8 +147,10 @@
     "/matches/{matchId}": { "schema": "Match", "description": "Global List/Get: Public. Write: Owner/Admin." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Global List/Get: Public. Write: Owner/Admin." },
     "/users/{userId}": { "schema": "User", "description": "List/Get: Admin only. Get/Write: Self." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Global List/Get: Public. Write: Self/Owner/Admin." },
-    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global List/Get: Public. Write: Self/Owner/Admin." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Global List/Get: Public. Write: Public Create. Edit: Owner/Admin." },
+    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global List/Get: Public. Write: Public Create. Edit: Owner/Admin." },
     "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global List/Get: Public. Write: Owner/Admin." }
   }
 }
+
+    
