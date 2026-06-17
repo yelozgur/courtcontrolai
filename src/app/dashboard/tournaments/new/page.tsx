@@ -103,22 +103,33 @@ export default function TournamentWizard() {
   }
 
   const handleLaunch = () => {
-    if (!db || !clubId) return
+    if (!db || !clubId) {
+      toast({
+        variant: "destructive",
+        title: "Configuration Error",
+        description: "Club context is missing. Please refresh the page."
+      })
+      return
+    }
+    
     setIsSubmitting(true)
     
-    const tournamentRef = doc(collection(db, "tournaments"))
+    const tournamentsCollection = collection(db, "tournaments")
+    const tournamentRef = doc(tournamentsCollection)
+    
     const tournamentData = {
       ...formData,
       clubId,
       status: "active",
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      numCourts: Number(formData.numCourts) || 1
     }
 
     setDoc(tournamentRef, tournamentData)
       .then(() => {
          toast({
           title: "Tournament Launched!",
-          description: `${formData.name} is now live.`
+          description: `${formData.name} is now live and accepting participants.`
         })
         router.push("/dashboard")
       })
