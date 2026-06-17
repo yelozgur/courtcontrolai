@@ -4,15 +4,23 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle, MapPin, Calendar } from "lucide-react"
 import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function TournamentArena() {
   const { id } = useParams()
   const router = useRouter()
   const [time, setTime] = useState<Date | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const db = useFirestore()
 
   useEffect(() => {
@@ -40,21 +48,31 @@ export default function TournamentArena() {
 
   const { data: allMatches, loading: matchesLoading, error: matchesError } = useCollection(allMatchesQuery)
 
-  // Filter matches client-side for live results
+  // Filter matches client-side for live results with location context
   const liveMatches = useMemo(() => {
-    return allMatches?.filter(m => m.status === "live").slice(0, 4) || []
-  }, [allMatches])
+    if (!allMatches) return []
+    let filtered = allMatches.filter(m => m.status === "live")
+    if (selectedLocation !== "all") {
+      filtered = filtered.filter(m => m.location === selectedLocation)
+    }
+    return filtered.slice(0, 4)
+  }, [allMatches, selectedLocation])
 
-  // Filter matches client-side for recent results
+  // Filter matches client-side for recent results with location context
   const finishedMatches = useMemo(() => {
-    return allMatches?.filter(m => m.status === "completed")
+    if (!allMatches) return []
+    let filtered = allMatches.filter(m => m.status === "completed")
+    if (selectedLocation !== "all") {
+      filtered = filtered.filter(m => m.location === selectedLocation)
+    }
+    return filtered
       .sort((a, b) => {
         const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0
         const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0
         return timeB - timeA
       })
-      .slice(0, 3) || []
-  }, [allMatches])
+      .slice(0, 3)
+  }, [allMatches, selectedLocation])
 
   if (matchesError) {
     return (
@@ -88,11 +106,34 @@ export default function TournamentArena() {
             </p>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-5xl font-mono font-bold">
-            {time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
+
+        <div className="flex items-center gap-12">
+          <div className="w-64">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
+              <MapPin className="h-3 w-3" /> Venue Filter
+            </p>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {tournament?.locations?.map((loc: any, i: number) => (
+                  <SelectItem key={i} value={loc.name}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="text-xl text-accent font-bold uppercase tracking-widest mt-1">Arena Mode Active</div>
+          
+          <div className="text-right">
+            <div className="text-xs font-bold text-accent uppercase tracking-[0.3em] mb-1 flex items-center justify-end gap-2">
+              <Calendar className="h-3 w-3" />
+              {time ? time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : "-- --- --"}
+            </div>
+            <div className="text-5xl font-mono font-bold leading-none">
+              {time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -100,7 +141,7 @@ export default function TournamentArena() {
         <div className="col-span-2 space-y-8 overflow-y-auto pr-4">
           <h2 className="text-3xl font-headline font-bold flex items-center gap-4">
             <span className="w-4 h-4 rounded-full bg-accent animate-pulse"></span>
-            Live On Courts
+            Live On Courts {selectedLocation !== "all" && <span className="text-muted-foreground text-xl font-normal">at {selectedLocation}</span>}
           </h2>
           
           <div className="grid gap-6">
@@ -146,15 +187,16 @@ export default function TournamentArena() {
                     </div>
                   </div>
 
-                  <div className="text-right pl-12 border-l border-white/5">
-                    <Badge className="bg-primary/20 text-primary border-primary mb-4 text-lg px-6 py-2 uppercase">{match.category}</Badge>
-                    <p className="text-muted-foreground font-mono">LIVE</p>
+                  <div className="text-right pl-12 border-l border-white/5 min-w-[150px]">
+                    <Badge className="bg-primary/20 text-primary border-primary mb-2 text-sm px-4 py-1 uppercase">{match.category}</Badge>
+                    <p className="text-muted-foreground font-mono text-xs mb-1 uppercase tracking-widest">{match.location || 'Main Venue'}</p>
+                    <p className="text-accent font-bold font-mono">LIVE</p>
                   </div>
                 </div>
               ))
             ) : (
               <div className="bg-card/40 border border-white/5 rounded-3xl p-20 text-center">
-                <p className="text-2xl text-muted-foreground">Waiting for matches to start in this tournament...</p>
+                <p className="text-2xl text-muted-foreground">No matches currently live {selectedLocation !== "all" ? `at ${selectedLocation}` : "in this arena"}.</p>
               </div>
             )}
           </div>
@@ -173,7 +215,10 @@ export default function TournamentArena() {
                 finishedMatches.map((m) => (
                   <div key={m.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in duration-500">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{m.category}</span>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{m.category}</span>
+                        <span className="text-[8px] uppercase text-muted-foreground/60">{m.location}</span>
+                      </div>
                       <Badge variant="outline" className="text-[10px] h-5 border-emerald-500/30 text-emerald-400">FINAL</Badge>
                     </div>
                     <div className="space-y-2">
