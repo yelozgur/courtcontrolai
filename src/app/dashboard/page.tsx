@@ -17,7 +17,7 @@ import {
   Star,
   PlusCircle
 } from "lucide-react"
-import { collection, query, limit, doc } from "firebase/firestore"
+import { collection, query, limit, doc, where } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
 import { cn } from "@/lib/utils"
 
