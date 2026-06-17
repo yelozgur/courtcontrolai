@@ -57,6 +57,7 @@ export default function EditTournamentPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [newRefereeEmail, setNewRefereeEmail] = useState("")
+  const [newLocInput, setNewLocInput] = useState("")
 
   // Stage logic
   const isDraft = formData.status === "draft"
@@ -145,6 +146,14 @@ export default function EditTournamentPage() {
       setFormData({ ...formData, referees: [...formData.referees, newRefereeEmail.toLowerCase()] })
     }
     setNewRefereeEmail("")
+  }
+
+  const addLocation = () => {
+    if (!newLocInput) return
+    if (!formData.locations.includes(newLocInput)) {
+      setFormData({ ...formData, locations: [...formData.locations, newLocInput] })
+    }
+    setNewLocInput("")
   }
 
   if (loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -349,17 +358,15 @@ export default function EditTournamentPage() {
                     <Input 
                       placeholder="e.g. Center Court, Hall A" 
                       className="flex-1"
-                      value={formData.locations.length > 100 ? "" : undefined} // Dummy to satisfy hook
+                      value={newLocInput}
+                      onChange={(e) => setNewLocInput(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          const val = (e.target as HTMLInputElement).value;
-                          if (val) {
-                            setFormData({...formData, locations: [...formData.locations, val]});
-                            (e.target as HTMLInputElement).value = '';
-                          }
+                          addLocation();
                         }
                       }}
                     />
+                    <Button variant="secondary" onClick={addLocation}><Plus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {formData.locations.map((loc, i) => (

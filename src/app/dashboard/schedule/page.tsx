@@ -10,12 +10,31 @@ import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebas
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SchedulingPage() {
   const db = useFirestore()
   const { user } = useUser()
+  const { toast } = useToast()
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
+  const [isAddingMatch, setIsAddingMatch] = useState(false)
+  const [newMatch, setNewMatch] = useState({
+    teamA: "",
+    teamB: "",
+    court: 1,
+    time: "09:00",
+    category: ""
+  })
 
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -45,19 +64,27 @@ export default function SchedulingPage() {
 
   const { data: matches, loading: matchesLoading } = useCollection(matchesQuery)
 
-  const createMatch = async () => {
+  const handleCreateMatch = async () => {
     if (!db || !clubId || !selectedTournamentId) return
-    const matchData = {
-      clubId,
-      tournamentId: selectedTournamentId,
-      status: "scheduled",
-      court: 1,
-      startTime: new Date().toISOString(),
-      teamA: { name: "Team 1", score: 0, setsWon: 0 },
-      teamB: { name: "Team 2", score: 0, setsWon: 0 },
-      category: activeTournament?.categories?.[0]?.name || "Open"
+    
+    try {
+      const matchData = {
+        clubId,
+        tournamentId: selectedTournamentId,
+        status: "scheduled",
+        court: Number(newMatch.court),
+        startTime: `${new Date().toISOString().split('T')[0]}T${newMatch.time}:00`,
+        teamA: { name: newMatch.teamA, score: 0, setsWon: 0 },
+        teamB: { name: newMatch.teamB, score: 0, setsWon: 0 },
+        category: newMatch.category || activeTournament?.categories?.[0]?.name || "Open"
+      }
+      await addDoc(collection(db, "matches"), matchData)
+      toast({ title: "Match Scheduled", description: "The match has been added to the planner." })
+      setIsAddingMatch(false)
+      setNewMatch({ teamA: "", teamB: "", court: 1, time: "09:00", category: "" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to schedule match." })
     }
-    await addDoc(collection(db, "matches"), matchData)
   }
 
   if (toursLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>
@@ -78,11 +105,56 @@ export default function SchedulingPage() {
               {tournaments?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button onClick={createMatch} disabled={!selectedTournamentId} className="bg-primary">
-            <Play className="w-4 h-4 mr-2" /> Add Match
+          <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary">
+            <Plus className="w-4 h-4 mr-2" /> Add Match
           </Button>
         </div>
       </div>
+
+      <Dialog open={isAddingMatch} onOpenChange={setIsAddingMatch}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Schedule New Match</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Team A / Player 1</Label>
+                <Input value={newMatch.teamA} onChange={e => setNewMatch({...newMatch, teamA: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Team B / Player 2</Label>
+                <Input value={newMatch.teamB} onChange={e => setNewMatch({...newMatch, teamB: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Court Number</Label>
+                <Input type="number" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value)})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Time Slot</Label>
+                <Input type="time" value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={newMatch.category} onValueChange={val => setNewMatch({...newMatch, category: val})}>
+                <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+                <SelectContent>
+                  {activeTournament?.categories?.map((cat: any) => (
+                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsAddingMatch(false)}>Cancel</Button>
+            <Button onClick={handleCreateMatch} disabled={!newMatch.teamA || !newMatch.teamB}>Schedule Match</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-6">
         <Tabs value={view} onValueChange={(v: any) => setView(v)}>
@@ -123,7 +195,12 @@ export default function SchedulingPage() {
                              </div>
                            ) : (
                              <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100">
-                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Plus className="w-3 h-3" /></Button>
+                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
+                                 setNewMatch({...newMatch, court: courtIdx + 1, time});
+                                 setIsAddingMatch(true);
+                               }}>
+                                 <Plus className="w-3 h-3" />
+                               </Button>
                              </div>
                            )}
                          </div>
