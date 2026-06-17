@@ -1,11 +1,11 @@
 
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle } from "lucide-react"
-import { collection, query, where, limit, doc, orderBy } from "firebase/firestore"
+import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { Button } from "@/components/ui/button"
 
@@ -26,31 +26,48 @@ export default function TournamentArena() {
     return doc(db, "tournaments", id as string)
   }, [db, id])
 
-  const { data: tournament } = useDoc(tournamentRef)
+  const { data: tournament, loading: tourneyLoading } = useDoc(tournamentRef)
 
-  const liveMatchesQuery = useMemoFirebase(() => {
+  // Fetch all matches for this tournament to avoid composite index issues with multiple where clauses
+  const allMatchesQuery = useMemoFirebase(() => {
     if (!db || !id) return null
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", id),
-      where("status", "==", "live"),
-      limit(4)
+      limit(100)
     )
   }, [db, id])
 
-  const finishedMatchesQuery = useMemoFirebase(() => {
-    if (!db || !id) return null
-    return query(
-      collection(db, "matches"), 
-      where("tournamentId", "==", id),
-      where("status", "==", "completed"),
-      orderBy("completedAt", "desc"),
-      limit(3)
-    )
-  }, [db, id])
+  const { data: allMatches, loading: matchesLoading, error: matchesError } = useCollection(allMatchesQuery)
 
-  const { data: liveMatches, loading: liveLoading } = useCollection(liveMatchesQuery)
-  const { data: finishedMatches, loading: finishedLoading } = useCollection(finishedMatchesQuery)
+  // Filter matches client-side for live results
+  const liveMatches = useMemo(() => {
+    return allMatches?.filter(m => m.status === "live").slice(0, 4) || []
+  }, [allMatches])
+
+  // Filter matches client-side for recent results
+  const finishedMatches = useMemo(() => {
+    return allMatches?.filter(m => m.status === "completed")
+      .sort((a, b) => {
+        const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0
+        const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0
+        return timeB - timeA
+      })
+      .slice(0, 3) || []
+  }, [allMatches])
+
+  if (matchesError) {
+    return (
+      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
+        <AlertCircle className="h-16 w-16 text-destructive mb-4 opacity-50" />
+        <h2 className="text-3xl font-headline font-bold uppercase">Arena Restricted</h2>
+        <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
+          We encountered an error loading live results. Please check security rules or composite indexes.
+        </p>
+        <Button onClick={() => window.location.reload()} variant="outline" className="mt-8">Retry Connection</Button>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white p-8 font-body overflow-hidden flex flex-col">
@@ -64,7 +81,7 @@ export default function TournamentArena() {
           </div>
           <div>
             <h1 className="text-4xl font-headline font-bold tracking-tighter uppercase">
-              {tournament?.name || "Loading Arena..."}
+              {tourneyLoading ? "Connecting..." : (tournament?.name || "Live Arena")}
             </h1>
             <p className="text-xl text-muted-foreground font-medium uppercase tracking-widest">
               Live Results Arena
@@ -87,11 +104,11 @@ export default function TournamentArena() {
           </h2>
           
           <div className="grid gap-6">
-            {liveLoading ? (
+            {matchesLoading ? (
               <div className="flex items-center justify-center p-20">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
               </div>
-            ) : liveMatches && liveMatches.length > 0 ? (
+            ) : liveMatches.length > 0 ? (
               liveMatches.map((match) => (
                 <div key={match.id} className="bg-card/40 border border-white/5 rounded-3xl p-8 flex items-center gap-12 backdrop-blur-md relative overflow-hidden group">
                   <div className="absolute top-0 left-0 h-full w-2 bg-accent"></div>
@@ -150,9 +167,9 @@ export default function TournamentArena() {
               Recent Results
             </h2>
             <div className="space-y-6">
-              {finishedLoading ? (
+              {matchesLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted-foreground" /></div>
-              ) : finishedMatches && finishedMatches.length > 0 ? (
+              ) : finishedMatches.length > 0 ? (
                 finishedMatches.map((m) => (
                   <div key={m.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in duration-500">
                     <div className="flex justify-between items-center mb-2">
