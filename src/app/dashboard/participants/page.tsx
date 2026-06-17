@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,7 +22,12 @@ import {
   MessageSquare,
   MoreVertical,
   Loader2,
-  Plus
+  Plus,
+  Share2,
+  Copy,
+  Check,
+  ExternalLink,
+  Trophy
 } from "lucide-react"
 import { collection, query, limit, where, addDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
@@ -47,6 +52,9 @@ export default function ParticipantManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isAdding, setIsAdding] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  
   const [newPlayer, setNewPlayer] = useState({
     name: "",
     email: "",
@@ -63,12 +71,31 @@ export default function ParticipantManagement() {
   const { data: userClubs } = useCollection(clubsQuery)
   const clubId = userClubs?.[0]?.id
 
+  // Get tournaments for link generation
+  const tournamentsQuery = useMemoFirebase(() => {
+    if (!db || !clubId) return null
+    return query(collection(db, "tournaments"), where("clubId", "==", clubId))
+  }, [db, clubId])
+
+  const { data: tournaments } = useCollection(tournamentsQuery)
+
   const participantsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null
-    return query(collection(db, "participants"), where("clubId", "==", clubId), limit(50))
+    return query(collection(db, "participants"), where("clubId", "==", clubId), limit(100))
   }, [db, clubId])
 
   const { data: participants, loading } = useCollection(participantsQuery)
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const registerUrl = selectedTournamentId ? `${origin}/tournaments/${selectedTournamentId}/register` : '';
+
+  const copyToClipboard = (url: string) => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast({ title: "Link Copied", description: "Registration URL copied to clipboard." });
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   const handleAddPlayer = () => {
     if (!db || !clubId || !newPlayer.name || !newPlayer.email) return
@@ -105,156 +132,217 @@ export default function ParticipantManagement() {
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  if (!clubId && !loading) return <div className="p-8">No club found. Please register your club first.</div>
+  if (!clubId && !loading) return <div className="p-8 text-center text-muted-foreground">Please register your club first.</div>
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Club Roster</h1>
-          <p className="text-muted-foreground">Manage players registered for your club's tournaments.</p>
+          <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Club Roster</h1>
+          <p className="text-muted-foreground">Grow and manage your player database.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary">
-              <UserPlus className="mr-2 h-4 w-4" /> Add Player
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Player to Roster</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Full Name</Label>
-                <Input 
-                  placeholder="John Doe" 
-                  value={newPlayer.name}
-                  onChange={(e) => setNewPlayer({...newPlayer, name: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input 
-                  type="email" 
-                  placeholder="john@example.com" 
-                  value={newPlayer.email}
-                  onChange={(e) => setNewPlayer({...newPlayer, email: e.target.value})}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                <UserPlus className="mr-2 h-4 w-4" /> Manual Entry
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Player</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Skill Level</Label>
-                  <Select 
-                    value={newPlayer.skillLevel} 
-                    onValueChange={(val) => setNewPlayer({...newPlayer, skillLevel: val})}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="pro">Pro</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Full Name</Label>
+                  <Input 
+                    placeholder="John Doe" 
+                    value={newPlayer.name}
+                    onChange={(e) => setNewPlayer({...newPlayer, name: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>Telegram Handle</Label>
+                  <Label>Email</Label>
                   <Input 
-                    placeholder="@username" 
-                    value={newPlayer.telegramHandle}
-                    onChange={(e) => setNewPlayer({...newPlayer, telegramHandle: e.target.value})}
+                    type="email" 
+                    placeholder="john@example.com" 
+                    value={newPlayer.email}
+                    onChange={(e) => setNewPlayer({...newPlayer, email: e.target.value})}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Skill Level</Label>
+                    <Select 
+                      value={newPlayer.skillLevel} 
+                      onValueChange={(val) => setNewPlayer({...newPlayer, skillLevel: val})}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="beginner">Beginner</SelectItem>
+                        <SelectItem value="intermediate">Intermediate</SelectItem>
+                        <SelectItem value="pro">Pro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telegram @Handle</Label>
+                    <Input 
+                      placeholder="@username" 
+                      value={newPlayer.telegramHandle}
+                      onChange={(e) => setNewPlayer({...newPlayer, telegramHandle: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddPlayer} disabled={isAdding || !newPlayer.name || !newPlayer.email}>
+                  {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add to Roster
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-4 space-y-6">
+          <Card className="bg-card/50 border-primary/20 shadow-lg shadow-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Share2 className="h-5 w-5" />
+                Invite Players
+              </CardTitle>
+              <CardDescription>Generate a public registration link for an event.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-bold tracking-widest opacity-60">Target Tournament</Label>
+                <Select onValueChange={setSelectedTournamentId} value={selectedTournamentId || undefined}>
+                  <SelectTrigger className="bg-secondary/30">
+                    <SelectValue placeholder="Select Tournament" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tournaments?.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedTournamentId ? (
+                <div className="space-y-4 animate-in zoom-in-95 duration-300">
+                  <div className="p-4 bg-white rounded-2xl flex justify-center">
+                    <svg width="140" height="140" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+                      <path d="M14 14h3M21 14h.01M14 17v.01M17 17v3M21 17v3M14 21h3M21 21h.01" />
+                    </svg>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" asChild>
+                      <a href={registerUrl} target="_blank"><ExternalLink className="mr-2 h-3 w-3" /> View</a>
+                    </Button>
+                    <Button variant="default" size="sm" className="flex-1" onClick={() => copyToClipboard(registerUrl)}>
+                      {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />} Copy
+                    </Button>
+                  </div>
+                  <div className="p-2 bg-secondary/50 rounded border border-border overflow-hidden">
+                    <code className="text-[9px] text-muted-foreground break-all">{registerUrl}</code>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-10 text-center border border-dashed rounded-xl bg-secondary/10">
+                  <Trophy className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-20" />
+                  <p className="text-xs text-muted-foreground">Select an event to get registration link</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-8">
+          <Card className="bg-card/50 border-border">
+            <CardHeader className="pb-3 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">Player Registry</CardTitle>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search roster..." 
+                    className="pl-10 bg-secondary/20 border-none" 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAddPlayer} disabled={isAdding || !newPlayer.name || !newPlayer.email}>
-                {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add to Roster
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center p-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredParticipants && filteredParticipants.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-none hover:bg-transparent">
+                      <TableHead className="pl-6 uppercase text-[10px] font-bold tracking-widest text-muted-foreground">Player</TableHead>
+                      <TableHead className="uppercase text-[10px] font-bold tracking-widest text-muted-foreground">Level</TableHead>
+                      <TableHead className="uppercase text-[10px] font-bold tracking-widest text-muted-foreground">Social</TableHead>
+                      <TableHead className="uppercase text-[10px] font-bold tracking-widest text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-right pr-6 uppercase text-[10px] font-bold tracking-widest text-muted-foreground">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredParticipants.map((player) => (
+                      <TableRow key={player.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                        <TableCell className="pl-6">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-white">{player.name}</span>
+                            <span className="text-xs text-muted-foreground flex items-center">
+                              <Mail className="mr-1 h-3 w-3" /> {player.email}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize text-[10px] border-primary/20 text-primary">
+                            {player.skillLevel || "N/A"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {player.telegramHandle ? (
+                            <div className="flex items-center text-accent text-xs font-medium">
+                              <MessageSquare className="mr-1 h-3 w-3" /> {player.telegramHandle}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground italic">No handle</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                             <span className="text-[10px] font-bold text-emerald-500 uppercase">Verified</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-32 opacity-20">
+                  <Users className="h-16 w-16 mx-auto mb-4" />
+                  <p className="text-xl font-bold uppercase tracking-tighter">Empty Roster</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      <Card className="bg-card/50 border-border">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle>Player Registry</CardTitle>
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search players..." 
-                className="pl-10" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : filteredParticipants && filteredParticipants.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Player</TableHead>
-                  <TableHead>Skill Level</TableHead>
-                  <TableHead>Telegram</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredParticipants.map((player) => (
-                  <TableRow key={player.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-bold">{player.name}</span>
-                        <span className="text-xs text-muted-foreground flex items-center">
-                          <Mail className="mr-1 h-3 w-3" /> {player.email}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {player.skillLevel || "N/A"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {player.telegramHandle ? (
-                        <div className="flex items-center text-accent text-sm font-medium">
-                          <MessageSquare className="mr-1 h-3 w-3" /> {player.telegramHandle}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground italic">Not connected</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                        Verified
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-20 bg-secondary/10 rounded-xl border-dashed border-2 border-border">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-              <p className="text-muted-foreground">No players found in your club roster yet.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   )
 }
