@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { format, isValid, parseISO } from "date-fns"
+import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
@@ -69,7 +69,7 @@ export default function SchedulingPage() {
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", selectedTournamentId),
-      limit(200)
+      limit(100)
     )
   }, [db, selectedTournamentId])
 
@@ -149,19 +149,19 @@ export default function SchedulingPage() {
   if (toursLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>
 
   const timeSlots = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"]
-  const numCourts = Math.max(1, activeTournament?.numCourts || 4)
+  const numCourts = Math.max(1, activeTournament?.numCourts || 1)
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Match Planner</h1>
+          <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
           <p className="text-muted-foreground">Orchestrate match timings and court allocations.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[200px] justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("w-[200px] justify-start text-left font-normal bg-card border-white/5", !selectedDate && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
               </Button>
@@ -177,7 +177,7 @@ export default function SchedulingPage() {
           </Popover>
 
           <Select onValueChange={setSelectedTournamentId} value={selectedTournamentId || undefined}>
-            <SelectTrigger className="w-[200px] bg-card">
+            <SelectTrigger className="w-[200px] bg-card border-white/5">
               <SelectValue placeholder="Select Tournament" />
             </SelectTrigger>
             <SelectContent>
@@ -192,12 +192,12 @@ export default function SchedulingPage() {
       </div>
 
       <Dialog open={isAddingMatch} onOpenChange={setIsAddingMatch}>
-        <DialogContent>
+        <DialogContent className="bg-card border-white/10">
           <DialogHeader>
-            <DialogTitle>Schedule New Match</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Schedule New Match</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="p-3 bg-secondary/20 rounded-lg border border-border flex items-center gap-4 text-xs">
+            <div className="p-3 bg-secondary/30 rounded-lg border border-white/5 flex items-center gap-4 text-xs">
               <div className="flex items-center gap-1 font-bold text-primary">
                 <CalendarIcon className="w-3 h-3" /> {selectedDateStr}
               </div>
@@ -212,27 +212,27 @@ export default function SchedulingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Team A / Player 1</Label>
-                <Input value={newMatch.teamA} onChange={e => setNewMatch({...newMatch, teamA: e.target.value})} placeholder="Home Side" />
+                <Input value={newMatch.teamA} onChange={e => setNewMatch({...newMatch, teamA: e.target.value})} placeholder="Home Side" className="bg-secondary/30 border-white/5" />
               </div>
               <div className="space-y-2">
                 <Label>Team B / Player 2</Label>
-                <Input value={newMatch.teamB} onChange={e => setNewMatch({...newMatch, teamB: e.target.value})} placeholder="Away Side" />
+                <Input value={newMatch.teamB} onChange={e => setNewMatch({...newMatch, teamB: e.target.value})} placeholder="Away Side" className="bg-secondary/30 border-white/5" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Court Number</Label>
-                <Input type="number" min="1" max={numCourts} value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
+                <Input type="number" min="1" max={numCourts} value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} className="bg-secondary/30 border-white/5" />
               </div>
               <div className="space-y-2">
                 <Label>Time Slot</Label>
-                <Input type="time" value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} />
+                <Input type="time" value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} className="bg-secondary/30 border-white/5" />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
               <Select value={newMatch.category} onValueChange={val => setNewMatch({...newMatch, category: val})}>
-                <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+                <SelectTrigger className="bg-secondary/30 border-white/5"><SelectValue placeholder="Select Category" /></SelectTrigger>
                 <SelectContent>
                   {activeTournament?.categories?.map((cat: any) => (
                     <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
@@ -245,8 +245,8 @@ export default function SchedulingPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAddingMatch(false)}>Cancel</Button>
-            <Button onClick={handleCreateMatch} disabled={!newMatch.teamA || !newMatch.teamB}>Schedule Match</Button>
+            <Button variant="ghost" onClick={() => setIsAddingMatch(false)} className="text-white hover:bg-white/5">Cancel</Button>
+            <Button onClick={handleCreateMatch} disabled={!newMatch.teamA || !newMatch.teamB} className="bg-primary">Schedule Match</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -254,40 +254,40 @@ export default function SchedulingPage() {
       <div className="grid gap-6">
         <Tabs value={view} onValueChange={(v: any) => setView(v)}>
           <div className="flex justify-between items-center mb-4">
-            <TabsList className="bg-secondary/30">
-              <TabsTrigger value="grid"><LayoutGrid className="w-4 h-4 mr-2" /> Planner Grid</TabsTrigger>
-              <TabsTrigger value="list"><List className="w-4 h-4 mr-2" /> Timeline View</TabsTrigger>
+            <TabsList className="bg-secondary/30 border border-white/5">
+              <TabsTrigger value="grid" className="data-[state=active]:bg-primary"><LayoutGrid className="w-4 h-4 mr-2" /> Planner Grid</TabsTrigger>
+              <TabsTrigger value="list" className="data-[state=active]:bg-primary"><List className="w-4 h-4 mr-2" /> Timeline View</TabsTrigger>
             </TabsList>
-            <div className="text-xs font-bold text-accent uppercase tracking-widest bg-accent/10 px-3 py-1 rounded-full border border-accent/20 flex items-center gap-2">
+            <div className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-4 py-1.5 rounded-full border border-accent/20 flex items-center gap-2">
               <Trophy className="w-3 h-3" /> {numCourts} COURTS ACTIVE
             </div>
           </div>
 
           <TabsContent value="grid">
              {!selectedTournamentId ? (
-               <Card className="bg-card/50 border-border border-dashed p-20 text-center">
+               <Card className="bg-card/50 border-white/5 border-dashed p-20 text-center">
                  <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-10" />
                  <p className="text-muted-foreground italic">Select a tournament context to view the planner grid.</p>
                </Card>
              ) : (
-               <Card className="bg-card/50 border-border overflow-x-auto">
+               <Card className="bg-card/50 border-white/5 overflow-x-auto">
                  <CardContent className="p-0">
                    <div 
-                    className="grid border-b border-border bg-muted/20"
-                    style={{ gridTemplateColumns: `100px repeat(${numCourts}, minmax(180px, 1fr))` }}
+                    className="grid border-b border-white/5 bg-white/5"
+                    style={{ gridTemplateColumns: `100px repeat(${numCourts}, minmax(200px, 1fr))` }}
                    >
-                      <div className="p-4 border-r border-border font-bold text-[10px] uppercase text-muted-foreground flex items-center justify-center">Time Slot</div>
+                      <div className="p-4 border-r border-white/5 font-bold text-[10px] uppercase text-muted-foreground flex items-center justify-center">Time Slot</div>
                       {Array.from({ length: numCourts }).map((_, i) => (
-                        <div key={i} className="p-4 border-r border-border text-center font-bold text-[10px] uppercase flex items-center justify-center">Court {i+1}</div>
+                        <div key={i} className="p-4 border-r border-white/5 text-center font-bold text-[10px] uppercase flex items-center justify-center text-accent">Court {i+1}</div>
                       ))}
                    </div>
                    {timeSlots.map((time, idx) => (
                      <div 
                         key={idx} 
-                        className="grid border-b border-border min-h-[140px]"
-                        style={{ gridTemplateColumns: `100px repeat(${numCourts}, minmax(180px, 1fr))` }}
+                        className="grid border-b border-white/5 min-h-[140px]"
+                        style={{ gridTemplateColumns: `100px repeat(${numCourts}, minmax(200px, 1fr))` }}
                       >
-                       <div className="p-4 border-r border-border bg-muted/10 font-mono text-xs flex flex-col items-center justify-center font-bold">
+                       <div className="p-4 border-r border-white/5 bg-white/5 font-mono text-xs flex flex-col items-center justify-center font-bold">
                          <Clock className="w-3 h-3 mb-1 text-primary opacity-50" />
                          {time}
                        </div>
@@ -311,12 +311,12 @@ export default function SchedulingPage() {
                          });
 
                          return (
-                           <div key={courtIdx} className="p-2 border-r border-border relative group hover:bg-white/5 transition-all">
+                           <div key={courtIdx} className="p-2 border-r border-white/5 relative group hover:bg-white/5 transition-all">
                              {match ? (
                                <div className="h-full bg-primary/20 border border-primary/40 rounded-xl p-3 text-[11px] flex flex-col justify-between animate-in fade-in zoom-in-95 overflow-hidden shadow-sm">
                                  <div className="flex justify-between items-start mb-1">
                                     <span className="font-bold truncate text-primary uppercase text-[8px] tracking-wider">{match.category}</span>
-                                    <Badge variant="outline" className="text-[7px] h-4 px-1 leading-none bg-background/50 border-primary/30">{match.status}</Badge>
+                                    <Badge variant="outline" className="text-[7px] h-4 px-1 leading-none bg-background/50 border-primary/30 text-white">{match.status}</Badge>
                                  </div>
                                  <div className="flex flex-col gap-1.5 font-bold leading-tight flex-1 justify-center">
                                    <div className="flex items-center justify-between gap-1">
@@ -335,7 +335,7 @@ export default function SchedulingPage() {
                                  <Button 
                                    variant="ghost" 
                                    size="icon" 
-                                   className="h-12 w-12 rounded-full hover:bg-primary/20 hover:text-primary border border-dashed border-border transition-all" 
+                                   className="h-12 w-12 rounded-full hover:bg-primary/20 hover:text-primary border border-dashed border-white/10 transition-all" 
                                    onClick={() => handleGridSlotClick(currentCourt, time)}
                                  >
                                    <Plus className="w-6 h-6" />
@@ -358,7 +358,7 @@ export default function SchedulingPage() {
                 <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
               ) : filteredMatches && filteredMatches.length > 0 ? (
                 filteredMatches.map(match => (
-                  <Card key={match.id} className="bg-card/50 border-border hover:border-primary/30 transition-all">
+                  <Card key={match.id} className="bg-card/50 border-white/5 hover:border-primary/30 transition-all overflow-hidden group">
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-6">
                         <div className="flex flex-col items-center justify-center bg-secondary/30 p-2 rounded-xl border border-white/5 w-24">
@@ -385,14 +385,14 @@ export default function SchedulingPage() {
                           </div>
                         </div>
                       </div>
-                      <Badge variant={match.status === 'live' ? 'default' : 'outline'} className="uppercase px-3 py-1 font-bold text-[10px] tracking-wider">
+                      <Badge variant={match.status === 'live' ? 'default' : 'outline'} className="uppercase px-4 py-1.5 font-bold text-[10px] tracking-wider">
                         {match.status}
                       </Badge>
                     </CardContent>
                   </Card>
                 ))
               ) : (
-                <div className="text-center py-20 bg-secondary/10 rounded-xl border-dashed border-2">
+                <div className="text-center py-24 bg-white/5 rounded-2xl border-dashed border-2 border-white/5">
                    <p className="text-muted-foreground italic">No matches scheduled for {selectedDateStr} yet.</p>
                 </div>
               )}
