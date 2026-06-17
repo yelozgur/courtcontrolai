@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor } from "lucide-react"
+import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor, Gavel, AlertCircle } from "lucide-react"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -50,11 +50,13 @@ export default function EditTournamentPage() {
     status: "draft",
     numCourts: 1,
     locations: [] as string[],
-    categories: [] as Category[]
+    categories: [] as Category[],
+    referees: [] as string[]
   })
   
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [newRefereeEmail, setNewRefereeEmail] = useState("")
 
   // Stage logic
   const isDraft = formData.status === "draft"
@@ -72,7 +74,8 @@ export default function EditTournamentPage() {
         status: tournament.status || "draft",
         numCourts: tournament.numCourts || 1,
         locations: tournament.locations || [],
-        categories: tournament.categories || []
+        categories: tournament.categories || [],
+        referees: tournament.referees || []
       })
     }
   }, [tournament])
@@ -136,6 +139,14 @@ export default function EditTournamentPage() {
     setFormData({ ...formData, categories: formData.categories.filter(c => c.id !== catId) })
   }
 
+  const addReferee = () => {
+    if (!newRefereeEmail) return
+    if (!formData.referees.includes(newRefereeEmail.toLowerCase())) {
+      setFormData({ ...formData, referees: [...formData.referees, newRefereeEmail.toLowerCase()] })
+    }
+    setNewRefereeEmail("")
+  }
+
   if (loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
   return (
@@ -152,7 +163,7 @@ export default function EditTournamentPage() {
                 {isDraft ? <Unlock className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />}
                 {formData.status.toUpperCase()}
               </Badge>
-              {isOperational && <Badge className="bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20">LIVE</Badge>}
+              {isOperational && <Badge className="bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20">OPERATIONAL</Badge>}
             </div>
           </div>
         </div>
@@ -172,18 +183,28 @@ export default function EditTournamentPage() {
         </div>
       </div>
 
+      {!isDraft && (
+        <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl flex items-start gap-4">
+          <AlertCircle className="h-5 w-5 text-primary mt-0.5" />
+          <div className="text-sm">
+            <p className="font-bold text-primary">Registration/Live Mode Active</p>
+            <p className="text-muted-foreground">Structural fields (Sport, Categories) are locked to maintain competition integrity. Logistics (Courts, Venues, Staff) remain flexible.</p>
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid w-full grid-cols-3 bg-secondary/30 mb-8 p-1">
           <TabsTrigger value="general" className="data-[state=active]:bg-primary">General Info</TabsTrigger>
           <TabsTrigger value="categories" className="data-[state=active]:bg-primary">Categories</TabsTrigger>
-          <TabsTrigger value="logistics" className="data-[state=active]:bg-primary">Logistics</TabsTrigger>
+          <TabsTrigger value="logistics" className="data-[state=active]:bg-primary">Logistics & Staff</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
           <Card className="bg-card/50 border-border">
             <CardHeader>
               <CardTitle>Core Details</CardTitle>
-              <CardDescription>Status defines what structural changes are allowed.</CardDescription>
+              <CardDescription>Basic settings for the event.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -208,9 +229,6 @@ export default function EditTournamentPage() {
                       <SelectItem value="completed">Completed (Archives)</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    * Transitioning to Registration locks structural categories.
-                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Tournament Sport</Label>
@@ -304,62 +322,97 @@ export default function EditTournamentPage() {
         </TabsContent>
         
         <TabsContent value="logistics" className="space-y-6">
-          <Card className="bg-card/50">
-            <CardHeader>
-              <CardTitle>Venue & Staffing</CardTitle>
-              <CardDescription>Assign officials and allocate courts.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <Label>Total Courts for Tournament</Label>
-                <div className="flex items-center gap-4 bg-secondary/30 p-4 rounded-xl">
-                  <div className="p-3 bg-primary/20 rounded-lg"><Trophy className="h-5 w-5 text-primary" /></div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Monitor className="h-5 w-5 text-primary" />
+                  Venue Allocation
+                </CardTitle>
+                <CardDescription>Allocate courts and map your locations.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Concurrent Courts</Label>
                   <Input 
                     type="number" 
                     value={formData.numCourts} 
                     onChange={e => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
-                    className="w-24 text-center font-bold"
                     disabled={isCompleted}
                   />
-                  <p className="text-xs text-muted-foreground">Courts reserved for matches.</p>
+                  <p className="text-xs text-muted-foreground italic">Scaling courts is allowed during active stages.</p>
                 </div>
-              </div>
 
-              <div className="space-y-4">
-                <Label>Venue Locations</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="e.g. Center Court, Club Hall A" 
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const val = (e.target as HTMLInputElement).value;
-                        if (val) {
-                          setFormData({...formData, locations: [...formData.locations, val]});
-                          (e.target as HTMLInputElement).value = '';
+                <div className="space-y-4">
+                  <Label>Venue Locations</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="e.g. Center Court, Hall A" 
+                      className="flex-1"
+                      value={formData.locations.length > 100 ? "" : undefined} // Dummy to satisfy hook
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const val = (e.target as HTMLInputElement).value;
+                          if (val) {
+                            setFormData({...formData, locations: [...formData.locations, val]});
+                            (e.target as HTMLInputElement).value = '';
+                          }
                         }
-                      }
-                    }}
-                  />
-                  <Button variant="outline" size="icon" onClick={() => {
-                    const el = document.querySelector('input[placeholder="e.g. Center Court, Club Hall A"]') as HTMLInputElement;
-                    if (el.value) {
-                      setFormData({...formData, locations: [...formData.locations, el.value]});
-                      el.value = '';
-                    }
-                  }}><Plus className="h-4 w-4" /></Button>
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.locations.map((loc, i) => (
+                      <Badge key={i} variant="secondary" className="px-3 py-1 gap-2">
+                        {loc}
+                        <Trash2 className="h-3 w-3 cursor-pointer text-destructive" onClick={() => setFormData({...formData, locations: formData.locations.filter((_, idx) => idx !== i)})} />
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.locations.map((loc, i) => (
-                    <Badge key={i} variant="secondary" className="px-3 py-1 gap-2">
-                      {loc}
-                      <Trash2 className="h-3 w-3 cursor-pointer text-destructive" onClick={() => setFormData({...formData, locations: formData.locations.filter((_, idx) => idx !== i)})} />
-                    </Badge>
-                  ))}
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gavel className="h-5 w-5 text-accent" />
+                  Tournament Staff
+                </CardTitle>
+                <CardDescription>Assign officials who can score matches live.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Add Referee (Email)</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      type="email"
+                      placeholder="referee@example.com"
+                      value={newRefereeEmail}
+                      onChange={e => setNewRefereeEmail(e.target.value)}
+                    />
+                    <Button variant="secondary" onClick={addReferee}><Plus className="h-4 w-4" /></Button>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="space-y-2">
+                  <Label>Official Roster</Label>
+                  <div className="space-y-2">
+                    {formData.referees.map((refEmail, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg border border-border">
+                        <span className="text-sm font-medium">{refEmail}</span>
+                        <Button variant="ghost" size="icon" onClick={() => setFormData({...formData, referees: formData.referees.filter(r => r !== refEmail)})} className="h-6 w-6 text-destructive">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    {formData.referees.length === 0 && (
+                      <p className="text-xs text-muted-foreground italic text-center py-4">No officials assigned yet.</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
