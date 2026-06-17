@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -7,12 +6,11 @@ import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
 /**
- * Initializes Firebase services. 
- * This is called on the client side only.
+ * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
- * TRIGGER: Security Rules Deployment for Project courtcontrolai-2294b.
- * Ensuring public "list" and "get" operations across all sports collections.
- * Granting owner-only write permissions based on verified club ownership.
+ * TRIGGER: Security Rules Deployment for Public Listing.
+ * Explicitly granting 'list' and 'get' to all visitors for Clubs and Tournaments.
+ * Granting 'write' to Club Owners for their specific organization and events.
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
