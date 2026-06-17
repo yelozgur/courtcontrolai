@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -15,7 +16,8 @@ import {
   MapPin,
   Zap,
   Loader2,
-  Building
+  Building,
+  Settings2
 } from "lucide-react"
 import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
@@ -29,7 +31,7 @@ export default function DashboardOverview() {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
-  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
+  const { data: profile } = useDoc(userProfileRef);
 
   // Robust Admin Detection
   const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com';
@@ -174,82 +176,81 @@ export default function DashboardOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-6 lg:grid-cols-12 auto-rows-[200px]">
-        <Card className="md:col-span-3 lg:col-span-8 row-span-2 bg-gradient-to-br from-card to-white/5 border-white/5 overflow-hidden group shadow-2xl">
-          <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Trophy className="w-64 h-64" />
+      <div className="grid gap-6 md:grid-cols-6 lg:grid-cols-12">
+        <div className="md:col-span-3 lg:col-span-8 space-y-6">
+          <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
+            <Trophy className="h-6 w-6 text-primary" /> My Competitions
+          </h2>
+          <div className="grid gap-4">
+             {loadingTours ? (
+               <Loader2 className="animate-spin" />
+             ) : tournaments && tournaments.length > 0 ? (
+               tournaments.map((t) => (
+                 <Card key={t.id} className="bg-card/50 border-white/5 hover:border-primary/20 transition-all">
+                   <CardContent className="p-6 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-primary">
+                          <Trophy className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-lg">{t.name}</p>
+                          <p className="text-sm text-muted-foreground">{t.sport} • {t.startDate}</p>
+                        </div>
+                     </div>
+                     <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/dashboard/tournaments/${t.id}/edit`}>
+                            <Settings2 className="mr-2 h-4 w-4" /> Manage
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/arena/${t.id}`}>Arena</Link>
+                        </Button>
+                     </div>
+                   </CardContent>
+                 </Card>
+               ))
+             ) : (
+               <Card className="bg-card/50 border-dashed border-2 p-12 text-center text-muted-foreground">
+                 No tournaments found. Create your first one to get started.
+               </Card>
+             )}
           </div>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <Badge className="bg-accent text-accent-foreground mb-4 px-4 py-1 font-bold uppercase">LIVE FEED</Badge>
-              {!isAdmin && (
-                <Button size="sm" variant="ghost" className="text-primary hover:text-primary hover:bg-primary/10" asChild>
-                  <Link href="/dashboard/schedule">
-                    Visual Timeline <ArrowUpRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              )}
-            </div>
-            <CardTitle className="text-4xl font-headline font-bold text-white tracking-tighter">
-              {tournaments && tournaments.length > 0 ? tournaments[0].name : "Ready for Kick-off"}
-            </CardTitle>
-            <CardDescription className="text-lg text-muted-foreground mt-2">
-              {isAdmin ? "Showing platform-wide match activity." : "Manage your club's current competition and live scoring."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mt-8 space-y-4">
+        </div>
+
+        <div className="md:col-span-3 lg:col-span-4 space-y-6">
+          <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
+            <Activity className="h-6 w-6 text-accent" /> Live Scoring
+          </h2>
+          <div className="space-y-4">
               {loadingMatches ? (
-                <div className="flex justify-center p-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
+                <Loader2 className="animate-spin" />
               ) : liveMatches && liveMatches.length > 0 ? (
                 liveMatches.map((match) => (
-                  <div key={match.id} className="flex items-center gap-6 p-6 bg-white/5 rounded-3xl border border-white/5 hover:bg-white/10 transition-all pulse-active">
-                    <div className="flex flex-col flex-1">
-                      <span className="text-[10px] text-accent uppercase tracking-[0.2em] font-bold">Court {match.court} • {match.category}</span>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xl font-bold text-white">{match.teamA.name}</span>
-                        <span className="text-3xl font-mono font-bold text-accent">{match.teamA.score}</span>
+                  <Card key={match.id} className="bg-white/5 border-white/5">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] text-accent font-bold uppercase tracking-widest">Court {match.court}</span>
+                        <Badge variant="outline" className="h-4 text-[8px] uppercase">Live</Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold text-white">{match.teamB.name}</span>
-                        <span className="text-3xl font-mono font-bold opacity-50">{match.teamB.score}</span>
+                        <span className="text-sm font-bold truncate max-w-[100px]">{match.teamA.name}</span>
+                        <span className="text-xl font-mono font-bold text-accent">{match.teamA.score}</span>
                       </div>
-                    </div>
-                  </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold truncate max-w-[100px]">{match.teamB.name}</span>
+                        <span className="text-xl font-mono font-bold opacity-50">{match.teamB.score}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))
               ) : (
-                <div className="p-12 bg-white/5 rounded-3xl border border-white/5 text-center">
-                  <p className="text-muted-foreground font-medium italic">No live matches currently in progress.</p>
-                </div>
+                <Card className="bg-card/50 border-white/5 p-8 text-center text-xs text-muted-foreground italic">
+                  No matches currently live.
+                </Card>
               )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-3 lg:col-span-4 row-span-2 bg-white/5 border-white/5 shadow-2xl">
-          <CardHeader>
-            <CardTitle className="font-headline font-bold text-white text-2xl uppercase tracking-tighter">Operations</CardTitle>
-            <CardDescription>Upcoming Windows</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <p className="text-sm text-muted-foreground leading-relaxed italic">
-              {isAdmin ? "Global scheduling monitoring is active across the network." : "Your smart scheduler is monitoring court usage and player availability."}
-            </p>
-            {!isAdmin && (
-              <Button variant="outline" className="w-full h-14 text-lg font-bold border-white/10 hover:bg-white/5" asChild>
-                <Link href="/dashboard/schedule">Visual Timeline</Link>
-              </Button>
-            )}
-            <div className="pt-6 border-t border-white/5">
-                <div className="flex items-center gap-4 text-accent">
-                    <Zap className="h-6 w-6" />
-                    <span className="text-sm font-bold uppercase tracking-widest">AI Engine Active</span>
-                </div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

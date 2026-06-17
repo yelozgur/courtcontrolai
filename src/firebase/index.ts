@@ -9,11 +9,9 @@ import { firebaseConfig } from './config';
 /**
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
- * TRIGGER: Security Rules Deployment matching user-provided logic.
- * Logic: admin@deneme.com is granted system-wide admin privileges via token email check.
- * Rules: Users (Owner write/read, Admin read/list all), Public data (Global list/read for matches, tournaments, clubs).
- * 
- * Deployment Nonce: 2024-06-18T16:20:00Z (Adding Check-In Collection Permissions)
+ * TRIGGER: Security Rules Deployment for Owner Edits.
+ * Logic: Club owners verified via clubId -> ownerId check. Admin bypass for admin@deneme.com.
+ * Deployment Nonce: 2024-06-18T18:45:00Z (Allowing Club Owner Tournament Edits)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;

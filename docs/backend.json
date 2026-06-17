@@ -143,12 +143,12 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Match scores." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Organizations." },
-    "/users/{userId}": { "schema": "User", "description": "Private profile." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Registrations." },
-    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Venue arrivals." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. Writable by club owner." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Match scores. Writable by club owner." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Organizations. Writable by ownerId." },
+    "/users/{userId}": { "schema": "User", "description": "Private profile. Writable by userId." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Registrations. Publicly readable. Writable by participant or club owner." },
+    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Venue arrivals. Publicly readable. Writable by club owner." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info. Writable by club owner." }
   }
 }
