@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. PERMISSIONS: Allow 'get', 'list', 'create', 'update' if request.auth.uid == userId. User admin@deneme.com is the system administrator with global 'get' and 'list' access.",
+      "description": "User profile. PERMISSIONS: Allow 'get', 'create', 'update' if request.auth.uid == userId. CRITICAL: The user admin@deneme.com IS THE SYSTEM ADMINISTRATOR and MUST HAVE GLOBAL 'get' AND 'list' ACCESS TO THE ENTIRE USERS COLLECTION FOR MANAGEMENT.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -131,7 +131,7 @@
     "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
     "/matches/{matchId}": { "schema": "Match", "description": "Match scores. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Organizations. PUBLICLY LISTABLE AND READABLE. Writable by ownerId." },
-    "/users/{userId}": { "schema": "User", "description": "Private profile. Owner get/list/write only. admin@deneme.com has admin role and global read access." },
+    "/users/{userId}": { "schema": "User", "description": "Private profile. Document owner has full access. SYSTEM ADMIN admin@deneme.com has GLOBAL GET and LIST permissions to manage user registry." },
     "/participants/{participantId}": { "schema": "Participant", "description": "Registrations. GLOBAL READ AND LIST ACCESS. Writable by participant/owner." },
     "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info. GLOBAL READ AND LIST ACCESS. Writable by club owner." }
   }
