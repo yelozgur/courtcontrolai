@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Trophy, MapPin, Loader2, Search } from "lucide-react"
+import { Calendar, Trophy, MapPin, Loader2, Search, AlertCircle } from "lucide-react"
 import { collection, query, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { useState } from "react"
@@ -17,15 +17,13 @@ export default function PublicTournaments() {
 
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null
-    // Remove strict server-side filtering to avoid composite index issues
     return query(collection(db, "tournaments"), limit(50))
   }, [db])
 
   const { data: tournaments, loading, error } = useCollection(tournamentsQuery)
 
-  // Filter for active status and search term on the client side
   const filtered = tournaments?.filter(t => 
-    (t.status === "active" || !t.status) && // Show active or un-set tournaments
+    (t.status === "active" || t.status === "registration" || !t.status) && 
     t.name.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -59,9 +57,14 @@ export default function PublicTournaments() {
         {loading ? (
           <div className="flex justify-center p-20"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>
         ) : error ? (
-          <div className="p-20 text-center text-destructive bg-destructive/5 rounded-3xl border border-destructive/20">
-            <p className="text-xl font-bold">Query Error</p>
-            <p className="text-sm opacity-80 mt-2">Could not load tournaments. Please check security rules.</p>
+          <div className="p-20 text-center text-destructive bg-destructive/5 rounded-3xl border border-destructive/20 flex flex-col items-center gap-4">
+            <AlertCircle className="h-12 w-12" />
+            <div>
+              <p className="text-xl font-bold">Access Denied or Connection Error</p>
+              <p className="text-sm opacity-80 mt-2 max-w-md mx-auto">
+                Could not load tournaments. Please ensure your Firestore Security Rules allow public read access to the tournaments collection.
+              </p>
+            </div>
           </div>
         ) : filtered && filtered.length > 0 ? (
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -73,7 +76,10 @@ export default function PublicTournaments() {
                     alt={t.name}
                     className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
                   />
-                  <Badge className="absolute top-4 right-4 bg-primary">{t.sport?.toUpperCase() || 'SPORTS'}</Badge>
+                  <Badge className="absolute top-4 right-4 bg-primary uppercase tracking-widest">{t.sport || 'SPORTS'}</Badge>
+                  <Badge className="absolute bottom-4 left-4 bg-accent text-accent-foreground uppercase text-[10px] font-bold">
+                    {t.status === 'registration' ? 'Open for Entry' : 'In Progress'}
+                  </Badge>
                 </div>
                 <CardHeader>
                   <CardTitle className="text-2xl font-headline font-bold">{t.name}</CardTitle>
@@ -85,12 +91,14 @@ export default function PublicTournaments() {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
-                    <span>{t.locations?.[0] || 'Main Venue'}</span>
+                    <span className="truncate">{t.locations?.[0] || 'Main Venue'}</span>
                   </div>
                 </CardContent>
                 <CardFooter>
                   <Button asChild className="w-full bg-primary hover:bg-primary/90">
-                    <Link href={`/tournaments/${t.id}/register`}>Register Now</Link>
+                    <Link href={`/tournaments/${t.id}/register`}>
+                      {t.status === 'registration' ? 'Register Now' : 'View Tournament'}
+                    </Link>
                   </Button>
                 </CardFooter>
               </Card>
@@ -100,7 +108,7 @@ export default function PublicTournaments() {
           <div className="text-center py-20 bg-white/5 rounded-3xl border-dashed border-2 border-white/10">
             <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-20" />
             <h3 className="text-2xl font-bold">No active tournaments</h3>
-            <p className="text-muted-foreground mt-2">Check back later or visit our social media for updates.</p>
+            <p className="text-muted-foreground mt-2">Check back later or register your club to host an event.</p>
           </div>
         )}
       </main>
