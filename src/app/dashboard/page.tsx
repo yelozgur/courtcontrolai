@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
+import { cn } from "@/lib/utils"
 
 export default function DashboardOverview() {
   const db = useFirestore()
