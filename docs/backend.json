@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. Every authenticated user can READ AND WRITE their own document (document ID must match auth.uid). Platform admins (verified by custom claim or specific email) have READ access to all profiles.",
+      "description": "User profile. Every authenticated user can READ AND WRITE their own document (document ID must match auth.uid). Platform admins (verified by email admin@deneme.com) have READ AND WRITE access to all profiles to manage roles.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -128,11 +128,11 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global tournament registry. Publicly readable and listable. Writable by club owner." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Match records. Publicly readable and listable. Writable by club owner." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Club profiles. Publicly readable and listable. Writable by ownerId." },
-    "/users/{userId}": { "schema": "User", "description": "User profiles. Owner read/write. Admin read access." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament entries. Publicly readable and listable. Writable by participant or club owner." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club partnership details. Publicly readable and listable. Writable by club owner." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global tournament registry. PUBLICLY READABLE AND LISTABLE. Writable by club owner." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Match records. PUBLICLY READABLE AND LISTABLE. Writable by club owner." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Club profiles. PUBLICLY READABLE AND LISTABLE. Writable by ownerId." },
+    "/users/{userId}": { "schema": "User", "description": "User profiles. Owner read/write. Admin managed." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Tournament entries. PUBLICLY READABLE AND LISTABLE. Writable by participant or club owner." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Club partnership details. PUBLICLY READABLE AND LISTABLE. Writable by club owner." }
   }
 }

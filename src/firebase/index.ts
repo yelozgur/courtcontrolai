@@ -13,6 +13,7 @@ import { firebaseConfig } from './config';
  * TRIGGER: Security Rules Synchronization.
  * Deploying refined rules to allow public "list" and "get" operations across 
  * all tournament, club, and match collections, while enforcing owner-only writes.
+ * Forces a re-deployment to ensure "list" permissions are active for the dashboard.
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
