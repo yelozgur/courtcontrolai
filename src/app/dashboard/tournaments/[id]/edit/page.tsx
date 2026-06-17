@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor, Gavel, AlertCircle } from "lucide-react"
+import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor, Gavel, AlertCircle, Clock, Zap, MapPin } from "lucide-react"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -26,6 +26,11 @@ interface Category {
   sets: number;
   ageGroup: string;
   isTeamBased: boolean;
+}
+
+interface LocationEntry {
+  name: string;
+  numCourts: number;
 }
 
 export default function EditTournamentPage() {
@@ -48,8 +53,10 @@ export default function EditTournamentPage() {
     endDate: "",
     sport: "",
     status: "draft",
-    numCourts: 1,
-    locations: [] as string[],
+    numCourts: 0,
+    matchDuration: 60,
+    recoveryTime: 15,
+    locations: [] as LocationEntry[],
     categories: [] as Category[],
     referees: [] as string[]
   })
@@ -57,7 +64,9 @@ export default function EditTournamentPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [newRefereeEmail, setNewRefereeEmail] = useState("")
-  const [newLocInput, setNewLocInput] = useState("")
+  
+  const [newLocName, setNewLocName] = useState("")
+  const [newLocCourts, setNewLocCourts] = useState(1)
 
   // Stage logic
   const isDraft = formData.status === "draft"
@@ -73,13 +82,21 @@ export default function EditTournamentPage() {
         endDate: tournament.endDate || "",
         sport: tournament.sport || "padel",
         status: tournament.status || "draft",
-        numCourts: tournament.numCourts || 1,
+        numCourts: tournament.numCourts || 0,
+        matchDuration: tournament.matchDuration || 60,
+        recoveryTime: tournament.recoveryTime || 15,
         locations: tournament.locations || [],
         categories: tournament.categories || [],
         referees: tournament.referees || []
       })
     }
   }, [tournament])
+
+  // Auto-sync total courts
+  useEffect(() => {
+    const total = formData.locations.reduce((acc, loc) => acc + loc.numCourts, 0);
+    setFormData(prev => ({ ...prev, numCourts: total }));
+  }, [formData.locations]);
 
   const handleSave = () => {
     if (!db || !id) return
@@ -88,7 +105,9 @@ export default function EditTournamentPage() {
     const docRef = doc(db, "tournaments", id as string)
     const updateData = {
       ...formData,
-      numCourts: Number(formData.numCourts) || 1
+      numCourts: Number(formData.numCourts) || 0,
+      matchDuration: Number(formData.matchDuration),
+      recoveryTime: Number(formData.recoveryTime)
     }
 
     updateDoc(docRef, updateData)
@@ -149,11 +168,17 @@ export default function EditTournamentPage() {
   }
 
   const addLocation = () => {
-    if (!newLocInput) return
-    if (!formData.locations.includes(newLocInput)) {
-      setFormData({ ...formData, locations: [...formData.locations, newLocInput] })
-    }
-    setNewLocInput("")
+    if (!newLocName) return
+    setFormData({
+      ...formData,
+      locations: [...formData.locations, { name: newLocName, numCourts: newLocCourts }]
+    })
+    setNewLocName("")
+    setNewLocCourts(1)
+  }
+
+  const removeLocation = (index: number) => {
+    setFormData({ ...formData, locations: formData.locations.filter((_, i) => i !== index) })
   }
 
   if (loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -255,6 +280,25 @@ export default function EditTournamentPage() {
                   <Label>End Date</Label>
                   <Input type="date" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} disabled={isCompleted} />
                 </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Clock className="h-4 w-4" /> Match Duration (mins)</Label>
+                  <Input 
+                    type="number"
+                    value={formData.matchDuration}
+                    onChange={e => setFormData({...formData, matchDuration: parseInt(e.target.value) || 60})}
+                    disabled={isCompleted}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Recovery Time (mins)</Label>
+                  <Input 
+                    type="number"
+                    value={formData.recoveryTime}
+                    onChange={e => setFormData({...formData, recoveryTime: parseInt(e.target.value) || 0})}
+                    disabled={isCompleted}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Event Description</Label>
@@ -334,48 +378,63 @@ export default function EditTournamentPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="bg-card/50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Monitor className="h-5 w-5 text-primary" />
-                  Venue Allocation
-                </CardTitle>
-                <CardDescription>Allocate courts and map your locations.</CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Monitor className="h-5 w-5 text-primary" />
+                    Venue Distribution
+                  </CardTitle>
+                  <Badge variant="outline" className="text-primary border-primary/20">
+                    Total Courts: {formData.numCourts}
+                  </Badge>
+                </div>
+                <CardDescription>Assign specific court counts to each tournament location.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Concurrent Courts</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.numCourts} 
-                    onChange={e => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
-                    disabled={isCompleted}
-                  />
-                  <p className="text-xs text-muted-foreground italic">Scaling courts is allowed during active stages.</p>
+                <div className="space-y-4">
+                  <Label>Add Location</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    <div className="md:col-span-7">
+                      <Input 
+                        placeholder="Location name..." 
+                        className="bg-secondary/30"
+                        value={newLocName}
+                        onChange={e => setNewLocName(e.target.value)}
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <Input 
+                        type="number"
+                        min="1"
+                        placeholder="Courts"
+                        className="bg-secondary/30"
+                        value={newLocCourts}
+                        onChange={e => setNewLocCourts(parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Button variant="secondary" className="w-full" onClick={addLocation}><Plus className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  <Label>Venue Locations</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="e.g. Center Court, Hall A" 
-                      className="flex-1"
-                      value={newLocInput}
-                      onChange={(e) => setNewLocInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          addLocation();
-                        }
-                      }}
-                    />
-                    <Button variant="secondary" onClick={addLocation}><Plus className="h-4 w-4" /></Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.locations.map((loc, i) => (
-                      <Badge key={i} variant="secondary" className="px-3 py-1 gap-2">
-                        {loc}
-                        <Trash2 className="h-3 w-3 cursor-pointer text-destructive" onClick={() => setFormData({...formData, locations: formData.locations.filter((_, idx) => idx !== i)})} />
-                      </Badge>
-                    ))}
-                  </div>
+                <div className="space-y-3">
+                  {formData.locations.map((loc, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border">
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-4 w-4 text-accent" />
+                        <div>
+                          <p className="text-sm font-bold text-white">{loc.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{loc.numCourts} Courts</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => removeLocation(i)} className="h-8 w-8 text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {formData.locations.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic text-center py-4">No locations defined yet.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

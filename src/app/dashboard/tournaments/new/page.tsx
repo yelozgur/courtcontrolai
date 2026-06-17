@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin } from "lucide-react"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock } from "lucide-react"
 import { collection, doc, setDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -35,6 +35,11 @@ interface Category {
   isTeamBased: boolean;
 }
 
+interface LocationEntry {
+  name: string;
+  numCourts: number;
+}
+
 export default function TournamentWizard() {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -50,7 +55,8 @@ export default function TournamentWizard() {
   const [newCategoryAge, setNewCategoryAge] = useState("Open")
   const [newCategoryIsTeam, setNewCategoryIsTeam] = useState(false)
 
-  const [newLocation, setNewLocation] = useState("")
+  const [newLocationName, setNewLocationName] = useState("")
+  const [newLocationCourts, setNewLocationCourts] = useState(1)
 
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -67,8 +73,10 @@ export default function TournamentWizard() {
     startDate: "",
     endDate: "",
     sport: "",
-    numCourts: 1,
-    locations: [] as string[],
+    matchDuration: 60,
+    recoveryTime: 15,
+    numCourts: 0,
+    locations: [] as LocationEntry[],
     categories: [] as Category[]
   })
 
@@ -77,6 +85,12 @@ export default function TournamentWizard() {
       setFormData(prev => ({ ...prev, sport: clubSport }))
     }
   }, [clubSport, formData.sport])
+
+  // Sync total courts whenever locations change
+  useEffect(() => {
+    const total = formData.locations.reduce((acc, loc) => acc + loc.numCourts, 0);
+    setFormData(prev => ({ ...prev, numCourts: total }));
+  }, [formData.locations]);
 
   const handleAddCategory = () => {
     if (!newCategoryName) return
@@ -107,12 +121,13 @@ export default function TournamentWizard() {
   }
 
   const handleAddLocation = () => {
-    if (!newLocation) return
+    if (!newLocationName) return
     setFormData({
       ...formData,
-      locations: [...formData.locations, newLocation]
+      locations: [...formData.locations, { name: newLocationName, numCourts: newLocationCourts }]
     })
-    setNewLocation("")
+    setNewLocationName("")
+    setNewLocationCourts(1)
   }
 
   const removeLocation = (index: number) => {
@@ -142,7 +157,9 @@ export default function TournamentWizard() {
       clubId,
       status: "active",
       createdAt: serverTimestamp(),
-      numCourts: Number(formData.numCourts) || 1
+      numCourts: Number(formData.numCourts) || 0,
+      matchDuration: Number(formData.matchDuration) || 60,
+      recoveryTime: Number(formData.recoveryTime) || 15
     }
 
     setDoc(tournamentRef, tournamentData)
@@ -201,7 +218,7 @@ export default function TournamentWizard() {
             <CardHeader className="bg-primary/10 py-8">
               <Trophy className="w-12 h-12 text-primary mb-4" />
               <CardTitle className="text-2xl font-headline">Step 1: Core Identity</CardTitle>
-              <CardDescription>Tell us the basics of your epic tournament.</CardDescription>
+              <CardDescription>Tell us the basics and match timing rules.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -253,6 +270,25 @@ export default function TournamentWizard() {
                       onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                     />
                   </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Clock className="h-4 w-4" /> Match Duration (mins)</Label>
+                  <Input 
+                    type="number"
+                    className="bg-secondary/50 h-12" 
+                    value={formData.matchDuration}
+                    onChange={(e) => setFormData({ ...formData, matchDuration: parseInt(e.target.value) || 60 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Recovery / Buffer (mins)</Label>
+                  <Input 
+                    type="number"
+                    className="bg-secondary/50 h-12" 
+                    value={formData.recoveryTime}
+                    onChange={(e) => setFormData({ ...formData, recoveryTime: parseInt(e.target.value) || 0 })}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
@@ -412,58 +448,74 @@ export default function TournamentWizard() {
             <CardHeader className="bg-primary/10 py-8">
               <Building2 className="w-12 h-12 text-primary mb-4" />
               <CardTitle className="text-2xl font-headline">Step 3: Venue Logistics</CardTitle>
-              <CardDescription>Allocate courts and locations for this event.</CardDescription>
+              <CardDescription>Enter locations and their respective court counts.</CardDescription>
             </CardHeader>
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="p-8 space-y-8">
               <div className="space-y-4">
-                <Label>Courts Dedicated to Tournament</Label>
-                <div className="flex items-center gap-6 p-6 bg-secondary/30 rounded-2xl border border-border">
-                  <div className="p-4 bg-primary/20 rounded-xl">
-                    <MapPin className="h-8 w-8 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-lg">Court Allocation</p>
-                    <p className="text-sm text-muted-foreground">Number of concurrent courts available.</p>
-                  </div>
-                  <div className="w-32">
+                <Label>Add Tournament Location</Label>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="md:col-span-8">
                     <Input 
-                      type="number" 
-                      min="1" 
-                      max={userClubs?.[0]?.numCourts || 10}
-                      value={formData.numCourts}
-                      onChange={(e) => setFormData({ ...formData, numCourts: parseInt(e.target.value) || 1 })}
-                      className="h-12 text-center text-xl font-bold"
+                      placeholder="e.g. Center Court, North Hall" 
+                      className="bg-secondary/50 h-12"
+                      value={newLocationName}
+                      onChange={e => setNewLocationName(e.target.value)}
                     />
+                  </div>
+                  <div className="md:col-span-3">
+                    <Input 
+                      type="number"
+                      min="1"
+                      placeholder="Courts"
+                      className="bg-secondary/50 h-12"
+                      value={newLocationCourts}
+                      onChange={e => setNewLocationCourts(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Button variant="secondary" className="h-12 w-full" onClick={handleAddLocation}>
+                      <Plus className="h-5 w-5" />
+                    </Button>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <Label>Venue Locations</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="Add a location/venue name..." 
-                    value={newLocation} 
-                    onChange={e => setNewLocation(e.target.value)}
-                  />
-                  <Button variant="secondary" onClick={handleAddLocation}>Add</Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
+                <Label className="flex items-center justify-between">
+                  <span>Registered Locations</span>
+                  <Badge variant="outline" className="text-primary border-primary/20">
+                    Total Courts: {formData.numCourts}
+                  </Badge>
+                </Label>
+                <div className="grid gap-3">
                   {formData.locations.map((loc, i) => (
-                    <Badge key={i} className="px-3 py-1 flex items-center gap-2">
-                      {loc}
-                      <Trash2 className="h-3 w-3 cursor-pointer" onClick={() => removeLocation(i)} />
-                    </Badge>
+                    <div key={i} className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-accent" />
+                        <div>
+                          <p className="font-bold text-white">{loc.name}</p>
+                          <p className="text-xs text-muted-foreground">{loc.numCourts} Courts assigned</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeLocation(i)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ))}
                   {formData.locations.length === 0 && (
-                    <p className="text-sm text-muted-foreground italic">No specific locations added. Defaulting to club venue.</p>
+                    <div className="p-12 text-center border-2 border-dashed rounded-xl bg-white/5 opacity-40">
+                      <MapPin className="h-10 w-10 mx-auto mb-2" />
+                      <p>No locations added yet.</p>
+                    </div>
                   )}
                 </div>
               </div>
 
               <div className="pt-4 flex justify-between">
                 <Button variant="ghost" onClick={() => setStep(2)} className="h-12 px-8">Back</Button>
-                <Button onClick={() => setStep(4)} className="h-12 px-10">Preview & Launch</Button>
+                <Button onClick={() => setStep(4)} className="h-12 px-10" disabled={formData.locations.length === 0}>
+                  Next: Preview & Launch
+                </Button>
               </div>
             </CardContent>
           </div>
@@ -475,7 +527,7 @@ export default function TournamentWizard() {
             </div>
             <h2 className="text-5xl font-headline font-bold mb-4 tracking-tighter">Ready for Launch!</h2>
             <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg">
-              Your <strong>{formData.name}</strong> is configured across {formData.numCourts} courts at {formData.locations.length || 1} locations.
+              Your <strong>{formData.name}</strong> is configured with <strong>{formData.numCourts} total courts</strong> across {formData.locations.length} locations.
             </p>
             <div className="flex justify-center gap-4">
               <Button variant="ghost" onClick={() => setStep(3)} className="h-12" disabled={isSubmitting}>

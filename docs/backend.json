@@ -10,12 +10,23 @@
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
-        "locations": { "type": "array", "items": { "type": "string" } },
+        "locations": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "numCourts": { "type": "number" }
+            }
+          } 
+        },
         "sport": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "registration", "active", "completed"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "description": { "type": "string" },
-        "numCourts": { "type": "number" },
+        "numCourts": { "type": "number", "description": "Total summed courts across all locations" },
+        "matchDuration": { "type": "number", "description": "Duration in minutes" },
+        "recoveryTime": { "type": "number", "description": "Buffer between matches in minutes" },
         "referees": { "type": "array", "items": { "type": "string" } },
         "categories": {
           "type": "array",
