@@ -22,6 +22,8 @@ import {
   Gavel,
   AlertCircle,
   RefreshCw,
+  User,
+  Activity
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -36,26 +38,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-const commonItems = [
-  { name: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
-];
-
-const clubItems = [
-  { name: 'Tournament Wizard', icon: Trophy, href: '/dashboard/tournaments/new' },
-  { name: 'Scheduling', icon: Calendar, href: '/dashboard/schedule' },
-  { name: 'Participants', icon: Users, href: '/dashboard/participants' },
-  { name: 'Referee Console', icon: Gavel, href: '/referee' },
-  { name: 'Sponsors', icon: Heart, href: '/dashboard/sponsors' },
-  { name: 'Check-In (QR)', icon: QrCode, href: '/dashboard/check-in' },
-  { name: 'Arena Dashboard', icon: Monitor, href: '/arena' },
-  { name: 'Club Settings', icon: Settings, href: '/dashboard/club' },
-];
-
-const adminItems = [
-  { name: 'Manage Clubs', icon: Building, href: '/dashboard/admin/clubs' },
-  { name: 'Manage Users', icon: ShieldCheck, href: '/dashboard/admin/users' },
-];
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading: authLoading } = useUser();
@@ -63,175 +45,93 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const db = useFirestore();
   const router = useRouter();
 
-  const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com';
-
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
   
-  const { data: profile, loading: profileLoading, error: profileError } = useDoc(userProfileRef);
+  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
+
+  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
+  const isClubOwner = profile?.role === 'club_owner';
+  const isReferee = profile?.role === 'referee';
+  const isPlayer = profile?.role === 'player' || (!profile?.role && !profileLoading && user);
 
   const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user || isAdmin) return null;
+    if (!db || !user || !isClubOwner) return null;
     return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
-  }, [db, user, isAdmin]);
+  }, [db, user, isClubOwner]);
 
-  const { data: userClubs, loading: clubsLoading, error: clubsError } = useCollection(clubsQuery);
+  const { data: userClubs, loading: clubsLoading } = useCollection(clubsQuery);
   const userClub = userClubs?.[0];
 
-  const [onboardingName, setOnboardingName] = React.useState('');
-  const [isOnboarding, setIsOnboarding] = React.useState(false);
+  const handleSignOut = () => signOut(auth).then(() => router.push('/'));
 
-  React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
-
-  const handleSignOut = () => {
-    signOut(auth).then(() => router.push('/'));
-  };
-
-  const handleCreateClub = () => {
-    if (!db || !user || !onboardingName) return;
-    setIsOnboarding(true);
-    
+  const handleCreateClub = (name: string) => {
+    if (!db || !user) return;
     const clubRef = doc(collection(db, 'clubs'));
-    const userRef = doc(db, 'users', user.uid);
-
-    const newClub = {
+    setDoc(clubRef, {
       ownerId: user.uid,
-      name: onboardingName,
+      name,
       contactEmail: user.email || '',
       numCourts: 1,
-      location: 'Pending Set-up',
-      primarySport: 'padel',
       createdAt: serverTimestamp()
-    };
-
-    setDoc(clubRef, newClub)
-      .catch(async (e) => {
-        const error = new FirestorePermissionError({
-          path: clubRef.path,
-          operation: 'create',
-          requestResourceData: newClub
-        });
-        errorEmitter.emit('permission-error', error);
-        setIsOnboarding(false);
-      });
-
-    updateDoc(userRef, {
-      clubId: clubRef.id,
-    }).catch(async (e) => {
-       const error = new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'update',
-          requestResourceData: { clubId: clubRef.id }
-        });
-        errorEmitter.emit('permission-error', error);
     });
+    updateDoc(doc(db, 'users', user.uid), { role: 'club_owner', clubId: clubRef.id });
   };
 
-  // We are more patient with the loading states to avoid onboarding flicker
-  const isSyncing = authLoading || (user && profileLoading && !profileError);
-
-  if (isSyncing) {
+  if (authLoading || (user && profileLoading)) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium uppercase tracking-[0.2em] text-xs">Syncing Identity...</p>
-      </div>
-    );
-  }
-
-  // Handle actual connection errors (like security rules blocking read)
-  if (profileError || clubsError) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] p-6 text-center">
-        <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
-          <AlertCircle className="h-12 w-12 text-destructive" />
-        </div>
-        <h2 className="text-3xl font-headline font-bold uppercase tracking-tight text-white mb-2 leading-none">DATABASE CONNECTION<br/>ERROR</h2>
-        <p className="text-muted-foreground max-w-md mx-auto mb-10 leading-relaxed text-sm">
-          Security rules or network conditions are preventing access to your profile. This usually resolves after a few seconds as rules propagate.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-           <Button onClick={() => window.location.reload()} size="lg" className="bg-[#8B5CF6] hover:bg-[#7C3AED] min-w-[200px] font-bold rounded-xl h-12">
-             <RefreshCw className="mr-2 h-4 w-4" /> Retry Connection
-           </Button>
-           <Button variant="ghost" onClick={handleSignOut} className="text-white hover:bg-white/5 font-medium px-8 h-12">
-             Sign Out
-           </Button>
-        </div>
+        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">Syncing Profile...</p>
       </div>
     );
   }
 
   if (!user) return null;
 
-  const hasNoClub = !isAdmin && !userClub && !profile?.clubId && !isOnboarding && !clubsLoading;
-
-  if (hasNoClub) {
+  // Onboarding for new owners
+  if (isClubOwner && !userClub && !clubsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
-        <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
+        <Card className="w-full max-w-md bg-card/50 border-white/5">
           <CardHeader className="text-center">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
-              <PlusCircle className="text-white h-7 w-7" />
-            </div>
-            <CardTitle className="text-2xl font-headline font-bold uppercase tracking-tight">Register Your Club</CardTitle>
-            <CardDescription>
-              To start managing tournaments and live scores, register your sports organization first.
-            </CardDescription>
+            <Building className="h-12 w-12 text-primary mx-auto mb-4" />
+            <CardTitle>Organization Registry</CardTitle>
+            <CardDescription>Enter your club name to unlock the manager dashboard.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Club Name</Label>
-              <Input
-                placeholder="e.g. Ace Padel Academy"
-                value={onboardingName}
-                onChange={(e) => setOnboardingName(e.target.value)}
-                className="bg-white/5 border-white/10"
-              />
-            </div>
-            <Button className="w-full bg-primary h-12 font-bold uppercase" onClick={handleCreateClub} disabled={!onboardingName || isOnboarding}>
-              {isOnboarding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
-              Create Club Dashboard
-            </Button>
-            <Button variant="ghost" className="w-full text-muted-foreground hover:bg-white/5" onClick={handleSignOut}>
-              Sign Out
-            </Button>
+            <Input id="onboarding-name" placeholder="Ace Academy" />
+            <Button className="w-full" onClick={() => {
+              const el = document.getElementById('onboarding-name') as HTMLInputElement;
+              if (el.value) handleCreateClub(el.value);
+            }}>Launch Dashboard</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const navItems = isAdmin ? [...commonItems, ...adminItems] : [...commonItems, ...clubItems];
+  const navItems = [
+    { name: 'Overview', icon: LayoutDashboard, href: '/dashboard', show: true },
+    { name: 'Scheduling', icon: Calendar, href: '/dashboard/schedule', show: isClubOwner || isAdmin },
+    { name: 'Participants', icon: Users, href: '/dashboard/participants', show: isClubOwner || isAdmin },
+    { name: 'Referee Hub', icon: Gavel, href: '/referee', show: isReferee || isClubOwner || isAdmin },
+    { name: 'My Profile', icon: User, href: '/dashboard/profile', show: isPlayer },
+    { name: 'Club Stats', icon: Activity, href: '/dashboard/club', show: isClubOwner },
+    { name: 'Settings', icon: Settings, href: '/dashboard/club', show: isClubOwner || isAdmin },
+    { name: 'Admin Panels', icon: ShieldCheck, href: '/dashboard/admin/users', show: isAdmin },
+  ].filter(item => item.show);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0F172A]">
       <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
         <div className="p-6 flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Zap className="text-white h-5 w-5" />
-            </div>
-            <span className="font-headline font-bold text-lg tracking-tight text-white uppercase">CourtControl</span>
-          </Link>
+          <Zap className="text-primary h-6 w-6" />
+          <span className="font-headline font-bold text-lg text-white uppercase">CourtControl</span>
         </div>
         <ScrollArea className="flex-1 px-3">
-          <div className="px-3 mb-4">
-            <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">
-                {isAdmin ? 'System Admin' : 'Active Club'}
-              </p>
-              <p className="text-sm font-bold truncate text-primary mt-1">
-                {isAdmin ? 'Platform Manager' : (userClub?.name || 'Club Owner')}
-              </p>
-            </div>
-          </div>
           <div className="space-y-1 py-2">
             {navItems.map((item) => (
               <Link
@@ -239,44 +139,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 className={cn(
                   'group flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary',
-                  pathname === item.href ? 'bg-primary/20 text-primary shadow-sm border border-primary/20' : 'text-muted-foreground'
+                  pathname === item.href ? 'bg-primary/20 text-primary border border-primary/20' : 'text-muted-foreground'
                 )}
               >
-                <item.icon
-                  className={cn(
-                    'mr-3 h-5 w-5 transition-colors',
-                    pathname === item.href ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
-                  )}
-                />
+                <item.icon className="mr-3 h-5 w-5" />
                 {item.name}
               </Link>
             ))}
           </div>
         </ScrollArea>
-        <div className="p-4 mt-auto border-t border-white/5 space-y-2">
-          <div className="flex items-center gap-3 px-3 py-3 bg-white/5 rounded-2xl border border-white/5">
-            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary overflow-hidden border border-primary/20">
-              {profile?.photoURL ? (
-                <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                profile?.displayName?.substring(0, 2).toUpperCase() || user?.displayName?.substring(0, 2).toUpperCase() || '?'
-              )}
+        <div className="p-4 border-t border-white/5">
+          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl mb-2">
+            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+              {profile?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-white">{profile?.displayName || user?.displayName || 'User'}</p>
-              <p className="text-[10px] text-muted-foreground truncate uppercase tracking-tighter">{isAdmin ? 'Administrator' : (profile?.role || 'Member')}</p>
+              <p className="text-sm font-bold truncate text-white">{profile?.displayName || 'User'}</p>
+              <p className="text-[10px] text-muted-foreground uppercase">{profile?.role || 'Player'}</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            onClick={handleSignOut}
-          >
+          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={handleSignOut}>
             <LogOut className="mr-3 h-5 w-5" /> Sign Out
           </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto bg-background/50">
         <div className="container max-w-7xl mx-auto p-6 md:p-8">{children}</div>
       </main>
     </div>

@@ -1,8 +1,9 @@
+
 {
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable. Writable by authenticated club managers.",
+      "description": "Global tournament registry. STAGES: Draft, Registration, Live, Completed.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -11,10 +12,11 @@
         "endDate": { "type": "string", "format": "date" },
         "locations": { "type": "array", "items": { "type": "string" } },
         "sport": { "type": "string" },
-        "status": { "type": "string", "enum": ["draft", "active", "finished"] },
+        "status": { "type": "string", "enum": ["draft", "registration", "active", "completed"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "description": { "type": "string" },
         "numCourts": { "type": "number" },
+        "referees": { "type": "array", "items": { "type": "string" }, "description": "User UIDs or emails" },
         "categories": {
           "type": "array",
           "items": {
@@ -34,29 +36,31 @@
     },
     "Match": {
       "title": "Match",
-      "description": "Match records. Publicly readable and listable. Writable by authenticated club managers.",
+      "description": "Operational match records linked to court/time.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
         "tournamentId": { "type": "string" },
         "court": { "type": "number" },
-        "category": { "type": "string" },
+        "location": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "refereeId": { "type": "string" },
         "teamA": {
           "type": "object",
           "properties": {
             "name": { "type": "string" },
+            "participantId": { "type": "string" },
             "score": { "type": "number" },
-            "setsWon": { "type": "number" },
-            "players": { "type": "array", "items": { "type": "string" } }
+            "setsWon": { "type": "number" }
           }
         },
         "teamB": {
           "type": "object",
           "properties": {
             "name": { "type": "string" },
+            "participantId": { "type": "string" },
             "score": { "type": "number" },
-            "setsWon": { "type": "number" },
-            "players": { "type": "array", "items": { "type": "string" } }
+            "setsWon": { "type": "number" }
           }
         },
         "status": { "type": "string", "enum": ["scheduled", "live", "completed"] },
@@ -65,37 +69,24 @@
       },
       "required": ["clubId", "tournamentId", "status"]
     },
-    "Club": {
-      "title": "Club",
-      "description": "Club profiles. Publicly readable and listable. Writable by owner.",
-      "type": "object",
-      "properties": {
-        "ownerId": { "type": "string" },
-        "name": { "type": "string" },
-        "location": { "type": "string" },
-        "contactEmail": { "type": "string" },
-        "numCourts": { "type": "number" },
-        "primarySport": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["ownerId", "name"]
-    },
     "User": {
       "title": "User",
-      "description": "User profile. Admin (admin@deneme.com) has global list/get access.",
+      "description": "User profile with roles.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
         "displayName": { "type": "string" },
-        "photoURL": { "type": "string" },
-        "role": { "type": "string" },
+        "role": { "type": "string", "enum": ["player", "referee", "club_owner", "admin"] },
         "clubId": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "skillLevel": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament entries. Publicly readable and listable.",
+      "description": "Tournament roster entries.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -103,51 +94,23 @@
         "userId": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
-        "telegramHandle": { "type": "string" },
         "skillLevel": { "type": "string" },
         "categoryId": { "type": "string" },
-        "categoryName": { "type": "string" },
+        "isCheckedIn": { "type": "boolean" },
+        "checkInLocation": { "type": "string" },
         "registeredAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["clubId", "tournamentId", "name", "email"]
-    },
-    "CheckIn": {
-      "title": "Check-In",
-      "description": "Arrival confirmation. Publicly readable and listable.",
-      "type": "object",
-      "properties": {
-        "participantId": { "type": "string" },
-        "tournamentId": { "type": "string" },
-        "location": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "date": { "type": "string", "format": "date" }
-      },
-      "required": ["participantId", "tournamentId", "timestamp"]
-    },
-    "Sponsor": {
-      "title": "Sponsor",
-      "description": "Partners. Publicly readable and listable.",
-      "type": "object",
-      "properties": {
-        "clubId": { "type": "string" },
-        "name": { "type": "string" },
-        "websiteUrl": { "type": "string" },
-        "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] },
-        "logoUrl": { "type": "string" }
-      },
-      "required": ["clubId", "name", "tier"]
+      }
     }
   },
   "auth": {
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read/List. Authenticated Write." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Global Read/List. Authenticated Write." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Global Read/List. Authenticated Write." },
-    "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global list." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Global Read/List. Public Create." },
-    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global Read/List. Public Create." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read/List. Authenticated Write." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read. Auth Write." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Global Read. Auth Write." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Global Read. Auth Write." },
+    "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Global Read. Auth Write." },
+    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global Read. Public Create." }
   }
 }
