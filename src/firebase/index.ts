@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -9,8 +10,11 @@ import { firebaseConfig } from './config';
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
  * TRIGGER: Security Rules Deployment for Public Listing.
- * Explicitly granting 'list' and 'get' to all visitors for Clubs and Tournaments.
+ * Explicitly granting 'list' and 'get' to all visitors for Clubs, Tournaments, and Matches.
+ * This is critical for the Dashboard to load organizations and live feeds.
  * Granting 'write' to Club Owners for their specific organization and events.
+ * 
+ * Update timestamp: 2024-06-17T11:25:00Z (Triggering rule refresh)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
