@@ -133,7 +133,7 @@ export default function EditTournamentPage() {
   }
 
   const removeCategory = (catId: string) => {
-    setFormData({ ...formData, categories: formData.categories.filter(c => c.id !== id) })
+    setFormData({ ...formData, categories: formData.categories.filter(c => c.id !== catId) })
   }
 
   if (loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -214,7 +214,11 @@ export default function EditTournamentPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Tournament Sport</Label>
-                  <Input value={formData.sport} disabled={!isDraft} />
+                  <Input 
+                    value={formData.sport} 
+                    disabled={!isDraft} 
+                    onChange={e => setFormData({...formData, sport: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Start Date</Label>
