@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, Send, Award, ArrowLeft } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
-import { useFirestore, useDoc } from '@/firebase';
+import { Trophy, CheckCircle2, Loader2, User, Mail, Send, Award, ArrowLeft, Heart } from 'lucide-react';
+import { collection, addDoc, serverTimestamp, doc, query, where } from 'firebase/firestore';
+import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -23,8 +23,25 @@ export default function TournamentRegistration() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   
-  const tournamentRef = db ? doc(db, "tournaments", id as string) : null;
+  const tournamentRef = useMemoFirebase(() => {
+    if (!db || !id) return null;
+    return doc(db, "tournaments", id as string);
+  }, [db, id]);
+
   const { data: tournament, loading: tournamentLoading } = useDoc(tournamentRef);
+
+  // Fetch sponsors for branding
+  const sponsorsQuery = useMemoFirebase(() => {
+    if (!db || !tournament) return null;
+    return query(collection(db, "sponsors"), where("clubId", "==", tournament.clubId));
+  }, [db, tournament]);
+
+  const { data: allSponsors } = useCollection(sponsorsQuery);
+
+  // Filter sponsors that either support the club or this specific event
+  const tournamentSponsors = allSponsors?.filter(s => 
+    !s.tournamentId || s.tournamentId === id
+  );
 
   const [formData, setFormData] = useState({
     name: "",
@@ -86,13 +103,13 @@ export default function TournamentRegistration() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 text-white">
+      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white">
         <Card className="max-w-md w-full bg-card/50 border-white/5 text-center p-8 backdrop-blur-xl">
           <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           </div>
           <h2 className="text-4xl font-headline font-bold mb-2 tracking-tight uppercase">Confirmed!</h2>
-          <p className="text-muted-foreground mb-8 text-lg">
+          <p className="text-muted-foreground mb-8 text-lg leading-tight">
             Registration for <span className="text-white font-bold">{tournament.name}</span> is complete. 
             Keep an eye on your Telegram for court assignments.
           </p>
@@ -100,12 +117,23 @@ export default function TournamentRegistration() {
             Back to Tournaments
           </Button>
         </Card>
+
+        {tournamentSponsors && tournamentSponsors.length > 0 && (
+          <div className="mt-12 text-center space-y-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-50">Event Partners</p>
+            <div className="flex flex-wrap justify-center gap-8">
+              {tournamentSponsors.map(s => (
+                <img key={s.id} src={s.logoUrl} alt={s.name} className="h-10 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer" />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white">
+    <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white overflow-x-hidden">
       <div className="mb-10 text-center space-y-2">
         <Trophy className="h-14 w-14 text-primary mx-auto mb-4" />
         <h1 className="text-5xl font-headline font-bold uppercase tracking-tighter leading-none">Event Registration</h1>
@@ -209,9 +237,30 @@ export default function TournamentRegistration() {
           </form>
         </CardContent>
       </Card>
+
+      {tournamentSponsors && tournamentSponsors.length > 0 && (
+        <div className="mt-12 text-center space-y-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground flex items-center justify-center gap-3">
+             <Heart className="h-3 w-3 text-primary" /> Supported By
+          </p>
+          <div className="flex flex-wrap justify-center gap-12">
+            {tournamentSponsors.map(s => (
+              <img 
+                key={s.id} 
+                src={s.logoUrl} 
+                alt={s.name} 
+                className={cn(
+                  "opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer",
+                  s.tier === "gold" ? "h-12" : s.tier === "silver" ? "h-10" : "h-8"
+                )} 
+              />
+            ))}
+          </div>
+        </div>
+      )}
       
-      <p className="mt-8 text-muted-foreground text-sm max-w-sm text-center">
-        By registering, you are signing up for the tournament roster. You will still need to check in at the venue on match day.
+      <p className="mt-8 text-muted-foreground text-sm max-w-sm text-center opacity-40">
+        By registering, you agree to the tournament rules and local venue policies.
       </p>
     </div>
   );

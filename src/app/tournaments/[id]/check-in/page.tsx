@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft, AlertCircle } from "lucide-react"
+import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft, AlertCircle, Heart } from "lucide-react"
 import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, limit } from "firebase/firestore"
-import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import { useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import Link from 'next/link';
+import { cn } from "@/lib/utils"
 
 export default function PublicCheckInPage() {
   const { id } = useParams()
@@ -31,6 +32,19 @@ export default function PublicCheckInPage() {
   }, [db, id])
 
   const { data: tournament, loading: tournamentLoading, error: tournamentError } = useDoc(tournamentRef)
+
+  // Fetch sponsors for branding
+  const sponsorsQuery = useMemoFirebase(() => {
+    if (!db || !tournament) return null;
+    return query(collection(db, "sponsors"), where("clubId", "==", tournament.clubId));
+  }, [db, tournament]);
+
+  const { data: allSponsors } = useCollection(sponsorsQuery);
+
+  // Filter sponsors that either support the club or this specific event
+  const tournamentSponsors = allSponsors?.filter(s => 
+    !s.tournamentId || s.tournamentId === id
+  );
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,7 +124,7 @@ export default function PublicCheckInPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 text-white text-center">
+      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
         <Card className="max-w-md w-full bg-card/50 border-white/5 p-12 backdrop-blur-xl">
           <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-8">
             <CheckCircle2 className="h-12 w-12 text-primary" />
@@ -124,6 +138,17 @@ export default function PublicCheckInPage() {
             Done
           </Button>
         </Card>
+
+        {tournamentSponsors && tournamentSponsors.length > 0 && (
+          <div className="mt-12 text-center space-y-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-50">Event Partners</p>
+            <div className="flex flex-wrap justify-center gap-8">
+              {tournamentSponsors.map(s => (
+                <img key={s.id} src={s.logoUrl} alt={s.name} className="h-10 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer" />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -186,6 +211,27 @@ export default function PublicCheckInPage() {
           </form>
         </CardContent>
       </Card>
+
+      {tournamentSponsors && tournamentSponsors.length > 0 && (
+        <div className="mt-12 text-center space-y-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground flex items-center justify-center gap-3">
+             <Heart className="h-3 w-3 text-primary" /> Supported By
+          </p>
+          <div className="flex flex-wrap justify-center gap-10">
+            {tournamentSponsors.map(s => (
+              <img 
+                key={s.id} 
+                src={s.logoUrl} 
+                alt={s.name} 
+                className={cn(
+                  "opacity-30 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer",
+                  s.tier === "gold" ? "h-10" : s.tier === "silver" ? "h-8" : "h-6"
+                )} 
+              />
+            ))}
+          </div>
+        </div>
+      )}
       
       <p className="mt-8 text-muted-foreground text-xs text-center flex items-center gap-2">
         <ArrowLeft className="h-3 w-3" /> <Link href="/tournaments" className="hover:text-primary transition-colors underline">Browse Other Events</Link>

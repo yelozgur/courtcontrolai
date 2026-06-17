@@ -92,10 +92,11 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Brand partners for clubs.",
+      "description": "Brand partners for clubs or specific tournaments.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
+        "tournamentId": { "type": "string", "description": "Optional: link sponsor to a specific event" },
         "name": { "type": "string" },
         "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] },
         "websiteUrl": { "type": "string" },
