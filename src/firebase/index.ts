@@ -10,9 +10,9 @@ import { firebaseConfig } from './config';
  * Initializes Firebase services. 
  * This is called on the client side only.
  * 
- * TRIGGER: Security Rule Synchronization. 
- * Re-deploying rules with explicit PUBLIC READABLE AND LISTABLE instructions
- * for all collections to resolve dashboard query issues.
+ * TRIGGER: Security Rules Synchronization.
+ * Deploying refined rules to allow public "list" and "get" operations across 
+ * all tournament, club, and match collections, while enforcing owner-only writes.
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
