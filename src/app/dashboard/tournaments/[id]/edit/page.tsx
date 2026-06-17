@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users } from "lucide-react"
+import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor } from "lucide-react"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -133,7 +133,7 @@ export default function EditTournamentPage() {
   }
 
   const removeCategory = (catId: string) => {
-    setFormData({ ...formData, categories: formData.categories.filter(c => c.id !== catId) })
+    setFormData({ ...formData, categories: formData.categories.filter(c => c.id !== id) })
   }
 
   if (loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
