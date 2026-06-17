@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Trophy, MapPin, Loader2, Search } from "lucide-react"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { collection, query, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
@@ -17,12 +17,17 @@ export default function PublicTournaments() {
 
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null
-    return query(collection(db, "tournaments"), where("status", "==", "active"))
+    // Remove strict server-side filtering to avoid composite index issues
+    return query(collection(db, "tournaments"), limit(50))
   }, [db])
 
-  const { data: tournaments, loading } = useCollection(tournamentsQuery)
+  const { data: tournaments, loading, error } = useCollection(tournamentsQuery)
 
-  const filtered = tournaments?.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+  // Filter for active status and search term on the client side
+  const filtered = tournaments?.filter(t => 
+    (t.status === "active" || !t.status) && // Show active or un-set tournaments
+    t.name.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white">
@@ -53,6 +58,11 @@ export default function PublicTournaments() {
 
         {loading ? (
           <div className="flex justify-center p-20"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>
+        ) : error ? (
+          <div className="p-20 text-center text-destructive bg-destructive/5 rounded-3xl border border-destructive/20">
+            <p className="text-xl font-bold">Query Error</p>
+            <p className="text-sm opacity-80 mt-2">Could not load tournaments. Please check security rules.</p>
+          </div>
         ) : filtered && filtered.length > 0 ? (
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((t) => (
@@ -63,7 +73,7 @@ export default function PublicTournaments() {
                     alt={t.name}
                     className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
                   />
-                  <Badge className="absolute top-4 right-4 bg-primary">{t.sport.toUpperCase()}</Badge>
+                  <Badge className="absolute top-4 right-4 bg-primary">{t.sport?.toUpperCase() || 'SPORTS'}</Badge>
                 </div>
                 <CardHeader>
                   <CardTitle className="text-2xl font-headline font-bold">{t.name}</CardTitle>
@@ -75,7 +85,7 @@ export default function PublicTournaments() {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
-                    <span>Ace Padel Club</span>
+                    <span>{t.locations?.[0] || 'Main Venue'}</span>
                   </div>
                 </CardContent>
                 <CardFooter>

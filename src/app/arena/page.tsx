@@ -4,11 +4,11 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Trophy, Zap, Loader2, Search, ArrowRight } from "lucide-react"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { collection, query, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export default function ArenaTournamentSelector() {
   const db = useFirestore()
@@ -16,16 +16,16 @@ export default function ArenaTournamentSelector() {
 
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null
-    return query(
-      collection(db, "tournaments"), 
-      where("status", "==", "active"),
-      orderBy("createdAt", "desc")
-    )
+    // Remove strict server-side filtering to avoid composite index issues
+    return query(collection(db, "tournaments"), limit(50))
   }, [db])
 
   const { data: tournaments, loading } = useCollection(tournamentsQuery)
 
-  const filtered = tournaments?.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = tournaments?.filter(t => 
+    (t.status === "active" || !t.status) && // Show active or un-set
+    t.name.toLowerCase().includes(search.toLowerCase())
+  ).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)) // Sort client-side
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white p-8 font-body flex flex-col items-center">

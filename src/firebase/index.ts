@@ -9,9 +9,10 @@ import { firebaseConfig } from './config';
 /**
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
- * TRIGGER: Security Rules Deployment for Owner Edits.
- * Logic: Club owners verified via clubId -> ownerId check. Admin bypass for admin@deneme.com.
- * Deployment Nonce: 2024-06-18T18:45:00Z (Allowing Club Owner Tournament Edits)
+ * TRIGGER: Security Rules Deployment for Global Access.
+ * Logic: Club owners verified via ownerId check. Admin bypass for admin@deneme.com.
+ * Global List Access: Enabled for tournaments and public collections.
+ * Deployment Nonce: 2024-06-18T19:30:00Z (Fixing Global Tournament Listing)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
