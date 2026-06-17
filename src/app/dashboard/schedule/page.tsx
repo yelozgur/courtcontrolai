@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -66,8 +67,8 @@ export default function SchedulingPage() {
   
   // Client-side sorting
   const matches = rawMatches?.sort((a, b) => {
-    const timeA = a.startTime || ""
-    const timeB = b.startTime || ""
+    const timeA = String(a.startTime || "")
+    const timeB = String(b.startTime || "")
     return timeA.localeCompare(timeB)
   })
 
@@ -105,7 +106,7 @@ export default function SchedulingPage() {
   if (toursLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>
 
   const timeSlots = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00"]
-  const numCourts = activeTournament?.numCourts || 4
+  const numCourts = Math.max(1, activeTournament?.numCourts || 4)
 
   return (
     <div className="space-y-6">
@@ -184,7 +185,7 @@ export default function SchedulingPage() {
               <TabsTrigger value="grid"><LayoutGrid className="w-4 h-4 mr-2" /> Planner Grid</TabsTrigger>
               <TabsTrigger value="list"><List className="w-4 h-4 mr-2" /> Timeline View</TabsTrigger>
             </TabsList>
-            <div className="text-sm font-bold text-accent">
+            <div className="text-sm font-bold text-accent uppercase tracking-widest">
               {numCourts} COURTS ALLOCATED
             </div>
           </div>
@@ -201,40 +202,49 @@ export default function SchedulingPage() {
                     className="grid border-b border-border bg-muted/20"
                     style={{ gridTemplateColumns: `100px repeat(${numCourts}, 1fr)` }}
                    >
-                      <div className="p-4 border-r border-border font-bold text-xs uppercase text-muted-foreground">Time Slot</div>
+                      <div className="p-4 border-r border-border font-bold text-[10px] uppercase text-muted-foreground flex items-center justify-center">Time Slot</div>
                       {Array.from({ length: numCourts }).map((_, i) => (
-                        <div key={i} className="p-4 border-r border-border text-center font-bold text-xs uppercase">Court {i+1}</div>
+                        <div key={i} className="p-4 border-r border-border text-center font-bold text-[10px] uppercase flex items-center justify-center">Court {i+1}</div>
                       ))}
                    </div>
                    {timeSlots.map((time, idx) => (
                      <div 
                         key={idx} 
-                        className="grid border-b border-border h-24"
+                        className="grid border-b border-border min-h-[100px]"
                         style={{ gridTemplateColumns: `100px repeat(${numCourts}, 1fr)` }}
                       >
                        <div className="p-4 border-r border-border bg-muted/10 font-mono text-xs flex items-center justify-center font-bold">{time}</div>
                        {Array.from({ length: numCourts }).map((_, courtIdx) => {
-                         const match = matches?.find(m => m.court === courtIdx + 1 && m.startTime && m.startTime.includes(time));
+                         const match = matches?.find(m => 
+                           Number(m.court) === courtIdx + 1 && 
+                           m.startTime && 
+                           (typeof m.startTime === 'string' && m.startTime.includes(time))
+                         );
                          return (
-                           <div key={courtIdx} className="p-1 border-r border-border relative group hover:bg-white/5 transition-all">
+                           <div key={courtIdx} className="p-1 border-r border-border relative group hover:bg-white/5 transition-all min-w-[120px]">
                              {match ? (
                                <div className="h-full bg-primary/20 border border-primary/40 rounded-lg p-2 text-[10px] flex flex-col justify-between animate-in fade-in zoom-in-95 overflow-hidden">
                                  <div className="flex justify-between items-start mb-1">
-                                    <span className="font-bold truncate text-primary">{match.category}</span>
-                                    <Badge variant="outline" className="text-[6px] h-3 px-1">{match.status}</Badge>
+                                    <span className="font-bold truncate text-primary uppercase text-[8px]">{match.category}</span>
+                                    <Badge variant="outline" className="text-[6px] h-3 px-1 leading-none">{match.status}</Badge>
                                  </div>
-                                 <div className="flex flex-col gap-0.5 font-medium leading-tight">
+                                 <div className="flex flex-col gap-0.5 font-bold leading-tight">
                                    <span className="truncate text-white">{match.teamA.name}</span>
-                                   <span className="text-[8px] text-muted-foreground">vs</span>
+                                   <span className="text-[8px] text-muted-foreground text-center">vs</span>
                                    <span className="truncate text-white">{match.teamB.name}</span>
                                  </div>
                                </div>
                              ) : (
                                <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
-                                   setNewMatch({...newMatch, court: courtIdx + 1, time});
-                                   setIsAddingMatch(true);
-                                 }}>
+                                 <Button 
+                                   variant="ghost" 
+                                   size="icon" 
+                                   className="h-8 w-8 rounded-full hover:bg-primary/20 hover:text-primary" 
+                                   onClick={() => {
+                                     setNewMatch({...newMatch, court: courtIdx + 1, time});
+                                     setIsAddingMatch(true);
+                                   }}
+                                 >
                                    <Plus className="w-4 h-4" />
                                  </Button>
                                </div>
@@ -255,10 +265,10 @@ export default function SchedulingPage() {
                 <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
               ) : matches && matches.length > 0 ? (
                 matches.map(match => (
-                  <Card key={match.id} className="bg-card/50 border-border">
+                  <Card key={match.id} className="bg-card/50 border-border hover:border-primary/30 transition-all">
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-6">
-                        <div className="flex flex-col items-center justify-center bg-secondary/30 p-2 rounded-xl border w-20">
+                        <div className="flex flex-col items-center justify-center bg-secondary/30 p-2 rounded-xl border border-white/5 w-20">
                           <Clock className="w-4 h-4 mb-1 text-primary" />
                           <span className="text-xs font-bold">{match.startTime ? new Date(match.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}</span>
                         </div>
@@ -266,12 +276,13 @@ export default function SchedulingPage() {
                           <h4 className="font-bold flex items-center gap-2">
                             {match.teamA.name} <span className="text-muted-foreground font-normal">vs</span> {match.teamB.name}
                           </h4>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <MapPin className="w-3 h-3" /> Court {match.court} • <Trophy className="w-3 h-3" /> {match.category}
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-2 mt-1 uppercase font-bold tracking-widest">
+                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Court {match.court}</span>
+                            <span className="flex items-center gap-1"><Trophy className="w-3 h-3" /> {match.category}</span>
                           </p>
                         </div>
                       </div>
-                      <Badge variant={match.status === 'live' ? 'default' : 'outline'} className="uppercase">
+                      <Badge variant={match.status === 'live' ? 'default' : 'outline'} className="uppercase text-[8px] font-bold">
                         {match.status}
                       </Badge>
                     </CardContent>
