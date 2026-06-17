@@ -3,12 +3,14 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable (true) by all users. Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}). Admins (email == 'admin@deneme.com') have full access.",
+      "description": "Global tournament registry. PERMISSIONS: Publicly readable. Writable by club owner. Supports multiple days and locations.",
       "type": "object",
       "properties": {
-        "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
+        "clubId": { "type": "string" },
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "locations": { "type": "array", "items": { "type": "string" } },
         "sport": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "active", "finished"] },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -33,7 +35,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "Match records. PERMISSIONS: Publicly readable and listable (true) globally for Arena and Live views. Allow 'create', 'update', 'delete' only if the user is the owner of the club managing the tournament. Admins (email == 'admin@deneme.com') have full access.",
+      "description": "Match records. Publicly readable. Writable by club owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -66,10 +68,10 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Club profiles. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if request.auth.uid == ownerId. Admins (email == 'admin@deneme.com') have full access.",
+      "description": "Club profiles. Publicly readable. Writable by ownerId.",
       "type": "object",
       "properties": {
-        "ownerId": { "type": "string", "description": "The UID of the user who owns this club" },
+        "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "location": { "type": "string" },
         "contactEmail": { "type": "string" },
@@ -81,7 +83,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. PERMISSIONS: Allow 'get', 'create', 'update' if request.auth.uid == userId. CRITICAL: The user admin@deneme.com IS THE SYSTEM ADMINISTRATOR and MUST HAVE GLOBAL 'get' AND 'list' ACCESS TO THE ENTIRE USERS COLLECTION FOR MANAGEMENT.",
+      "description": "User profile. Admin (admin@deneme.com) has global read access.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -94,7 +96,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament entries. PERMISSIONS: Publicly readable and listable (true) globally. Allow 'create', 'update', 'delete' if user is the participant (userId == auth.uid) or the club owner. Admins (email == 'admin@deneme.com') have full access.",
+      "description": "Tournament entries. Publicly readable. Writable by participant or owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -110,9 +112,22 @@
       },
       "required": ["clubId", "tournamentId", "name", "email"]
     },
+    "CheckIn": {
+      "title": "Check-In",
+      "description": "Arrival confirmation at venue. PERMISSIONS: Publicly readable and listable. Writable by any authenticated user for their own record or by club owner.",
+      "type": "object",
+      "properties": {
+        "participantId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "location": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["participantId", "tournamentId", "timestamp"]
+    },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Partners. PERMISSIONS: Publicly readable and listable (true) globally. Writable only by the club owner or admins.",
+      "description": "Partners. Publicly readable. Writable by club owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -128,11 +143,12 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. GLOBAL READ AND LIST ACCESS IS REQUIRED. Writable by club owner." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Match scores. GLOBAL READ AND LIST ACCESS REQUIRED FOR ARENA. Writable by club owner." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Organizations. PUBLICLY LISTABLE AND READABLE GLOBALLY. Writable by ownerId." },
-    "/users/{userId}": { "schema": "User", "description": "Private profile. Document owner has full access. SYSTEM ADMIN admin@deneme.com has GLOBAL GET and LIST permissions to manage user registry." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Registrations. GLOBAL READ AND LIST ACCESS REQUIRED. Writable by participant/owner." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info. GLOBAL READ AND LIST ACCESS REQUIRED. Writable by club owner." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Match scores." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Organizations." },
+    "/users/{userId}": { "schema": "User", "description": "Private profile." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Registrations." },
+    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Venue arrivals." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info." }
   }
 }
