@@ -17,7 +17,8 @@ import {
   Zap,
   Loader2,
   Building,
-  Settings2
+  Settings2,
+  AlertCircle
 } from "lucide-react"
 import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
@@ -26,38 +27,41 @@ export default function DashboardOverview() {
   const db = useFirestore()
   const { user, loading: authLoading } = useUser()
 
-  // Get user profile for role check
+  // Get user profile for role and direct clubId reference
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
-  const { data: profile } = useDoc(userProfileRef);
+  const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
   // Robust Admin Detection
-  const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com';
+  const isAdmin = user?.email?.toLowerCase() === 'admin@deneme.com' || profile?.role === 'admin';
 
-  // Find the user's club ID (for non-admins)
+  // Find the user's club (for non-admins)
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user || isAdmin) return null
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
   }, [db, user, isAdmin])
 
   const { data: userClubs, loading: loadingClub } = useCollection(clubsQuery)
-  const clubId = userClubs?.[0]?.id
+  
+  // Resolve clubId from profile first, then from the query
+  const clubId = isAdmin ? null : (profile?.clubId || userClubs?.[0]?.id)
+  const activeClub = userClubs?.[0]
 
   // Queries for Dashboard Data
   const tournamentQuery = useMemoFirebase(() => {
     if (!db) return null
-    if (isAdmin) return query(collection(db, "tournaments"), limit(10))
+    if (isAdmin) return query(collection(db, "tournaments"), limit(20))
     if (!clubId) return null
-    return query(collection(db, "tournaments"), where("clubId", "==", clubId), limit(10))
+    return query(collection(db, "tournaments"), where("clubId", "==", clubId), limit(20))
   }, [db, clubId, isAdmin])
 
   const matchQuery = useMemoFirebase(() => {
     if (!db) return null
-    if (isAdmin) return query(collection(db, "matches"), where("status", "==", "live"), limit(5))
+    if (isAdmin) return query(collection(db, "matches"), where("status", "==", "live"), limit(10))
     if (!clubId) return null
-    return query(collection(db, "matches"), where("clubId", "==", clubId), where("status", "==", "live"), limit(5))
+    return query(collection(db, "matches"), where("clubId", "==", clubId), where("status", "==", "live"), limit(10))
   }, [db, clubId, isAdmin])
 
   const playersQuery = useMemoFirebase(() => {
@@ -77,10 +81,13 @@ export default function DashboardOverview() {
   const { data: participants } = useCollection(playersQuery)
   const { data: allClubs } = useCollection(allClubsQuery)
 
-  if (authLoading || (loadingClub && !isAdmin)) {
+  const isDataSyncing = authLoading || profileLoading || (loadingClub && !isAdmin)
+
+  if (isDataSyncing) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">Synchronizing Dashboard...</p>
       </div>
     )
   }
@@ -90,7 +97,7 @@ export default function DashboardOverview() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-headline font-bold text-white uppercase tracking-tighter">
-            {isAdmin ? "Platform Overview" : (userClubs?.[0]?.name || "Club Dashboard")}
+            {isAdmin ? "Platform Overview" : (activeClub?.name || "Club Dashboard")}
           </h1>
           <p className="text-muted-foreground mt-1 font-medium">
             {isAdmin ? "Global network performance and metrics." : "Real-time pulse of your club and tournaments."}
@@ -104,7 +111,7 @@ export default function DashboardOverview() {
               </Button>
               <Button className="bg-primary hover:bg-primary/90" asChild>
                 <Link href="/dashboard/tournaments/new">
-                  <Play className="mr-2 h-4 w-4" /> Start Match Day
+                  <Play className="mr-2 h-4 w-4" /> Launch Tournament
                 </Link>
               </Button>
             </>
@@ -155,7 +162,7 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
-              {isAdmin ? (allClubs?.length || 0) : (userClubs?.[0]?.numCourts || 0)} {isAdmin ? "Active" : "Courts"}
+              {isAdmin ? (allClubs?.length || 0) : (activeClub?.numCourts || 0)} {isAdmin ? "Active" : "Courts"}
             </div>
             <p className="text-xs text-muted-foreground flex items-center mt-2">
               <Clock className="mr-1 h-3 w-3" /> Fully operational
@@ -183,7 +190,7 @@ export default function DashboardOverview() {
           </h2>
           <div className="grid gap-4">
              {loadingTours ? (
-               <Loader2 className="animate-spin" />
+               <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
              ) : tournaments && tournaments.length > 0 ? (
                tournaments.map((t) => (
                  <Card key={t.id} className="bg-card/50 border-white/5 hover:border-primary/20 transition-all">
@@ -211,8 +218,17 @@ export default function DashboardOverview() {
                  </Card>
                ))
              ) : (
-               <Card className="bg-card/50 border-dashed border-2 p-12 text-center text-muted-foreground">
-                 No tournaments found. Create your first one to get started.
+               <Card className="bg-card/50 border-dashed border-2 p-12 text-center text-muted-foreground flex flex-col items-center gap-4">
+                 <AlertCircle className="h-10 w-10 opacity-20" />
+                 <div>
+                   <h3 className="text-lg font-bold text-white">No Tournaments Found</h3>
+                   <p className="text-sm">Create your first competition to start tracking scores.</p>
+                 </div>
+                 {!isAdmin && (
+                   <Button size="sm" asChild>
+                     <Link href="/dashboard/tournaments/new">Start Wizard</Link>
+                   </Button>
+                 )}
                </Card>
              )}
           </div>
@@ -224,7 +240,7 @@ export default function DashboardOverview() {
           </h2>
           <div className="space-y-4">
               {loadingMatches ? (
-                <Loader2 className="animate-spin" />
+                <div className="flex justify-center p-8"><Loader2 className="animate-spin text-accent" /></div>
               ) : liveMatches && liveMatches.length > 0 ? (
                 liveMatches.map((match) => (
                   <Card key={match.id} className="bg-white/5 border-white/5">
