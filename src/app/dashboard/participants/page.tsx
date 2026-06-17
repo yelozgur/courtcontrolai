@@ -37,6 +37,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 
 export default function ParticipantManagement() {
   const db = useFirestore()
@@ -44,6 +46,7 @@ export default function ParticipantManagement() {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [isAdding, setIsAdding] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newPlayer, setNewPlayer] = useState({
     name: "",
     email: "",
@@ -67,24 +70,34 @@ export default function ParticipantManagement() {
 
   const { data: participants, loading } = useCollection(participantsQuery)
 
-  const handleAddPlayer = async () => {
+  const handleAddPlayer = () => {
     if (!db || !clubId || !newPlayer.name || !newPlayer.email) return
     setIsAdding(true)
-    try {
-      await addDoc(collection(db, "participants"), {
-        ...newPlayer,
-        clubId,
-        verified: true,
-        createdAt: new Date().toISOString()
-      })
-      toast({ title: "Player Added", description: `${newPlayer.name} has been added to the roster.` })
-      setNewPlayer({ name: "", email: "", skillLevel: "intermediate", telegramHandle: "" })
-      setIsAdding(false)
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to add player." })
-    } finally {
-      setIsAdding(false)
+    
+    const playerData = {
+      ...newPlayer,
+      clubId,
+      verified: true,
+      createdAt: new Date().toISOString()
     }
+
+    const participantsRef = collection(db, "participants")
+    addDoc(participantsRef, playerData)
+      .then(() => {
+        toast({ title: "Player Added", description: `${newPlayer.name} has been added to the roster.` })
+        setNewPlayer({ name: "", email: "", skillLevel: "intermediate", telegramHandle: "" })
+        setIsAdding(false)
+        setIsDialogOpen(false)
+      })
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: 'participants',
+          operation: 'create',
+          requestResourceData: playerData
+        })
+        errorEmitter.emit('permission-error', error)
+        setIsAdding(false)
+      })
   }
 
   const filteredParticipants = participants?.filter(p => 
@@ -101,7 +114,7 @@ export default function ParticipantManagement() {
           <h1 className="text-3xl font-headline font-bold">Club Roster</h1>
           <p className="text-muted-foreground">Manage players registered for your club's tournaments.</p>
         </div>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-primary">
               <UserPlus className="mr-2 h-4 w-4" /> Add Player

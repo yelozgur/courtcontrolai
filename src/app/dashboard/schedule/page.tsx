@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Play, Users, LayoutGrid, List, Plus } from "lucide-react"
-import { collection, query, where, orderBy, limit, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, query, where, limit, addDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,6 +20,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 
 export default function SchedulingPage() {
   const db = useFirestore()
@@ -54,37 +56,52 @@ export default function SchedulingPage() {
 
   const matchesQuery = useMemoFirebase(() => {
     if (!db || !selectedTournamentId) return null
+    // Removed orderBy to avoid missing index errors which report as "Permission Denied"
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", selectedTournamentId),
-      orderBy("startTime", "desc"),
-      limit(50)
+      limit(100)
     )
   }, [db, selectedTournamentId])
 
-  const { data: matches, loading: matchesLoading } = useCollection(matchesQuery)
+  const { data: rawMatches, loading: matchesLoading } = useCollection(matchesQuery)
+  
+  // Client-side sorting
+  const matches = rawMatches?.sort((a, b) => {
+    const timeA = a.startTime || ""
+    const timeB = b.startTime || ""
+    return timeB.localeCompare(timeA)
+  })
 
-  const handleCreateMatch = async () => {
+  const handleCreateMatch = () => {
     if (!db || !clubId || !selectedTournamentId) return
     
-    try {
-      const matchData = {
-        clubId,
-        tournamentId: selectedTournamentId,
-        status: "scheduled",
-        court: Number(newMatch.court),
-        startTime: `${new Date().toISOString().split('T')[0]}T${newMatch.time}:00`,
-        teamA: { name: newMatch.teamA, score: 0, setsWon: 0 },
-        teamB: { name: newMatch.teamB, score: 0, setsWon: 0 },
-        category: newMatch.category || activeTournament?.categories?.[0]?.name || "Open"
-      }
-      await addDoc(collection(db, "matches"), matchData)
-      toast({ title: "Match Scheduled", description: "The match has been added to the planner." })
-      setIsAddingMatch(false)
-      setNewMatch({ teamA: "", teamB: "", court: 1, time: "09:00", category: "" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to schedule match." })
+    const matchData = {
+      clubId,
+      tournamentId: selectedTournamentId,
+      status: "scheduled",
+      court: Number(newMatch.court),
+      startTime: `${new Date().toISOString().split('T')[0]}T${newMatch.time}:00`,
+      teamA: { name: newMatch.teamA, score: 0, setsWon: 0 },
+      teamB: { name: newMatch.teamB, score: 0, setsWon: 0 },
+      category: newMatch.category || activeTournament?.categories?.[0]?.name || "Open"
     }
+
+    const matchesRef = collection(db, "matches")
+    addDoc(matchesRef, matchData)
+      .then(() => {
+        toast({ title: "Match Scheduled", description: "The match has been added to the planner." })
+        setIsAddingMatch(false)
+        setNewMatch({ teamA: "", teamB: "", court: 1, time: "09:00", category: "" })
+      })
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: 'matches',
+          operation: 'create',
+          requestResourceData: matchData
+        })
+        errorEmitter.emit('permission-error', error)
+      })
   }
 
   if (toursLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>
@@ -130,7 +147,7 @@ export default function SchedulingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Court Number</Label>
-                <Input type="number" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value)})} />
+                <Input type="number" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
               </div>
               <div className="space-y-2">
                 <Label>Time Slot</Label>
@@ -145,6 +162,9 @@ export default function SchedulingPage() {
                   {activeTournament?.categories?.map((cat: any) => (
                     <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                   ))}
+                  {(!activeTournament?.categories || activeTournament?.categories.length === 0) && (
+                    <SelectItem value="Open">Open</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -214,29 +234,37 @@ export default function SchedulingPage() {
 
           <TabsContent value="list">
             <div className="space-y-4">
-              {matches?.map(match => (
-                <Card key={match.id} className="bg-card/50 border-border">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-center justify-center bg-secondary/30 p-2 rounded-xl border w-20">
-                        <Clock className="w-4 h-4 mb-1 text-primary" />
-                        <span className="text-xs font-bold">{match.startTime ? new Date(match.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}</span>
+              {matchesLoading ? (
+                <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>
+              ) : matches && matches.length > 0 ? (
+                matches.map(match => (
+                  <Card key={match.id} className="bg-card/50 border-border">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="flex flex-col items-center justify-center bg-secondary/30 p-2 rounded-xl border w-20">
+                          <Clock className="w-4 h-4 mb-1 text-primary" />
+                          <span className="text-xs font-bold">{match.startTime ? new Date(match.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}</span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold flex items-center gap-2">
+                            {match.teamA.name} <span className="text-muted-foreground font-normal">vs</span> {match.teamB.name}
+                          </h4>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3" /> Court {match.court} • <Trophy className="w-3 h-3" /> {match.category}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold flex items-center gap-2">
-                          {match.teamA.name} <span className="text-muted-foreground font-normal">vs</span> {match.teamB.name}
-                        </h4>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <MapPin className="w-3 h-3" /> Court {match.court} • <Trophy className="w-3 h-3" /> {match.category}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={match.status === 'live' ? 'default' : 'outline'} className="uppercase">
-                      {match.status}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
+                      <Badge variant={match.status === 'live' ? 'default' : 'outline'} className="uppercase">
+                        {match.status}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-20 bg-secondary/10 rounded-xl border-dashed border-2">
+                   <p className="text-muted-foreground">No matches scheduled for this tournament yet.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
