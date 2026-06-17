@@ -13,7 +13,7 @@ import { firebaseConfig } from './config';
  * Logic: admin@deneme.com is granted system-wide admin privileges via token email check.
  * Rules: Users (Owner write/read, Admin read/list all), Public data (Global list/read for matches, tournaments, clubs).
  * 
- * Deployment Nonce: 2024-06-18T11:05:00Z (Enforcing Global List access for Tournaments and Arena)
+ * Deployment Nonce: 2024-06-18T14:45:00Z (Enforcing Global List access for all public collections)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
