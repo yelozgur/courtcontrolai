@@ -4,7 +4,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Play, Users, LayoutGrid, List, Plus } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Play, Users, LayoutGrid, List, Plus, Trophy } from "lucide-react"
 import { collection, query, where, limit, addDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
@@ -56,7 +56,6 @@ export default function SchedulingPage() {
 
   const matchesQuery = useMemoFirebase(() => {
     if (!db || !selectedTournamentId) return null
-    // Removed orderBy to avoid missing index errors which report as "Permission Denied"
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", selectedTournamentId),
