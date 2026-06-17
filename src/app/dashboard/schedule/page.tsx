@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -69,7 +68,7 @@ export default function SchedulingPage() {
   const matches = rawMatches?.sort((a, b) => {
     const timeA = a.startTime || ""
     const timeB = b.startTime || ""
-    return timeB.localeCompare(timeA)
+    return timeA.localeCompare(timeB)
   })
 
   const handleCreateMatch = () => {
@@ -104,6 +103,9 @@ export default function SchedulingPage() {
   }
 
   if (toursLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>
+
+  const timeSlots = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00"]
+  const numCourts = activeTournament?.numCourts || 4
 
   return (
     <div className="space-y-6">
@@ -146,7 +148,7 @@ export default function SchedulingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Court Number</Label>
-                <Input type="number" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
+                <Input type="number" min="1" max={numCourts} value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
               </div>
               <div className="space-y-2">
                 <Label>Time Slot</Label>
@@ -183,52 +185,68 @@ export default function SchedulingPage() {
               <TabsTrigger value="list"><List className="w-4 h-4 mr-2" /> Timeline View</TabsTrigger>
             </TabsList>
             <div className="text-sm font-bold text-accent">
-              {activeTournament?.numCourts || 0} COURTS ALLOCATED
+              {numCourts} COURTS ALLOCATED
             </div>
           </div>
 
           <TabsContent value="grid">
-             <Card className="bg-card/50 border-border overflow-x-auto">
-               <CardContent className="p-0 min-w-[800px]">
-                 <div className="grid grid-cols-6 border-b border-border bg-muted/20">
-                    <div className="p-4 border-r border-border font-bold">Time Slot</div>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="p-4 border-r border-border text-center font-bold">Court {i+1}</div>
-                    ))}
-                 </div>
-                 {["09:00", "10:30", "12:00", "13:30", "15:00"].map((time, idx) => (
-                   <div key={idx} className="grid grid-cols-6 border-b border-border h-24">
-                     <div className="p-4 border-r border-border bg-muted/10 font-mono text-xs flex items-center justify-center">{time}</div>
-                     {Array.from({ length: 5 }).map((_, courtIdx) => {
-                       const match = matches?.find(m => m.court === courtIdx + 1 && m.startTime?.includes(time));
-                       return (
-                         <div key={courtIdx} className="p-2 border-r border-border relative group hover:bg-white/5 transition-all">
-                           {match ? (
-                             <div className="h-full bg-primary/20 border border-primary/40 rounded-lg p-2 text-[10px] flex flex-col justify-between animate-in fade-in zoom-in-95">
-                               <span className="font-bold truncate">{match.category}</span>
-                               <div className="flex flex-col gap-0.5 mt-1 font-medium">
-                                 <span className="truncate">{match.teamA.name}</span>
-                                 <span className="text-muted-foreground">vs</span>
-                                 <span className="truncate">{match.teamB.name}</span>
-                               </div>
-                             </div>
-                           ) : (
-                             <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100">
-                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
-                                 setNewMatch({...newMatch, court: courtIdx + 1, time});
-                                 setIsAddingMatch(true);
-                               }}>
-                                 <Plus className="w-3 h-3" />
-                               </Button>
-                             </div>
-                           )}
-                         </div>
-                       )
-                     })}
+             {!selectedTournamentId ? (
+               <Card className="bg-card/50 border-border border-dashed p-20 text-center">
+                 <p className="text-muted-foreground italic">Select a tournament above to view the planner grid.</p>
+               </Card>
+             ) : (
+               <Card className="bg-card/50 border-border overflow-x-auto">
+                 <CardContent className="p-0">
+                   <div 
+                    className="grid border-b border-border bg-muted/20"
+                    style={{ gridTemplateColumns: `100px repeat(${numCourts}, 1fr)` }}
+                   >
+                      <div className="p-4 border-r border-border font-bold text-xs uppercase text-muted-foreground">Time Slot</div>
+                      {Array.from({ length: numCourts }).map((_, i) => (
+                        <div key={i} className="p-4 border-r border-border text-center font-bold text-xs uppercase">Court {i+1}</div>
+                      ))}
                    </div>
-                 ))}
-               </CardContent>
-             </Card>
+                   {timeSlots.map((time, idx) => (
+                     <div 
+                        key={idx} 
+                        className="grid border-b border-border h-24"
+                        style={{ gridTemplateColumns: `100px repeat(${numCourts}, 1fr)` }}
+                      >
+                       <div className="p-4 border-r border-border bg-muted/10 font-mono text-xs flex items-center justify-center font-bold">{time}</div>
+                       {Array.from({ length: numCourts }).map((_, courtIdx) => {
+                         const match = matches?.find(m => m.court === courtIdx + 1 && m.startTime && m.startTime.includes(time));
+                         return (
+                           <div key={courtIdx} className="p-1 border-r border-border relative group hover:bg-white/5 transition-all">
+                             {match ? (
+                               <div className="h-full bg-primary/20 border border-primary/40 rounded-lg p-2 text-[10px] flex flex-col justify-between animate-in fade-in zoom-in-95 overflow-hidden">
+                                 <div className="flex justify-between items-start mb-1">
+                                    <span className="font-bold truncate text-primary">{match.category}</span>
+                                    <Badge variant="outline" className="text-[6px] h-3 px-1">{match.status}</Badge>
+                                 </div>
+                                 <div className="flex flex-col gap-0.5 font-medium leading-tight">
+                                   <span className="truncate text-white">{match.teamA.name}</span>
+                                   <span className="text-[8px] text-muted-foreground">vs</span>
+                                   <span className="truncate text-white">{match.teamB.name}</span>
+                                 </div>
+                               </div>
+                             ) : (
+                               <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+                                   setNewMatch({...newMatch, court: courtIdx + 1, time});
+                                   setIsAddingMatch(true);
+                                 }}>
+                                   <Plus className="w-4 h-4" />
+                                 </Button>
+                               </div>
+                             )}
+                           </div>
+                         )
+                       })}
+                     </div>
+                   ))}
+                 </CardContent>
+               </Card>
+             )}
           </TabsContent>
 
           <TabsContent value="list">
@@ -261,7 +279,7 @@ export default function SchedulingPage() {
                 ))
               ) : (
                 <div className="text-center py-20 bg-secondary/10 rounded-xl border-dashed border-2">
-                   <p className="text-muted-foreground">No matches scheduled for this tournament yet.</p>
+                   <p className="text-muted-foreground italic">No matches scheduled for this tournament yet.</p>
                 </div>
               )}
             </div>
