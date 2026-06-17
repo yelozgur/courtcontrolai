@@ -13,7 +13,7 @@ import { firebaseConfig } from './config';
  * Logic: admin@deneme.com is granted system-wide admin privileges.
  * Rules: Users (Owner write/read, Admin read all), Public data (Global list/read).
  * 
- * Deployment Nonce: 2024-06-17T15:20:00Z (Ensuring global LIST access for admin@deneme.com on /users path)
+ * Deployment Nonce: 2024-06-17T15:35:00Z (Enabling global user registry access for system admin)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
