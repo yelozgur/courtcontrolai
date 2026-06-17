@@ -11,9 +11,9 @@ import { firebaseConfig } from './config';
  * 
  * TRIGGER: Security Rules Deployment matching user-provided logic.
  * Logic: admin@deneme.com is granted system-wide admin privileges.
- * Rules: Users (Owner write/read, Admin read all), Public data (Global list/read).
+ * Rules: Users (Owner write/read, Admin read/list all), Public data (Global list/read for matches, tournaments, clubs).
  * 
- * Deployment Nonce: 2024-06-17T15:35:00Z (Enabling global user registry access for system admin)
+ * Deployment Nonce: 2024-06-17T16:15:00Z (Synchronizing global public read/list access for all public collections)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;

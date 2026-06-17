@@ -3,7 +3,7 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}). Admins (role == 'admin') have full access.",
+      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}). Admins (email == 'admin@deneme.com') have full access.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
@@ -33,7 +33,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "Match records. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club managing the tournament. Admins (role == 'admin') have full access.",
+      "description": "Match records. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club managing the tournament. Admins (email == 'admin@deneme.com') have full access.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -66,7 +66,7 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Club profiles. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if request.auth.uid == ownerId. Admins (role == 'admin') have full access.",
+      "description": "Club profiles. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if request.auth.uid == ownerId. Admins (email == 'admin@deneme.com') have full access.",
       "type": "object",
       "properties": {
         "ownerId": { "type": "string", "description": "The UID of the user who owns this club" },
@@ -94,7 +94,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament entries. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' if user is the participant (userId == auth.uid) or the club owner. Admins (role == 'admin') have full access.",
+      "description": "Tournament entries. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' if user is the participant (userId == auth.uid) or the club owner. Admins (email == 'admin@deneme.com') have full access.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
