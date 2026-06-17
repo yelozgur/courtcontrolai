@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft } from "lucide-react"
+import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft, AlertCircle } from "lucide-react"
 import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, limit } from "firebase/firestore"
-import { useFirestore, useDoc } from "@/firebase"
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import Link from 'next/link';
 
@@ -25,8 +25,12 @@ export default function PublicCheckInPage() {
   const [email, setEmail] = useState("")
   const [selectedLocation, setSelectedLocation] = useState("")
   
-  const tournamentRef = db ? doc(db, "tournaments", id as string) : null
-  const { data: tournament, loading: tournamentLoading } = useDoc(tournamentRef)
+  const tournamentRef = useMemoFirebase(() => {
+    if (!db || !id) return null
+    return doc(db, "tournaments", id as string)
+  }, [db, id])
+
+  const { data: tournament, loading: tournamentLoading, error: tournamentError } = useDoc(tournamentRef)
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,42 +39,46 @@ export default function PublicCheckInPage() {
     setIsSubmitting(true)
 
     try {
-      // 1. Find participant by email
+      // Find participant
       const pQuery = query(
         collection(db, "participants"), 
         where("tournamentId", "==", id),
-        where("email", "==", email.toLowerCase()),
+        where("email", "==", email.toLowerCase().trim()),
         limit(1)
       )
+      
       const pSnap = await getDocs(pQuery)
       
       if (pSnap.empty) {
         toast({
           variant: "destructive",
-          title: "Player Not Found",
-          description: "You must be registered for this tournament before checking in."
+          title: "Registration Required",
+          description: "No player found with this email for this tournament."
         })
         setIsSubmitting(false)
         return
       }
 
-      const participant = pSnap.docs[0]
-      const participantId = participant.id
+      const participantId = pSnap.docs[0].id
 
-      // 2. Create Check-In record
+      // Create Check-In
       const checkInData = {
         participantId,
         tournamentId: id,
         timestamp: serverTimestamp(),
-        date: new Date().toISOString().split('T')[0],
         location: selectedLocation || tournament.locations?.[0] || "Main Venue"
       }
 
       await addDoc(collection(db, "checkins"), checkInData)
       setSubmitted(true)
-      toast({ title: "Welcome!", description: "You are checked in and match-ready." })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Could not complete check-in." })
+      toast({ title: "Check-In Success", description: "You are now verified and ready to play." })
+    } catch (e: any) {
+      console.error("Check-in error:", e)
+      toast({ 
+        variant: "destructive", 
+        title: "Check-In Failed", 
+        description: "An error occurred. Please verify your connection." 
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -80,19 +88,21 @@ export default function PublicCheckInPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="animate-spin text-primary h-12 w-12" />
-        <p className="text-muted-foreground font-headline font-bold uppercase tracking-widest animate-pulse">Syncing Venue Data...</p>
+        <p className="text-muted-foreground font-headline font-bold uppercase tracking-widest">Verifying Venue...</p>
       </div>
     )
   }
 
-  if (!tournament) {
+  if (tournamentError || !tournament) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] text-white p-6 text-center">
-        <Trophy className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
-        <h2 className="text-3xl font-headline font-bold uppercase">Invalid Event</h2>
-        <p className="text-muted-foreground mt-2">Check-in session expired or event not found.</p>
+        <AlertCircle className="h-16 w-16 text-destructive mb-4 opacity-50" />
+        <h2 className="text-3xl font-headline font-bold uppercase">Access Restricted</h2>
+        <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
+          Tournament details are unavailable. This may be due to security rules or the event being archived.
+        </p>
         <Button asChild className="mt-8" variant="outline">
-           <Link href="/tournaments">Find Events</Link>
+           <Link href="/tournaments">View All Events</Link>
         </Button>
       </div>
     )
@@ -105,14 +115,13 @@ export default function PublicCheckInPage() {
           <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-8">
             <CheckCircle2 className="h-12 w-12 text-primary" />
           </div>
-          <h2 className="text-4xl font-headline font-bold mb-4 uppercase tracking-tighter">You're In!</h2>
-          <p className="text-muted-foreground mb-8 text-lg">
+          <h2 className="text-4xl font-headline font-bold mb-4 uppercase tracking-tighter">Verified</h2>
+          <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
             Welcome to <span className="text-white font-bold">{tournament.name}</span>.<br />
-            Location: <span className="text-primary font-bold">{selectedLocation || tournament.locations?.[0] || "Main Venue"}</span><br /><br />
-            Please wait in the player area. We'll notify you when your court is ready.
+            You've successfully checked in at <span className="text-primary font-bold">{selectedLocation || "Main Venue"}</span>.
           </p>
           <Button onClick={() => window.location.reload()} variant="outline" className="w-full">
-            New Check-In
+            Done
           </Button>
         </Card>
       </div>
@@ -126,26 +135,21 @@ export default function PublicCheckInPage() {
           <MapPin className="h-8 w-8 text-white" />
         </div>
         <div>
-          <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter leading-none">Venue Check-In</h1>
+          <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter leading-none">Venue Arrival</h1>
           <p className="text-lg text-muted-foreground font-medium mt-2">{tournament.name}</p>
         </div>
       </div>
 
-      <Card className="max-w-md w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl overflow-hidden relative">
+      <Card className="max-w-md w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl overflow-hidden">
         <div className="h-2 bg-primary"></div>
-        <div className="absolute top-4 left-4">
-           <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-             <Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> Home</Link>
-           </Button>
-        </div>
-        <CardHeader className="text-center pt-16">
-          <CardTitle className="font-headline font-bold uppercase text-2xl">Confirm Arrival</CardTitle>
-          <CardDescription>Day-of verification for registered players.</CardDescription>
+        <CardHeader className="text-center pt-10">
+          <CardTitle className="font-headline font-bold uppercase text-2xl">Confirm Check-In</CardTitle>
+          <CardDescription>Enter your email to verify your tournament entry.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCheckIn} className="space-y-6">
             <div className="space-y-2">
-              <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Your Registered Email</Label>
+              <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Registered Email</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -159,12 +163,12 @@ export default function PublicCheckInPage() {
               </div>
             </div>
 
-            {tournament.locations && tournament.locations.length > 1 && (
+            {tournament.locations && tournament.locations.length > 0 && (
               <div className="space-y-2">
-                <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Arrival Location</Label>
+                <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Current Location</Label>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                   <SelectTrigger className="bg-white/5 border-white/10 h-12">
-                    <SelectValue placeholder="Select current location" />
+                    <SelectValue placeholder="Select Venue" />
                   </SelectTrigger>
                   <SelectContent>
                     {tournament.locations.map((loc: string, i: number) => (
@@ -177,14 +181,14 @@ export default function PublicCheckInPage() {
             
             <Button type="submit" className="w-full h-14 text-xl font-bold bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 uppercase tracking-widest" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <LogIn className="mr-2 h-6 w-6" />}
-              Check In Now
+              Verify Arrival
             </Button>
           </form>
         </CardContent>
       </Card>
       
-      <p className="mt-8 text-muted-foreground text-xs max-w-xs text-center">
-        Pre-event registration is required. If you haven't registered, please use the registration link provided by the organizer.
+      <p className="mt-8 text-muted-foreground text-xs text-center flex items-center gap-2">
+        <ArrowLeft className="h-3 w-3" /> <Link href="/tournaments" className="hover:text-primary transition-colors underline">Browse Other Events</Link>
       </p>
     </div>
   )
