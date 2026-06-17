@@ -1,9 +1,8 @@
-
 {
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable. Writable by club owner or admin.",
+      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable. Writable by authenticated club managers.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -35,7 +34,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "Match records. Publicly readable and listable. Writable by club owner or admin.",
+      "description": "Match records. Publicly readable and listable. Writable by authenticated club managers.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -68,7 +67,7 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Club profiles. Publicly readable and listable. Writable by ownerId or admin.",
+      "description": "Club profiles. Publicly readable and listable. Writable by owner.",
       "type": "object",
       "properties": {
         "ownerId": { "type": "string" },
@@ -96,7 +95,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament entries. Publicly readable and listable. Writable by participant, club owner, or admin.",
+      "description": "Tournament entries. Publicly readable and listable.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -114,7 +113,7 @@
     },
     "CheckIn": {
       "title": "Check-In",
-      "description": "Arrival confirmation at venue. Publicly readable and listable. Writable by any user for check-in creation.",
+      "description": "Arrival confirmation. Publicly readable and listable.",
       "type": "object",
       "properties": {
         "participantId": { "type": "string" },
@@ -127,7 +126,7 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Partners. Publicly readable and listable. Writable by club owner or admin.",
+      "description": "Partners. Publicly readable and listable.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -143,14 +142,12 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global List/Get: Public. Write: Owner/Admin." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Global List/Get: Public. Write: Owner/Admin." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Global List/Get: Public. Write: Owner/Admin." },
-    "/users/{userId}": { "schema": "User", "description": "List/Get: Admin only. Get/Write: Self." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Global List/Get: Public. Write: Public Create. Edit: Owner/Admin." },
-    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global List/Get: Public. Write: Public Create. Edit: Owner/Admin." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global List/Get: Public. Write: Owner/Admin." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read/List. Authenticated Write." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Global Read/List. Authenticated Write." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Global Read/List. Authenticated Write." },
+    "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global list." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Global Read/List. Public Create." },
+    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global Read/List. Public Create." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read/List. Authenticated Write." }
   }
 }
-
-    

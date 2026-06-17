@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -9,10 +8,10 @@ import { firebaseConfig } from './config';
 /**
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
- * TRIGGER: Security Rules Deployment for Global Access.
- * Logic: Club owners verified via ownerId check. Admin bypass for admin@deneme.com.
- * Global List Access: Enabled for tournaments and public collections.
- * Deployment Nonce: 2024-06-18T20:45:00Z (Standalone Global Permission Fix)
+ * TRIGGER: Standalone Simplified Security Rules Deployment.
+ * Logic: Global READ enabled for all collections. Write restricted to Auth users.
+ * Admin Override: admin@deneme.com bypasses user profile restrictions.
+ * Deployment Nonce: 2024-06-18T22:15:00Z (Simplified Security Sync)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
