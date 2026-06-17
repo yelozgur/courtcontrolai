@@ -3,7 +3,7 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}). Admins (email == 'admin@deneme.com') have full access.",
+      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable (true) by all users, including unauthenticated ones. Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}). Admins (email == 'admin@deneme.com') have full access.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
@@ -128,7 +128,7 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. GLOBAL READ AND LIST ACCESS IS REQUIRED. Writable by club owner." },
     "/matches/{matchId}": { "schema": "Match", "description": "Match scores. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Organizations. PUBLICLY LISTABLE AND READABLE. Writable by ownerId." },
     "/users/{userId}": { "schema": "User", "description": "Private profile. Document owner has full access. SYSTEM ADMIN admin@deneme.com has GLOBAL GET and LIST permissions to manage user registry." },
