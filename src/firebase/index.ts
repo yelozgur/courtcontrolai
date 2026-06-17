@@ -12,9 +12,9 @@ import { firebaseConfig } from './config';
  * TRIGGER: Security Rules Deployment for Public Listing.
  * Explicitly granting 'list' and 'get' to all visitors for Clubs, Tournaments, and Matches.
  * This is critical for the Dashboard to load organizations and live feeds.
- * Granting 'write' to Club Owners for their specific organization and events.
+ * Granting 'get', 'create', 'update' to User owners for their own /users/{userId} documents.
  * 
- * Update timestamp: 2024-06-17T11:25:00Z (Triggering rule refresh)
+ * Deployment Nonce: 2024-06-17T11:45:00Z (Triggering rule refresh to resolve UI permission error)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;

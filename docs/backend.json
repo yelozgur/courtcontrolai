@@ -3,7 +3,7 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. PUBLICLY READABLE AND LISTABLE FOR ALL VISITORS. Writable ONLY by the owner of the associated club (verified by clubId reference).",
+      "description": "Global tournament registry. PERMISSIONS: Allow 'get' and 'list' for ALL visitors (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}).",
       "type": "object",
       "properties": {
         "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
@@ -33,7 +33,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "Match records. PUBLICLY READABLE AND LISTABLE FOR ALL VISITORS. Writable ONLY by the club owner managing the tournament (verified by clubId).",
+      "description": "Match records. PERMISSIONS: Allow 'get' and 'list' for ALL visitors (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club managing the tournament.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -66,7 +66,7 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Club profiles. GLOBAL READ AND LIST ACCESS FOR ALL USERS. Writable ONLY by the owner (ownerId == auth.uid).",
+      "description": "Club profiles. PERMISSIONS: Allow 'get' and 'list' for EVERYONE (true). Allow 'create', 'update', 'delete' only if request.auth.uid == ownerId.",
       "type": "object",
       "properties": {
         "ownerId": { "type": "string", "description": "The UID of the user who owns this club" },
@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. READ/WRITE by the owner only. Platform admins have global READ access. Private collection.",
+      "description": "User profile. PERMISSIONS: Allow 'get', 'create', 'update' only if request.auth.uid == userId. Platform admins have 'get' and 'list' access to all users.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -94,7 +94,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament entries. PUBLICLY READABLE AND LISTABLE. Writable by the participant themselves or the club owner managing the event.",
+      "description": "Tournament entries. PERMISSIONS: Allow 'get' and 'list' for ALL. Allow 'create', 'update', 'delete' if user is the participant (userId == auth.uid) or the club owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -112,7 +112,7 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Partners. PUBLICLY READABLE AND LISTABLE. Writable only by the club owner.",
+      "description": "Partners. PERMISSIONS: Allow 'get' and 'list' for ALL. Writable only by the club owner.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -131,7 +131,7 @@
     "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. Allow 'get' and 'list' for all. Writable by club owner." },
     "/matches/{matchId}": { "schema": "Match", "description": "Match scores. Allow 'get' and 'list' for all. Writable by club owner." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Organizations. MUST ALLOW 'get' and 'list' for ALL visitors. Writable by ownerId." },
-    "/users/{userId}": { "schema": "User", "description": "Private profile. Owner read/write only." },
+    "/users/{userId}": { "schema": "User", "description": "Private profile. Owner read/write only. Path: /users/{userId}." },
     "/participants/{participantId}": { "schema": "Participant", "description": "Registrations. Allow 'get' and 'list' for all. Writable by participant/owner." },
     "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info. Allow 'get' and 'list' for all. Writable by club owner." }
   }
