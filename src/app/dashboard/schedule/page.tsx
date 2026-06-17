@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { format, parseISO, isValid } from "date-fns"
+import { format, isValid, parseISO } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
@@ -69,7 +69,7 @@ export default function SchedulingPage() {
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", selectedTournamentId),
-      limit(100)
+      limit(200)
     )
   }, [db, selectedTournamentId])
 
@@ -96,9 +96,12 @@ export default function SchedulingPage() {
       
       return dateStr === selectedDateStr
     }).sort((a, b) => {
-      const timeA = String(a.startTime || "")
-      const timeB = String(b.startTime || "")
-      return timeA.localeCompare(timeB)
+      const getTimeStr = (val: any) => {
+        if (typeof val === 'string') return val.split('T')[1] || ""
+        if (val?.toDate) return format(val.toDate(), "HH:mm")
+        return ""
+      }
+      return getTimeStr(a.startTime).localeCompare(getTimeStr(b.startTime))
     })
   }, [rawMatches, selectedDateStr])
 
@@ -292,8 +295,18 @@ export default function SchedulingPage() {
                          const currentCourt = courtIdx + 1;
                          const match = filteredMatches?.find(m => {
                            const mCourt = Number(m.court);
-                           const mStart = m.startTime || "";
-                           const mTime = typeof mStart === 'string' ? mStart.split('T')[1]?.substring(0, 5) : "";
+                           const mStart = m.startTime;
+                           if (!mStart) return false;
+                           
+                           let mTime = "";
+                           if (typeof mStart === 'string') {
+                             mTime = mStart.split('T')[1]?.substring(0, 5) || "";
+                           } else if (mStart.toDate) {
+                             mTime = format(mStart.toDate(), "HH:mm");
+                           } else if (mStart.seconds) {
+                             mTime = format(new Date(mStart.seconds * 1000), "HH:mm");
+                           }
+                           
                            return mCourt === currentCourt && mTime === time;
                          });
 
@@ -307,13 +320,13 @@ export default function SchedulingPage() {
                                  </div>
                                  <div className="flex flex-col gap-1.5 font-bold leading-tight flex-1 justify-center">
                                    <div className="flex items-center justify-between gap-1">
-                                     <span className="truncate text-white">{match.teamA.name}</span>
-                                     <span className="text-primary/60">{match.teamA.score}</span>
+                                     <span className="truncate text-white">{match.teamA?.name || "???"}</span>
+                                     <span className="text-primary/60">{match.teamA?.score || 0}</span>
                                    </div>
                                    <div className="h-px bg-primary/10 w-full" />
                                    <div className="flex items-center justify-between gap-1">
-                                     <span className="truncate text-white">{match.teamB.name}</span>
-                                     <span className="text-primary/60">{match.teamB.score}</span>
+                                     <span className="truncate text-white">{match.teamB?.name || "???"}</span>
+                                     <span className="text-primary/60">{match.teamB?.score || 0}</span>
                                    </div>
                                  </div>
                                </div>
@@ -360,7 +373,7 @@ export default function SchedulingPage() {
                         </div>
                         <div>
                           <h4 className="font-bold text-lg flex items-center gap-3">
-                            {match.teamA.name} <span className="text-muted-foreground font-normal text-sm italic">vs</span> {match.teamB.name}
+                            {match.teamA?.name || "TBD"} <span className="text-muted-foreground font-normal text-sm italic">vs</span> {match.teamB?.name || "TBD"}
                           </h4>
                           <div className="flex items-center gap-4 mt-2">
                              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-accent">
