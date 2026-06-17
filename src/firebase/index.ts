@@ -10,10 +10,10 @@ import { firebaseConfig } from './config';
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
  * TRIGGER: Security Rules Deployment matching user-provided logic.
- * Logic: admin@deneme.com is granted system-wide admin privileges.
+ * Logic: admin@deneme.com is granted system-wide admin privileges via token email check.
  * Rules: Users (Owner write/read, Admin read/list all), Public data (Global list/read for matches, tournaments, clubs).
  * 
- * Deployment Nonce: 2024-06-17T17:10:00Z (Synchronizing global public read/list access for all public collections including Referee Console)
+ * Deployment Nonce: 2024-06-17T17:45:00Z (Hardening Admin list permissions for global users registry)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;

@@ -20,11 +20,11 @@ import {
   Search, 
   User, 
   MoreVertical,
-  Settings2,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
-import { collection, doc, updateDoc } from 'firebase/firestore';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, updateDoc, query, limit } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import {
@@ -41,16 +41,19 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AdminUsersPage() {
   const db = useFirestore();
+  const { user: currentUser } = useUser();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const usersQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return collection(db, 'users');
-  }, [db]);
+  const isAdmin = currentUser?.email?.toLowerCase() === 'admin@deneme.com';
 
-  const { data: users, loading } = useCollection(usersQuery);
+  const usersQuery = useMemoFirebase(() => {
+    if (!db || !isAdmin) return null;
+    return query(collection(db, 'users'), limit(100));
+  }, [db, isAdmin]);
+
+  const { data: users, loading, error } = useCollection(usersQuery);
 
   const handleUpdateRole = async (userId: string, newRole: 'admin' | 'user') => {
     if (!db) return;
@@ -80,6 +83,16 @@ export default function AdminUsersPage() {
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (!isAdmin && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <h2 className="text-2xl font-bold">Unauthorized Access</h2>
+        <p className="text-muted-foreground">Only the system administrator can access the user registry.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -108,6 +121,11 @@ export default function AdminUsersPage() {
           {loading ? (
             <div className="flex justify-center p-12">
               <Loader2 className="animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="p-12 text-center text-destructive flex flex-col items-center gap-2">
+              <AlertCircle className="h-8 w-8" />
+              <p>Failed to load user registry. Check security rules.</p>
             </div>
           ) : filtered && filtered.length > 0 ? (
             <Table>
