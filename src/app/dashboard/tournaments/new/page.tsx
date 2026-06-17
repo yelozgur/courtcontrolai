@@ -50,6 +50,8 @@ export default function TournamentWizard() {
   const [newCategoryAge, setNewCategoryAge] = useState("Open")
   const [newCategoryIsTeam, setNewCategoryIsTeam] = useState(false)
 
+  const [newLocation, setNewLocation] = useState("")
+
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
@@ -63,8 +65,10 @@ export default function TournamentWizard() {
     name: "",
     description: "",
     startDate: "",
+    endDate: "",
     sport: "",
     numCourts: 1,
+    locations: [] as string[],
     categories: [] as Category[]
   })
 
@@ -102,6 +106,22 @@ export default function TournamentWizard() {
     })
   }
 
+  const handleAddLocation = () => {
+    if (!newLocation) return
+    setFormData({
+      ...formData,
+      locations: [...formData.locations, newLocation]
+    })
+    setNewLocation("")
+  }
+
+  const removeLocation = (index: number) => {
+    setFormData({
+      ...formData,
+      locations: formData.locations.filter((_, i) => i !== index)
+    })
+  }
+
   const handleLaunch = () => {
     if (!db || !clubId) {
       toast({
@@ -129,7 +149,7 @@ export default function TournamentWizard() {
       .then(() => {
          toast({
           title: "Tournament Launched!",
-          description: `${formData.name} is now live and accepting participants.`
+          description: `${formData.name} is now live.`
         })
         router.push("/dashboard")
       })
@@ -212,16 +232,25 @@ export default function TournamentWizard() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="t-date">Start Date</Label>
-                  <div className="relative">
-                    <CalendarDays className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="t-date">Start Date</Label>
                     <Input 
                       id="t-date" 
                       type="date" 
-                      className="bg-secondary/50 h-12 pl-10" 
+                      className="bg-secondary/50 h-12" 
                       value={formData.startDate}
                       onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="t-date-end">End Date</Label>
+                    <Input 
+                      id="t-date-end" 
+                      type="date" 
+                      className="bg-secondary/50 h-12" 
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                     />
                   </div>
                 </div>
@@ -249,7 +278,7 @@ export default function TournamentWizard() {
             <CardHeader className="bg-accent/10 py-8">
               <Layout className="w-12 h-12 text-accent mb-4" />
               <CardTitle className="text-2xl font-headline text-accent">Step 2: Format & Categories</CardTitle>
-              <CardDescription>Define competition brackets and age groups. For best-of matches, the third set is the decider.</CardDescription>
+              <CardDescription>Define competition brackets and age groups.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-4">
@@ -383,7 +412,7 @@ export default function TournamentWizard() {
             <CardHeader className="bg-primary/10 py-8">
               <Building2 className="w-12 h-12 text-primary mb-4" />
               <CardTitle className="text-2xl font-headline">Step 3: Venue Logistics</CardTitle>
-              <CardDescription>Allocate courts for this specific event.</CardDescription>
+              <CardDescription>Allocate courts and locations for this event.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-4">
@@ -408,6 +437,30 @@ export default function TournamentWizard() {
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-4">
+                <Label>Venue Locations</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Add a location/venue name..." 
+                    value={newLocation} 
+                    onChange={e => setNewLocation(e.target.value)}
+                  />
+                  <Button variant="secondary" onClick={handleAddLocation}>Add</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.locations.map((loc, i) => (
+                    <Badge key={i} className="px-3 py-1 flex items-center gap-2">
+                      {loc}
+                      <Trash2 className="h-3 w-3 cursor-pointer" onClick={() => removeLocation(i)} />
+                    </Badge>
+                  ))}
+                  {formData.locations.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No specific locations added. Defaulting to club venue.</p>
+                  )}
+                </div>
+              </div>
+
               <div className="pt-4 flex justify-between">
                 <Button variant="ghost" onClick={() => setStep(2)} className="h-12 px-8">Back</Button>
                 <Button onClick={() => setStep(4)} className="h-12 px-10">Preview & Launch</Button>
@@ -422,7 +475,7 @@ export default function TournamentWizard() {
             </div>
             <h2 className="text-5xl font-headline font-bold mb-4 tracking-tighter">Ready for Launch!</h2>
             <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg">
-              Your <strong>{formData.name}</strong> is configured across {formData.numCourts} courts.
+              Your <strong>{formData.name}</strong> is configured across {formData.numCourts} courts at {formData.locations.length || 1} locations.
             </p>
             <div className="flex justify-center gap-4">
               <Button variant="ghost" onClick={() => setStep(3)} className="h-12" disabled={isSubmitting}>

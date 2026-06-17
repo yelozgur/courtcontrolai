@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, Send, Award } from 'lucide-react';
+import { Trophy, CheckCircle2, Loader2, User, Mail, Send, Award, ArrowLeft } from 'lucide-react';
 import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { useFirestore, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function TournamentRegistration() {
   const { id } = useParams();
@@ -37,7 +38,7 @@ export default function TournamentRegistration() {
     e.preventDefault();
     if (!db || !tournament) return;
     
-    if (!formData.categoryId) {
+    if (!formData.categoryId && tournament.categories?.length > 0) {
       toast({ variant: "destructive", title: "Selection Required", description: "Please select a competition category." });
       return;
     }
@@ -111,10 +112,15 @@ export default function TournamentRegistration() {
         <p className="text-xl text-muted-foreground font-medium">{tournament.name} • {tournament.sport.toUpperCase()}</p>
       </div>
 
-      <Card className="max-w-lg w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl">
-        <CardHeader>
+      <Card className="max-w-lg w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl relative">
+        <div className="absolute top-4 left-4">
+           <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+             <Link href="/tournaments"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Link>
+           </Button>
+        </div>
+        <CardHeader className="pt-16">
           <CardTitle className="font-headline font-bold uppercase text-2xl">Entry Details</CardTitle>
-          <CardDescription className="text-base">Join the competition at {tournament.location || 'Ace Padel Club'}.</CardDescription>
+          <CardDescription className="text-base">Join the competition roster for {tournament.name}.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -147,27 +153,26 @@ export default function TournamentRegistration() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="uppercase tracking-widest text-xs font-bold opacity-60">Select Category</Label>
-              <div className="relative">
-                <Award className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
-                <Select value={formData.categoryId} onValueChange={val => setFormData({...formData, categoryId: val})}>
-                  <SelectTrigger className="pl-10 bg-white/5 border-white/10 h-12 text-lg">
-                    <SelectValue placeholder="Choose competition..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tournament.categories?.map((cat: any) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name} ({cat.ageGroup})
-                      </SelectItem>
-                    ))}
-                    {!tournament.categories?.length && (
-                      <SelectItem value="open">Open Category</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+            {tournament.categories?.length > 0 && (
+              <div className="space-y-2">
+                <Label className="uppercase tracking-widest text-xs font-bold opacity-60">Select Category</Label>
+                <div className="relative">
+                  <Award className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
+                  <Select value={formData.categoryId} onValueChange={val => setFormData({...formData, categoryId: val})}>
+                    <SelectTrigger className="pl-10 bg-white/5 border-white/10 h-12 text-lg">
+                      <SelectValue placeholder="Choose competition..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tournament.categories.map((cat: any) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name} ({cat.ageGroup})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -206,7 +211,7 @@ export default function TournamentRegistration() {
       </Card>
       
       <p className="mt-8 text-muted-foreground text-sm max-w-sm text-center">
-        By registering, you agree to receive automated notifications regarding court assignments and match results.
+        By registering, you are signing up for the tournament roster. You will still need to check in at the venue on match day.
       </p>
     </div>
   );

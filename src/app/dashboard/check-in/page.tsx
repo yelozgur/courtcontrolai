@@ -37,6 +37,9 @@ export default function CheckInPage() {
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery)
   const selectedTournament = tournaments?.find(t => t.id === selectedTournamentId)
 
+  const checkInUrl = typeof window !== 'undefined' ? `${window.location.origin}/tournaments/${selectedTournamentId}/check-in` : `/tournaments/${selectedTournamentId}/check-in`;
+  const registerUrl = typeof window !== 'undefined' ? `${window.location.origin}/tournaments/${selectedTournamentId}/register` : `/tournaments/${selectedTournamentId}/register`;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -105,12 +108,14 @@ export default function CheckInPage() {
                       </svg>
                     </div>
                     <div className="flex gap-4 w-full max-w-sm">
-                      <Button className="flex-1" variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
-                      <Button className="flex-1" variant="outline"><Share2 className="mr-2 h-4 w-4" /> Print</Button>
+                      <Button className="flex-1" variant="outline" asChild>
+                        <a href={checkInUrl} target="_blank"><ExternalLink className="mr-2 h-4 w-4" /> Open Link</a>
+                      </Button>
+                      <Button className="flex-1" variant="outline"><Share2 className="mr-2 h-4 w-4" /> Share</Button>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-primary">Check-In URL</p>
-                      <code className="text-[10px] text-muted-foreground block truncate max-w-xs mx-auto">/tournaments/{selectedTournamentId}/check-in</code>
+                      <p className="text-sm font-bold text-primary">Day-of URL</p>
+                      <code className="text-[10px] text-muted-foreground block truncate max-w-xs mx-auto">{checkInUrl}</code>
                     </div>
                   </CardContent>
                 </Card>
@@ -133,12 +138,14 @@ export default function CheckInPage() {
                       </svg>
                     </div>
                     <div className="flex gap-4 w-full max-w-sm">
-                      <Button className="flex-1" variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
+                      <Button className="flex-1" variant="outline" asChild>
+                        <a href={registerUrl} target="_blank"><ExternalLink className="mr-2 h-4 w-4" /> Open Link</a>
+                      </Button>
                       <Button className="flex-1" variant="outline"><Share2 className="mr-2 h-4 w-4" /> Share</Button>
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-accent">Registration URL</p>
-                      <code className="text-[10px] text-muted-foreground block truncate max-w-xs mx-auto">/tournaments/{selectedTournamentId}/register</code>
+                      <code className="text-[10px] text-muted-foreground block truncate max-w-xs mx-auto">{registerUrl}</code>
                     </div>
                   </CardContent>
                 </Card>
@@ -149,33 +156,37 @@ export default function CheckInPage() {
           <div className="lg:col-span-5 space-y-6">
             <Card className="bg-card/50 border-border">
               <CardHeader>
-                <CardTitle className="text-lg">Event Logistics</CardTitle>
-                <CardDescription>Multi-day and multi-location context.</CardDescription>
+                <CardTitle className="text-lg">Event Locations</CardTitle>
+                <CardDescription>Multi-location awareness.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl">
-                  <MapPin className="h-5 w-5 text-accent mt-1" />
-                  <div>
-                    <p className="font-bold">Primary Venue</p>
-                    <p className="text-sm text-muted-foreground">{selectedTournament?.locations?.[0] || userClubs?.[0]?.location || "Main Club"}</p>
-                    {selectedTournament?.locations && selectedTournament.locations.length > 1 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {selectedTournament.locations.slice(1).map((loc, i) => (
-                          <Badge key={i} variant="outline" className="text-[10px]">{loc}</Badge>
-                        ))}
+                {selectedTournament?.locations && selectedTournament.locations.length > 0 ? (
+                  selectedTournament.locations.map((loc, i) => (
+                    <div key={i} className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl">
+                      <MapPin className="h-5 w-5 text-accent mt-1" />
+                      <div>
+                        <p className="font-bold">Venue {i + 1}</p>
+                        <p className="text-sm text-muted-foreground">{loc}</p>
                       </div>
-                    )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl">
+                    <MapPin className="h-5 w-5 text-accent mt-1" />
+                    <div>
+                      <p className="font-bold">Primary Venue</p>
+                      <p className="text-sm text-muted-foreground">{userClubs?.[0]?.location || "Main Club"}</p>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
                   <Trophy className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-bold">Referee Dashboard</p>
-                    <p className="text-xs text-muted-foreground">Officiate live matches for this event.</p>
+                    <p className="font-bold">Date Context</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedTournament?.startDate} {selectedTournament?.endDate ? `to ${selectedTournament.endDate}` : ""}
+                    </p>
                   </div>
-                  <Button size="sm" className="ml-auto" asChild>
-                    <Link href={`/referee/${selectedTournamentId}`}>Open</Link>
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -183,7 +194,7 @@ export default function CheckInPage() {
             <div className="bg-accent/10 border border-accent/20 p-6 rounded-2xl">
               <h3 className="font-headline font-bold text-accent mb-2">Automated Notifications</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                When players check in at the venue, their status will be updated in the <strong>Participants</strong> list, and the AI scheduler will prioritize their match assignments.
+                Pre-event registration builds your roster. Day-of check-in confirms player arrival at specific locations, allowing the AI scheduler to assign courts immediately.
               </p>
             </div>
           </div>

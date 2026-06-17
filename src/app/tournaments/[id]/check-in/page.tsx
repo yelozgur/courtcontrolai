@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft } from "lucide-react"
 import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, limit } from "firebase/firestore"
 import { useFirestore, useDoc } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
+import Link from 'next/link';
 
 export default function PublicCheckInPage() {
   const { id } = useParams()
@@ -21,6 +23,7 @@ export default function PublicCheckInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [email, setEmail] = useState("")
+  const [selectedLocation, setSelectedLocation] = useState("")
   
   const tournamentRef = db ? doc(db, "tournaments", id as string) : null
   const { data: tournament, loading: tournamentLoading } = useDoc(tournamentRef)
@@ -60,7 +63,7 @@ export default function PublicCheckInPage() {
         tournamentId: id,
         timestamp: serverTimestamp(),
         date: new Date().toISOString().split('T')[0],
-        location: tournament.locations?.[0] || "Main Venue"
+        location: selectedLocation || tournament.locations?.[0] || "Main Venue"
       }
 
       await addDoc(collection(db, "checkins"), checkInData)
@@ -88,6 +91,9 @@ export default function PublicCheckInPage() {
         <Trophy className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
         <h2 className="text-3xl font-headline font-bold uppercase">Invalid Event</h2>
         <p className="text-muted-foreground mt-2">Check-in session expired or event not found.</p>
+        <Button asChild className="mt-8" variant="outline">
+           <Link href="/tournaments">Find Events</Link>
+        </Button>
       </div>
     )
   }
@@ -102,6 +108,7 @@ export default function PublicCheckInPage() {
           <h2 className="text-4xl font-headline font-bold mb-4 uppercase tracking-tighter">You're In!</h2>
           <p className="text-muted-foreground mb-8 text-lg">
             Welcome to <span className="text-white font-bold">{tournament.name}</span>.<br />
+            Location: <span className="text-primary font-bold">{selectedLocation || tournament.locations?.[0] || "Main Venue"}</span><br /><br />
             Please wait in the player area. We'll notify you when your court is ready.
           </p>
           <Button onClick={() => window.location.reload()} variant="outline" className="w-full">
@@ -124,16 +131,21 @@ export default function PublicCheckInPage() {
         </div>
       </div>
 
-      <Card className="max-w-md w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl overflow-hidden">
+      <Card className="max-w-md w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl overflow-hidden relative">
         <div className="h-2 bg-primary"></div>
-        <CardHeader className="text-center">
+        <div className="absolute top-4 left-4">
+           <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+             <Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> Home</Link>
+           </Button>
+        </div>
+        <CardHeader className="text-center pt-16">
           <CardTitle className="font-headline font-bold uppercase text-2xl">Confirm Arrival</CardTitle>
-          <CardDescription>Enter the email you used for registration to check in for today's matches.</CardDescription>
+          <CardDescription>Day-of verification for registered players.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCheckIn} className="space-y-6">
             <div className="space-y-2">
-              <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Registered Email</Label>
+              <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Your Registered Email</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -146,6 +158,22 @@ export default function PublicCheckInPage() {
                 />
               </div>
             </div>
+
+            {tournament.locations && tournament.locations.length > 1 && (
+              <div className="space-y-2">
+                <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Arrival Location</Label>
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger className="bg-white/5 border-white/10 h-12">
+                    <SelectValue placeholder="Select current location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tournament.locations.map((loc: string, i: number) => (
+                      <SelectItem key={i} value={loc}>{loc}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             
             <Button type="submit" className="w-full h-14 text-xl font-bold bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 uppercase tracking-widest" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <LogIn className="mr-2 h-6 w-6" />}
@@ -156,7 +184,7 @@ export default function PublicCheckInPage() {
       </Card>
       
       <p className="mt-8 text-muted-foreground text-xs max-w-xs text-center">
-        Day-of check-in is required for court assignment. Ensure your Telegram handle is active.
+        Pre-event registration is required. If you haven't registered, please use the registration link provided by the organizer.
       </p>
     </div>
   )
