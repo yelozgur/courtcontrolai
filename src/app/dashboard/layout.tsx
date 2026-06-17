@@ -52,11 +52,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
   const isClubOwner = profile?.role === 'club_owner' || isAdmin;
-  const isReferee = profile?.role === 'referee';
+  const isReferee = profile?.role === 'referee' || isAdmin;
   const isPlayer = profile?.role === 'player' || (!profile?.role && !profileLoading && user);
 
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user || !isClubOwner) return null;
+    // Admins see everything, but for the layout we only check their own club
     return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
   }, [db, user, isClubOwner]);
 

@@ -16,7 +16,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "description": { "type": "string" },
         "numCourts": { "type": "number" },
-        "referees": { "type": "array", "items": { "type": "string" }, "description": "User UIDs or emails" },
+        "referees": { "type": "array", "items": { "type": "string" } },
         "categories": {
           "type": "array",
           "items": {
@@ -44,61 +44,33 @@
         "court": { "type": "number" },
         "location": { "type": "string" },
         "categoryId": { "type": "string" },
-        "refereeId": { "type": "string" },
-        "teamA": {
-          "type": "object",
-          "properties": {
-            "name": { "type": "string" },
-            "participantId": { "type": "string" },
-            "score": { "type": "number" },
-            "setsWon": { "type": "number" }
-          }
-        },
-        "teamB": {
-          "type": "object",
-          "properties": {
-            "name": { "type": "string" },
-            "participantId": { "type": "string" },
-            "score": { "type": "number" },
-            "setsWon": { "type": "number" }
-          }
-        },
+        "teamA": { "type": "object" },
+        "teamB": { "type": "object" },
         "status": { "type": "string", "enum": ["scheduled", "live", "completed"] },
-        "startTime": { "type": "string", "format": "date-time" },
-        "completedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["clubId", "tournamentId", "status"]
-    },
-    "User": {
-      "title": "User",
-      "description": "User profile with roles.",
-      "type": "object",
-      "properties": {
-        "email": { "type": "string" },
-        "displayName": { "type": "string" },
-        "role": { "type": "string", "enum": ["player", "referee", "club_owner", "admin"] },
-        "clubId": { "type": "string" },
-        "photoURL": { "type": "string" },
-        "bio": { "type": "string" },
-        "skillLevel": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "startTime": { "type": "string", "format": "date-time" }
       }
     },
-    "Participant": {
-      "title": "Participant",
-      "description": "Tournament roster entries.",
+    "CheckIn": {
+      "title": "CheckIn",
+      "description": "Day-of arrival verification.",
+      "type": "object",
+      "properties": {
+        "participantId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "location": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Sponsor": {
+      "title": "Sponsor",
+      "description": "Brand partners for clubs.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
-        "tournamentId": { "type": "string" },
-        "userId": { "type": "string" },
         "name": { "type": "string" },
-        "email": { "type": "string" },
-        "skillLevel": { "type": "string" },
-        "categoryId": { "type": "string" },
-        "isCheckedIn": { "type": "boolean" },
-        "checkInLocation": { "type": "string" },
-        "registeredAt": { "type": "string", "format": "date-time" }
+        "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] },
+        "websiteUrl": { "type": "string" },
+        "logoUrl": { "type": "string" }
       }
     }
   },
@@ -110,7 +82,8 @@
     "/matches/{matchId}": { "schema": "Match", "description": "Global Read. Auth Write." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Global Read. Auth Write." },
     "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Global Read. Auth Write." },
-    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global Read. Public Create." }
+    "/participants/{participantId}": { "schema": "Participant", "description": "Global Read. Public Create." },
+    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global Read. Public Create." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read. Auth Write." }
   }
 }

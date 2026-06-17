@@ -10,9 +10,8 @@ import { firebaseConfig } from './config';
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
  * TRIGGER: Role-Based Stage Logic Deployment.
- * Logic: Standard READ enabled. Write restricted by clubId or userId.
- * Stage Management: Locks categories/format if status != 'draft'.
- * Deployment Nonce: 2024-06-19T10:30:00Z (Architectural Stage Update)
+ * Logic: Simplified high-level rules to unblock organizers.
+ * Deployment Nonce: 2024-06-19T14:45:00Z (Unblock Organizers Update)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
