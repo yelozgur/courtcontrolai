@@ -11,7 +11,7 @@ import { firebaseConfig } from './config';
  * This is called on the client side only.
  * 
  * TRIGGER: Security Rule Synchronization. 
- * Updated backend.json with explicit PUBLIC READABLE AND LISTABLE instructions
+ * Re-deploying rules with explicit PUBLIC READABLE AND LISTABLE instructions
  * for all collections to resolve dashboard query issues.
  */
 export function initializeFirebase(): {

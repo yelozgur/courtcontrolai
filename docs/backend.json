@@ -94,11 +94,12 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament player. PUBLICLY READABLE AND LISTABLE by everyone. Writable ONLY by the participant themselves (if email matches) or the owner of the club hosting the tournament.",
+      "description": "Tournament player. PUBLICLY READABLE AND LISTABLE by everyone. Writable ONLY by the participant themselves (if userId matches) or the owner of the club hosting the tournament.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
         "tournamentId": { "type": "string" },
+        "userId": { "type": "string", "description": "The UID of the registered user if applicable" },
         "name": { "type": "string" },
         "email": { "type": "string" },
         "telegramHandle": { "type": "string" },
