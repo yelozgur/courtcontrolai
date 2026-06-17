@@ -1,10 +1,10 @@
-
 "use client"
 
 import { useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { QrCode, Share2, Download, ExternalLink, Users, Smartphone, Trophy, Loader2 } from "lucide-react"
 import { collection, query, where, limit, orderBy } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
