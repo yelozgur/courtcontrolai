@@ -4,7 +4,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Play, Users, LayoutGrid, List } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Play, Users, LayoutGrid, List, Plus } from "lucide-react"
 import { collection, query, where, orderBy, limit, addDoc, serverTimestamp } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
