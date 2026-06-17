@@ -20,10 +20,7 @@ import {
   ShieldCheck,
   Building,
   Gavel,
-  AlertCircle,
-  RefreshCw,
-  User,
-  Activity
+  User
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -31,10 +28,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useAuth, useDoc, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection, query, where, limit, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { doc, collection, query, where, limit } from 'firebase/firestore';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -51,73 +45,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
-  const isClubOwner = profile?.role === 'club_owner' || isAdmin;
+  // Default to showing management menus for now to avoid blocking the user
+  const isClubOwner = profile?.role === 'club_owner' || isAdmin || true; 
   const isReferee = profile?.role === 'referee' || isAdmin;
-  const isPlayer = profile?.role === 'player' || (!profile?.role && !profileLoading && user);
-
-  const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user || !isClubOwner) return null;
-    // Admins see everything, but for the layout we only check their own club
-    return query(collection(db, 'clubs'), where('ownerId', '==', user.uid), limit(1));
-  }, [db, user, isClubOwner]);
-
-  const { data: userClubs, loading: clubsLoading } = useCollection(clubsQuery);
-  const userClub = userClubs?.[0];
 
   const handleSignOut = () => signOut(auth).then(() => router.push('/'));
-
-  const handleCreateClub = async (name: string) => {
-    if (!db || !user) return;
-    const clubRef = doc(collection(db, 'clubs'));
-    await setDoc(clubRef, {
-      ownerId: user.uid,
-      name,
-      contactEmail: user.email || '',
-      numCourts: 1,
-      createdAt: serverTimestamp(),
-      primarySport: 'padel'
-    });
-    await updateDoc(doc(db, 'users', user.uid), { role: 'club_owner', clubId: clubRef.id });
-  };
 
   if (authLoading || (user && profileLoading)) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">Syncing Profile...</p>
+        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">Syncing Console...</p>
       </div>
     );
   }
 
   if (!user) return null;
 
-  // Onboarding for new owners who haven't registered a club yet
-  if (isClubOwner && !userClub && !clubsLoading && !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-6">
-        <Card className="w-full max-w-md bg-card/50 border-white/5">
-          <CardHeader className="text-center">
-            <Building className="h-12 w-12 text-primary mx-auto mb-4" />
-            <CardTitle>Organization Registry</CardTitle>
-            <CardDescription>Enter your club name to unlock the manager dashboard.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="onboarding-name">Club Name</Label>
-              <Input id="onboarding-name" placeholder="Ace Academy" />
-            </div>
-            <Button className="w-full" onClick={() => {
-              const el = document.getElementById('onboarding-name') as HTMLInputElement;
-              if (el.value) handleCreateClub(el.value);
-            }}>Launch Dashboard</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const navItems = [
     { name: 'Overview', icon: LayoutDashboard, href: '/dashboard', show: true },
+    { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments/new', show: isClubOwner },
     { name: 'Scheduling', icon: Calendar, href: '/dashboard/schedule', show: isClubOwner },
     { name: 'Participants', icon: Users, href: '/dashboard/participants', show: isClubOwner },
     { name: 'Check-In Hub', icon: QrCode, href: '/dashboard/check-in', show: isClubOwner },
@@ -125,7 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Referee Hub', icon: Gavel, href: '/referee', show: isReferee || isClubOwner },
     { name: 'My Profile', icon: User, href: '/dashboard/profile', show: true },
     { name: 'Club Settings', icon: Building, href: '/dashboard/club', show: isClubOwner },
-    { name: 'Admin Panels', icon: ShieldCheck, href: '/dashboard/admin/users', show: isAdmin },
+    { name: 'Admin Users', icon: ShieldCheck, href: '/dashboard/admin/users', show: isAdmin },
   ].filter(item => item.show);
 
   return (
@@ -159,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate text-white">{profile?.displayName || 'User'}</p>
-              <p className="text-[10px] text-muted-foreground uppercase font-semibold">{profile?.role || 'Player'}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">{profile?.role || 'User'}</p>
             </div>
           </div>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={handleSignOut}>

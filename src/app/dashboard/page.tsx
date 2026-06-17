@@ -9,16 +9,15 @@ import {
   Trophy, 
   Users, 
   Activity, 
-  Play, 
   Clock, 
   ArrowUpRight,
   Zap,
   Loader2,
   Calendar,
   Star,
-  Gavel
+  PlusCircle
 } from "lucide-react"
-import { collection, query, where, limit, doc } from "firebase/firestore"
+import { collection, query, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
 import { cn } from "@/lib/utils"
 
@@ -30,140 +29,117 @@ export default function DashboardOverview() {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
+  
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
-  const role = profile?.role || 'player';
-  const isOwner = role === 'club_owner';
-  const isReferee = role === 'referee';
-  const isPlayer = role === 'player';
-
-  // Contextual Data
-  const clubQuery = useMemoFirebase(() => {
-    if (!db || !user || !isOwner) return null;
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1));
-  }, [db, user, isOwner]);
-  const { data: clubs } = useCollection(clubQuery);
-  const clubId = clubs?.[0]?.id;
-
-  const tournamentQuery = useMemoFirebase(() => {
+  const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null;
-    if (isOwner && clubId) return query(collection(db, "tournaments"), where("clubId", "==", clubId));
-    return query(collection(db, "tournaments"), limit(20));
-  }, [db, clubId, isOwner]);
+    return query(collection(db, "tournaments"), limit(10));
+  }, [db]);
 
   const matchesQuery = useMemoFirebase(() => {
     if (!db) return null;
-    if (isPlayer) return query(collection(db, "matches"), where("status", "==", "live"), limit(5));
-    if (isReferee) return query(collection(db, "matches"), where("refereeId", "==", user?.uid), where("status", "==", "live"));
     return query(collection(db, "matches"), where("status", "==", "live"), limit(5));
-  }, [db, isPlayer, isReferee, user]);
+  }, [db]);
 
-  const { data: tournaments, loading: toursLoading } = useCollection(tournamentQuery);
+  const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
   const { data: matches } = useCollection(matchesQuery);
 
-  if (profileLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" /></div>
+  if (profileLoading || toursLoading) {
+    return (
+      <div className="flex items-center justify-center p-20">
+        <Loader2 className="animate-spin text-primary h-12 w-12" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-headline font-bold text-white tracking-tighter uppercase">
-            {isOwner ? "Organizer Command" : isReferee ? "Officials Portal" : "Player Dashboard"}
+            Tournament Command
           </h1>
           <p className="text-muted-foreground mt-1 font-medium">
-            Welcome back, {profile?.displayName || 'Competitor'}.
+            Welcome back, {profile?.displayName || 'Organizer'}.
           </p>
         </div>
         <div className="flex gap-2">
-          {isOwner && (
-            <Button className="bg-primary" asChild>
-              <Link href="/dashboard/tournaments/new"><PlusCircle className="mr-2 h-4 w-4" /> Create Tournament</Link>
-            </Button>
-          )}
-          {isPlayer && (
-            <Button variant="outline" asChild>
-              <Link href="/tournaments">Find Competitions</Link>
-            </Button>
-          )}
+          <Button className="bg-primary" asChild>
+            <Link href="/dashboard/tournaments/new">
+              <PlusCircle className="mr-2 h-4 w-4" /> Create Tournament
+            </Link>
+          </Button>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {isOwner ? (
-          <>
-            <StatCard title="Club Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Active season" />
-            <StatCard title="Match Pulse" value={matches?.length || 0} icon={Activity} sub="Live on courts" color="text-accent" />
-            <StatCard title="Staff Count" value="4" icon={Users} sub="Referees active" />
-            <StatCard title="System Performance" value="Optimized" icon={Zap} sub="AI Scheduler active" color="text-accent" />
-          </>
-        ) : (
-          <>
-            <StatCard title="My Matches" value="12" icon={Activity} sub="Completed" />
-            <StatCard title="Rank Score" value="1420" icon={Star} sub="Intermediate Tier" color="text-accent" />
-            <StatCard title="Next Game" value="14:00" icon={Clock} sub="Today" />
-            <StatCard title="Wins" value="8" icon={Trophy} sub="75% Win rate" color="text-accent" />
-          </>
-        )}
+        <StatCard title="Active Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Current Season" />
+        <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="On Courts" color="text-accent" />
+        <StatCard title="Club Rank" value="Elite" icon={Star} sub="System status" />
+        <StatCard title="System Performance" value="Optimal" icon={Zap} sub="AI Scheduler Active" color="text-accent" />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8 space-y-6">
           <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
-            <Calendar className="h-6 w-6 text-primary" /> {isOwner ? "Recent Tournaments" : "Current Competitions"}
+            <Calendar className="h-6 w-6 text-primary" /> Recent Events
           </h2>
           <div className="grid gap-4">
-            {tournaments?.map(t => (
-              <Card key={t.id} className="bg-white/5 border-white/5 hover:border-primary/20 transition-all group">
-                <CardContent className="p-6 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                      <Trophy className="h-6 w-6" />
+            {tournaments && tournaments.length > 0 ? (
+              tournaments.map(t => (
+                <Card key={t.id} className="bg-white/5 border-white/5 hover:border-primary/20 transition-all group">
+                  <CardContent className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <Trophy className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-lg">{t.name}</h4>
+                        <p className="text-sm text-muted-foreground">{t.sport} • Status: <span className="text-accent font-bold uppercase">{t.status || 'draft'}</span></p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-lg">{t.name}</h4>
-                      <p className="text-sm text-muted-foreground">{t.sport} • Stage: <span className="text-accent font-bold uppercase">{t.status}</span></p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={isOwner ? `/dashboard/tournaments/${t.id}/edit` : `/tournaments/${t.id}/register`}>
-                      {isOwner ? "Manage" : "View"} <ArrowUpRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/dashboard/tournaments/${t.id}/edit`}>
+                        Manage <ArrowUpRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-10 bg-white/5 rounded-2xl border-dashed border-2 border-white/10">
+                <p className="text-muted-foreground">No tournaments created yet.</p>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="lg:col-span-4 space-y-6">
           <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
-            <Activity className="h-6 w-6 text-accent" /> {isReferee ? "My Assignments" : "Live Feed"}
+            <Activity className="h-6 w-6 text-accent" /> Live Scoring
           </h2>
           <div className="space-y-4">
-            {matches?.map(match => (
-              <Card key={match.id} className="bg-white/5 border-white/5">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <Badge variant="outline" className="text-[8px] uppercase">{match.status}</Badge>
-                    <span className="text-[10px] text-muted-foreground">Court {match.court}</span>
-                  </div>
-                  <div className="flex items-center justify-between font-bold">
-                    <span>{match.teamA.name}</span>
-                    <span className="text-accent">{match.teamA.score}</span>
-                  </div>
-                  <div className="flex items-center justify-between font-bold opacity-60">
-                    <span>{match.teamB.name}</span>
-                    <span>{match.teamB.score}</span>
-                  </div>
-                  {isReferee && (
-                    <Button className="w-full mt-4 h-8 text-xs bg-accent text-accent-foreground" asChild>
-                      <Link href={`/referee/${match.tournamentId}`}>Score Match</Link>
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-            {matches?.length === 0 && (
+            {matches && matches.length > 0 ? (
+              matches.map(match => (
+                <Card key={match.id} className="bg-white/5 border-white/5">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <Badge variant="outline" className="text-[8px] uppercase">{match.status}</Badge>
+                      <span className="text-[10px] text-muted-foreground">Court {match.court}</span>
+                    </div>
+                    <div className="flex items-center justify-between font-bold">
+                      <span>{match.teamA.name}</span>
+                      <span className="text-accent">{match.teamA.score}</span>
+                    </div>
+                    <div className="flex items-center justify-between font-bold opacity-60">
+                      <span>{match.teamB.name}</span>
+                      <span>{match.teamB.score}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
               <p className="text-center text-muted-foreground py-10 italic">No matches live right now.</p>
             )}
           </div>
@@ -186,8 +162,4 @@ function StatCard({ title, value, icon: Icon, sub, color }: any) {
       </CardContent>
     </Card>
   )
-}
-
-function PlusCircle(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
 }

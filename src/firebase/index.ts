@@ -9,9 +9,9 @@ import { firebaseConfig } from './config';
 /**
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
- * TRIGGER: Role-Based Stage Logic Deployment.
- * Logic: Simplified high-level rules to unblock organizers.
- * Deployment Nonce: 2024-06-19T14:45:00Z (Unblock Organizers Update)
+ * TRIGGER: Stability and Visibility Update.
+ * Logic: Ensure simplified rules allow dashboard visibility.
+ * Deployment Nonce: 2024-06-19T16:20:00Z (Visibility Restore)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
