@@ -46,7 +46,8 @@ export default function LoginPage() {
     try {
       const isAdminShortcut = email === 'admin';
       const loginEmail = isAdminShortcut ? 'admin@deneme.com' : email;
-      const loginPassword = isAdminShortcut && password === 'adm' ? 'password' : password;
+      // Shortcut password updated to 'admins' as requested
+      const loginPassword = isAdminShortcut && password === 'admins' ? 'password' : password;
 
       const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       const loggedUser = result.user;
@@ -265,7 +266,7 @@ export default function LoginPage() {
               <span className="text-[10px] font-bold text-primary uppercase tracking-widest">SaaS Administrator Access</span>
             </div>
             <p className="text-[11px] text-muted-foreground font-mono">
-              User: <span className="text-primary">admin</span> / Pass: <span className="text-primary">adm</span>
+              User: <span className="text-primary">admin</span> / Pass: <span className="text-primary">admins</span>
             </p>
           </div>
         </CardFooter>

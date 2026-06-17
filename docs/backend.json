@@ -3,7 +3,7 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}).",
+      "description": "Global tournament registry. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club associated with the tournament (verified via get() on /clubs/{clubId}). Admins (role == 'admin') have full access.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string", "description": "The ID of the club that owns this tournament" },
@@ -33,7 +33,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "Match records. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club managing the tournament.",
+      "description": "Match records. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if the user is the owner of the club managing the tournament. Admins (role == 'admin') have full access.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -66,7 +66,7 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Club profiles. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if request.auth.uid == ownerId.",
+      "description": "Club profiles. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' only if request.auth.uid == ownerId. Admins (role == 'admin') have full access.",
       "type": "object",
       "properties": {
         "ownerId": { "type": "string", "description": "The UID of the user who owns this club" },
@@ -81,7 +81,7 @@
     },
     "User": {
       "title": "User",
-      "description": "User profile. PERMISSIONS: Allow 'get', 'list', 'create', 'update' if request.auth.uid == userId. Platform admins have global 'get' and 'list' access.",
+      "description": "User profile. PERMISSIONS: Allow 'get', 'list', 'create', 'update' if request.auth.uid == userId. User admin@deneme.com is the system administrator with global 'get' and 'list' access.",
       "type": "object",
       "properties": {
         "email": { "type": "string" },
@@ -94,7 +94,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Tournament entries. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' if user is the participant (userId == auth.uid) or the club owner.",
+      "description": "Tournament entries. PERMISSIONS: Publicly readable and listable (true). Allow 'create', 'update', 'delete' if user is the participant (userId == auth.uid) or the club owner. Admins (role == 'admin') have full access.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -112,7 +112,7 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Partners. PERMISSIONS: Publicly readable and listable (true). Writable only by the club owner.",
+      "description": "Partners. PERMISSIONS: Publicly readable and listable (true). Writable only by the club owner or admins.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -131,7 +131,7 @@
     "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Public tournament registry. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
     "/matches/{matchId}": { "schema": "Match", "description": "Match scores. GLOBAL READ AND LIST ACCESS. Writable by club owner." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Organizations. PUBLICLY LISTABLE AND READABLE. Writable by ownerId." },
-    "/users/{userId}": { "schema": "User", "description": "Private profile. Owner get/list/write only. Admins can list and read all." },
+    "/users/{userId}": { "schema": "User", "description": "Private profile. Owner get/list/write only. admin@deneme.com has admin role and global read access." },
     "/participants/{participantId}": { "schema": "Participant", "description": "Registrations. GLOBAL READ AND LIST ACCESS. Writable by participant/owner." },
     "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Partnership info. GLOBAL READ AND LIST ACCESS. Writable by club owner." }
   }
