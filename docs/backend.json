@@ -50,6 +50,35 @@
         "startTime": { "type": "string", "format": "date-time" }
       }
     },
+    "Participant": {
+      "title": "Participant",
+      "description": "Registered player for a tournament.",
+      "type": "object",
+      "properties": {
+        "clubId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "skillLevel": { "type": "string" },
+        "telegramHandle": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Club": {
+      "title": "Club",
+      "description": "Organization hosting tournaments.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "numCourts": { "type": "number" },
+        "primarySport": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "CheckIn": {
       "title": "CheckIn",
       "description": "Day-of arrival verification.",
