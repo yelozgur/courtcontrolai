@@ -9,12 +9,10 @@ import { firebaseConfig } from './config';
 /**
  * Initializes Firebase services for project: courtcontrolai-2294b.
  * 
- * TRIGGER: Security Rules Deployment for Public Listing.
- * Explicitly granting 'list' and 'get' to all visitors for Clubs, Tournaments, and Matches.
- * This is critical for the Dashboard to load organizations and live feeds.
- * Granting 'get', 'create', 'update' to User owners for their own /users/{userId} documents.
+ * TRIGGER: Security Rules Deployment matching user-provided logic.
+ * Logic: Users (Owner read/write), Clubs/Tournaments/Matches (Publicly listable/readable).
  * 
- * Deployment Nonce: 2024-06-17T11:45:00Z (Triggering rule refresh to resolve UI permission error)
+ * Deployment Nonce: 2024-06-17T12:05:00Z (Triggering final rule synchronization)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;
