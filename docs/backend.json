@@ -3,10 +3,10 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. STAGES: Draft, Registration, Live, Completed.",
+      "description": "Global tournament registry. STAGES: Draft, Registration, Live, Completed. ISOLATION: Scoped by clubId.",
       "type": "object",
       "properties": {
-        "clubId": { "type": "string" },
+        "clubId": { "type": "string", "description": "The unique ID of the hosting club. Core isolation key." },
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
@@ -52,7 +52,7 @@
     },
     "Match": {
       "title": "Match",
-      "description": "Operational match records linked to court/time.",
+      "description": "Operational match records. ISOLATION: Scoped by clubId.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -70,7 +70,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Registered player for a tournament with accounting and merchandising data.",
+      "description": "Registered player data. ISOLATION: Scoped by clubId.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -90,10 +90,10 @@
     },
     "Club": {
       "title": "Club",
-      "description": "Organization hosting tournaments.",
+      "description": "Organization hosting tournaments. ISOLATION: Scoped by ownerId.",
       "type": "object",
       "properties": {
-        "ownerId": { "type": "string" },
+        "ownerId": { "type": "string", "description": "Firebase Auth UID of the owner." },
         "name": { "type": "string" },
         "location": { "type": "string" },
         "timezone": { "type": "string", "default": "UTC" },
@@ -120,7 +120,7 @@
     },
     "Sponsor": {
       "title": "Sponsor",
-      "description": "Brand partners for clubs or specific tournaments.",
+      "description": "Brand partners. ISOLATION: Scoped by clubId.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -160,7 +160,7 @@
   },
   "firestore": {
     "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read. Club Owner / Admin Write." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Global Read. Referee / Club Owner / Admin Write." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Global Read. Club Owner / Admin Write." },
     "/clubs/{clubId}": { "schema": "Club", "description": "Global Read (Branding). Owner / Admin Write." },
     "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global read." },
     "/participants/{participantId}": { "schema": "Participant", "description": "Staff Read/Update. Public Create." },

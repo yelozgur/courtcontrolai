@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon, Send, MessageSquare, Globe } from "lucide-react"
+import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon, Send, MessageSquare, Globe, PlusCircle } from "lucide-react"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
-import { doc, setDoc, query, collection, where, limit } from "firebase/firestore"
+import { doc, setDoc, query, collection, where, limit, addDoc, serverTimestamp } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
@@ -66,45 +66,54 @@ export default function ClubSettings() {
         telegramBotToken: clubData.telegramBotToken || "",
         telegramBotUsername: clubData.telegramBotUsername || ""
       })
+    } else if (user) {
+      setFormData(prev => ({ ...prev, contactEmail: user.email || "" }))
     }
-  }, [clubData])
+  }, [clubData, user])
 
   const handleSave = () => {
-    if (!db || !clubId) {
-      toast({
-        variant: "destructive",
-        title: "Identification Missing",
-        description: "Could not find your club ID. Please refresh."
-      })
-      return
-    }
+    if (!db || !user) return
     
     setIsSaving(true)
     
-    const clubRef = doc(db, "clubs", clubId)
     const updateData = {
       ...formData,
-      numCourts: Number(formData.numCourts) || 1
+      ownerId: user.uid,
+      numCourts: Number(formData.numCourts) || 1,
+      updatedAt: serverTimestamp()
     }
-    
-    setDoc(clubRef, updateData, { merge: true })
-      .then(() => {
-        toast({
-          title: "Settings Saved",
-          description: "Your club profile and timezone have been updated."
+
+    if (clubId) {
+      const clubRef = doc(db, "clubs", clubId)
+      setDoc(clubRef, updateData, { merge: true })
+        .then(() => {
+          toast({ title: "Settings Saved", description: "Your club profile has been updated." })
         })
-      })
-      .catch(async (e) => {
-        const error = new FirestorePermissionError({
-          path: clubRef.path,
-          operation: "update",
-          requestResourceData: updateData
+        .catch(async (e) => {
+          const error = new FirestorePermissionError({
+            path: clubRef.path,
+            operation: "update",
+            requestResourceData: updateData
+          })
+          errorEmitter.emit("permission-error", error)
         })
-        errorEmitter.emit("permission-error", error)
-      })
-      .finally(() => {
-        setIsSaving(false)
-      })
+        .finally(() => setIsSaving(false))
+    } else {
+      // Create new club if none exists
+      addDoc(collection(db, "clubs"), { ...updateData, createdAt: serverTimestamp() })
+        .then(() => {
+          toast({ title: "Club Initialized", description: "Your organization is now active." })
+        })
+        .catch(async (e) => {
+          const error = new FirestorePermissionError({
+            path: "clubs",
+            operation: "create",
+            requestResourceData: updateData
+          })
+          errorEmitter.emit("permission-error", error)
+        })
+        .finally(() => setIsSaving(false))
+    }
   }
 
   if (loading) {
@@ -117,9 +126,16 @@ export default function ClubSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">Club Identity</h1>
-        <p className="text-muted-foreground font-medium">Manage your organization's brand and automated notifications.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">Club Identity</h1>
+          <p className="text-muted-foreground font-medium">Manage your organization's brand and operating timezone.</p>
+        </div>
+        {!clubId && (
+          <Badge variant="outline" className="border-primary text-primary bg-primary/5 px-4 h-8 uppercase tracking-widest font-bold animate-pulse">
+             Registration Pending
+          </Badge>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -160,7 +176,6 @@ export default function ClubSettings() {
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-[10px] text-muted-foreground italic mt-1">This determines "Match Day" times for the public Arena dashboard.</p>
               </div>
               <div className="space-y-2">
                 <Label>Club Logo URL</Label>
@@ -216,7 +231,6 @@ export default function ClubSettings() {
                   onChange={(e) => setFormData({...formData, telegramBotToken: e.target.value})}
                   className="bg-background/50"
                 />
-                <p className="text-[10px] text-muted-foreground italic">Obtained from @BotFather on Telegram.</p>
               </div>
               <div className="space-y-2">
                 <Label className="text-white">Bot Username</Label>
@@ -242,7 +256,7 @@ export default function ClubSettings() {
                 Brand Preview
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center p-12">
+            <CardContent className="flex flex-col items-center justify-center p-12 text-center">
                <div className="w-32 h-32 rounded-3xl bg-secondary flex items-center justify-center overflow-hidden border border-white/5 mb-4">
                   {formData.logoUrl ? (
                     <img src={formData.logoUrl} alt="Logo Preview" className="w-full h-full object-contain p-2" />
@@ -250,7 +264,7 @@ export default function ClubSettings() {
                     <Building2 className="h-12 w-12 text-muted-foreground opacity-20" />
                   )}
                </div>
-               <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{formData.name || 'Your Club'}</p>
+               <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{formData.name || 'Organization Name'}</p>
             </CardContent>
           </Card>
 
@@ -275,10 +289,10 @@ export default function ClubSettings() {
               <Button 
                 onClick={handleSave} 
                 className="w-full bg-primary h-12 text-lg font-bold"
-                disabled={isSaving}
+                disabled={isSaving || !formData.name}
               >
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Club Profile
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (clubId ? <Save className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />)}
+                {clubId ? 'Update Club Profile' : 'Launch Organization'}
               </Button>
             </CardContent>
           </Card>

@@ -20,11 +20,6 @@ service cloud.firestore {
       );
     }
 
-    function isStaff(clubId) {
-      // For now, staff = owner or admin. Extendable to 'referee' role check.
-      return isClubOwner(clubId);
-    }
-
     // User Profiles
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isAdmin();
@@ -35,28 +30,36 @@ service cloud.firestore {
     match /clubs/{clubId} {
       allow read: if true; // Public branding access
       allow create: if isSignedIn();
-      allow update: if request.auth.uid == resource.data.ownerId || isAdmin();
+      allow update: if (resource.data.ownerId == request.auth.uid) || isAdmin();
       allow delete: if isAdmin();
     }
 
     // Tournaments
     match /tournaments/{tournamentId} {
       allow read: if true;
-      allow create: if isSignedIn();
+      // Allow create only if they are setting themselves as the owner or using their clubId
+      allow create: if isSignedIn(); 
       allow update, delete: if isClubOwner(resource.data.clubId);
     }
 
     // Matches
     match /matches/{matchId} {
       allow read: if true;
-      allow write: if isSignedIn(); // Allows refereeHub updates and AI scheduling
+      // Strict write: must own the club for both updates and new creations
+      allow write: if isSignedIn() && (
+        (resource != null && isClubOwner(resource.data.clubId)) ||
+        (resource == null && isClubOwner(request.resource.data.clubId))
+      );
     }
 
-    // Participants & Check-ins (The high-volume operational paths)
+    // Participants & Check-ins
     match /participants/{participantId} {
-      allow read: if isSignedIn(); // Allow searching roster for check-in validation
+      allow read: if isSignedIn(); 
       allow create: if true; // Public registration
-      allow update, delete: if isSignedIn();
+      allow update, delete: if isSignedIn() && (
+        isClubOwner(resource.data.clubId) || 
+        request.auth.token.email.lower() == resource.data.email.lower()
+      );
     }
 
     match /checkins/{checkInId} {
@@ -68,13 +71,16 @@ service cloud.firestore {
     // Sponsors
     match /sponsors/{sponsorId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isSignedIn() && (
+        (resource != null && isClubOwner(resource.data.clubId)) ||
+        (resource == null && isClubOwner(request.resource.data.clubId))
+      );
     }
 
     // Promo Codes
     match /promocodes/{codeId} {
-      allow read: if true; // Validation read
-      allow write: if isAdmin(); // Admin only management
+      allow read: if true; 
+      allow write: if isAdmin(); 
     }
   }
 }
