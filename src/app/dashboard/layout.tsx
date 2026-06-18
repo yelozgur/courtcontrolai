@@ -18,7 +18,8 @@ import {
   Building,
   Gavel,
   User,
-  Calculator
+  Calculator,
+  Users2
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -43,8 +44,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
-  const isClubOwner = profile?.role === 'club_owner' || isAdmin || true; 
-  const isReferee = profile?.role === 'referee' || isAdmin;
+  const isClubOwner = profile?.role === 'club_owner';
+  const isReferee = profile?.role === 'referee';
 
   const handleSignOut = () => signOut(auth).then(() => router.push('/'));
 
@@ -59,18 +60,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) return null;
 
-  const navItems = [
-    { name: 'Overview', icon: LayoutDashboard, href: '/dashboard', show: true },
+  // Split Navigation strictly by role
+  const navItems = isAdmin ? [
+    { name: 'SaaS Overview', icon: LayoutDashboard, href: '/dashboard' },
+    { name: 'Manage Clubs', icon: Building, href: '/dashboard/admin/clubs' },
+    { name: 'System Users', icon: Users2, href: '/dashboard/admin/users' },
+    { name: 'Revenue & Costs', icon: Calculator, href: '/dashboard/admin/costs' },
+    { name: 'My Profile', icon: User, href: '/dashboard/profile' },
+  ] : [
+    { name: 'Club Console', icon: LayoutDashboard, href: '/dashboard', show: isClubOwner || isReferee },
     { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments/new', show: isClubOwner },
-    { name: 'Scheduling', icon: Calendar, href: '/dashboard/schedule', show: isClubOwner },
+    { name: 'Match Planner', icon: Calendar, href: '/dashboard/schedule', show: isClubOwner },
     { name: 'Participants', icon: Users, href: '/dashboard/participants', show: isClubOwner },
     { name: 'Check-In Hub', icon: QrCode, href: '/dashboard/check-in', show: isClubOwner },
     { name: 'Partners', icon: Heart, href: '/dashboard/sponsors', show: isClubOwner },
     { name: 'Referee Hub', icon: Gavel, href: '/referee', show: isReferee || isClubOwner },
     { name: 'My Profile', icon: User, href: '/dashboard/profile', show: true },
     { name: 'Club Settings', icon: Building, href: '/dashboard/club', show: isClubOwner },
-    { name: 'Cost Analytics', icon: Calculator, href: '/dashboard/admin/costs', show: isAdmin },
-    { name: 'Admin Users', icon: ShieldCheck, href: '/dashboard/admin/users', show: isAdmin },
   ].filter(item => item.show);
 
   return (
@@ -78,23 +84,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="3" width="18" height="18" rx="4" className="stroke-primary-foreground" strokeWidth="2"/>
-              <circle cx="12" cy="12" r="3" className="stroke-primary-foreground" strokeWidth="2"/>
-              <path d="M12 9V15M9 12H15" className="stroke-accent" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+            <Zap className="text-white h-5 w-5" />
           </div>
           <span className="font-headline font-bold text-lg text-white uppercase tracking-tighter">Court Control AI</span>
         </div>
         <ScrollArea className="flex-1 px-3">
           <div className="space-y-1 py-2">
+            <p className="px-4 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">{isAdmin ? 'Platform Admin' : 'Management'}</p>
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
                   'group flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary',
-                  pathname === item.href ? 'bg-primary/20 text-primary border border-primary/20 shadow-[0_0_15px_rgba(139,92,246,0.1)]' : 'text-muted-foreground'
+                  pathname === item.href ? 'bg-primary/20 text-primary border border-primary/20' : 'text-muted-foreground'
                 )}
               >
                 <item.icon className="mr-3 h-5 w-5" />

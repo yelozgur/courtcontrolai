@@ -1,7 +1,8 @@
+
 "use client"
 
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
@@ -12,7 +13,11 @@ import {
   Loader2,
   Calendar,
   Star,
-  PlusCircle
+  PlusCircle,
+  Building,
+  Users,
+  DollarSign,
+  TrendingUp
 } from "lucide-react"
 import { collection, query, limit, doc, where } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
@@ -28,7 +33,23 @@ export default function DashboardOverview() {
   }, [db, user]);
   
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
+  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
 
+  // Admin Queries
+  const allClubsQuery = useMemoFirebase(() => {
+    if (!db || !isAdmin) return null;
+    return query(collection(db, "clubs"), limit(100));
+  }, [db, isAdmin]);
+
+  const allUsersQuery = useMemoFirebase(() => {
+    if (!db || !isAdmin) return null;
+    return query(collection(db, "users"), limit(100));
+  }, [db, isAdmin]);
+
+  const { data: allClubs } = useCollection(allClubsQuery);
+  const { data: allUsers } = useCollection(allUsersQuery);
+
+  // Club Owner Queries
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, "tournaments"), limit(10));
@@ -46,6 +67,68 @@ export default function DashboardOverview() {
     return (
       <div className="flex items-center justify-center p-20">
         <Loader2 className="animate-spin text-primary h-12 w-12" />
+      </div>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-700">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-headline font-bold text-white tracking-tighter uppercase">Platform Master</h1>
+            <p className="text-muted-foreground mt-1 font-medium">Global system status and SaaS metrics.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/admin/costs">
+                <DollarSign className="mr-2 h-4 w-4" /> Cloud Costs
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard title="Active Clubs" value={allClubs?.length || 0} icon={Building} sub="Onboarded Orgs" />
+          <StatCard title="Total Users" value={allUsers?.length || 0} icon={Users} sub="Unique Accounts" color="text-accent" />
+          <StatCard title="Growth Rate" value="+12%" icon={TrendingUp} sub="Past 30 days" />
+          <StatCard title="System" value="Stable" icon={Zap} sub="Node Health" color="text-emerald-400" />
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-12">
+          <Card className="lg:col-span-8 bg-white/5 border-white/5">
+            <CardHeader>
+              <CardTitle>Recent Club Activity</CardTitle>
+              <CardDescription>Latest sports organizations joining Court Control AI.</CardDescription>
+            </CardHeader>
+            <CardContent>
+               <div className="space-y-4">
+                 {allClubs?.slice(0, 5).map(club => (
+                   <div key={club.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold">{club.name.charAt(0)}</div>
+                        <div>
+                          <p className="font-bold">{club.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{club.location}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline">{club.primarySport}</Badge>
+                   </div>
+                 ))}
+                 {!allClubs?.length && <p className="text-center text-muted-foreground py-10 italic">No clubs registered yet.</p>}
+               </div>
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-4 bg-primary/10 border-primary/20">
+             <CardHeader>
+                <CardTitle className="text-primary">Admin Tips</CardTitle>
+             </CardHeader>
+             <CardContent className="text-xs text-muted-foreground space-y-4">
+                <p>Use the <strong>System Users</strong> tab to promote new signups to "Club Owner" or "Referee" roles.</p>
+                <p>Monitor <strong>Revenue & Costs</strong> daily to ensure Spark Plan quotas aren't exceeded by heavy AI scheduling sessions.</p>
+             </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

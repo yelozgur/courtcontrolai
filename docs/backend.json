@@ -123,6 +123,18 @@
         "websiteUrl": { "type": "string" },
         "logoUrl": { "type": "string" }
       }
+    },
+    "User": {
+      "title": "User",
+      "description": "System user account.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "club_owner", "referee", "player"] },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
