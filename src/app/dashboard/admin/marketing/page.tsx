@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -22,7 +21,7 @@ import {
   Sparkles,
   Trophy
 } from 'lucide-react';
-import { collection, query, limit, doc, setDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, limit, doc, setDoc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import {
