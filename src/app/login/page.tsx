@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -62,7 +61,7 @@ export default function LoginPage() {
 
       toast({
         title: 'Welcome Back',
-        description: isAdminEmail ? 'Logged in as System Administrator.' : 'Successfully signed in.',
+        description: 'Successfully signed in.',
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -109,7 +108,7 @@ export default function LoginPage() {
 
       toast({
         title: 'Welcome Back',
-        description: isAdminEmail ? 'Admin Access Granted.' : 'Signed in with Google.',
+        description: 'Signed in with Google.',
       });
       router.push('/dashboard');
     } catch (error: any) {

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
@@ -45,19 +44,17 @@ export default function TournamentArena() {
     return () => clearInterval(timer)
   }, [])
 
-  // Optimized query: Only fetch matches for this tournament, limited to a reasonable amount
   const allMatchesQuery = useMemoFirebase(() => {
     if (!db || !id) return null
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", id),
-      limit(150) // Reduced limit for better performance
+      limit(100)
     )
   }, [db, id])
 
   const { data: allMatches, loading: matchesLoading, error: matchesError } = useCollection(allMatchesQuery)
 
-  // Memoize filtered results to prevent expensive re-renders
   const liveMatches = useMemo(() => {
     if (!allMatches) return []
     let filtered = allMatches.filter(m => m.status === "live")
@@ -262,8 +259,8 @@ export default function TournamentArena() {
                                   <span className="text-sm font-bold">{m.startTime ? (typeof m.startTime === 'string' ? m.startTime.split('T')[1]?.substring(0, 5) : formatVenueTime(m.startTime.toDate())) : 'TBD'}</span>
                                </div>
                                <div className="text-left">
-                                  <p className="text-xl font-bold">{m.teamA.name} vs {m.teamB.name}</p>
-                                  <p className="text-xs text-muted-foreground uppercase tracking-widest">{m.category} • Court {m.court}</p>
+                                  <div className="text-xl font-bold">{m.teamA.name} vs {m.teamB.name}</div>
+                                  <div className="text-xs text-muted-foreground uppercase tracking-widest">{m.category} • Court {m.court}</div>
                                </div>
                             </div>
                             <Badge variant="outline" className="text-accent border-accent/20">READY</Badge>
