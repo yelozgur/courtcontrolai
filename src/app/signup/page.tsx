@@ -48,16 +48,17 @@ export default function SignupPage() {
 
       const isAdminEmail = email?.toLowerCase() === 'admin@deneme.com';
 
+      // Default role is 'club_owner' for new registrations
       setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         displayName: name,
-        role: isAdminEmail ? 'admin' : 'user',
+        role: isAdminEmail ? 'admin' : 'club_owner',
         createdAt: serverTimestamp(),
       }).catch(e => console.warn('Background profile creation failed:', e));
 
       toast({
-        title: isAdminEmail ? 'Admin Account Created' : 'Account Created',
-        description: isAdminEmail ? "SaaS controls unlocked." : "Welcome! You can now manage your club.",
+        title: isAdminEmail ? 'Admin Account Created' : 'Club Console Active',
+        description: isAdminEmail ? "SaaS controls unlocked." : "Welcome! You can now launch your first tournament.",
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -94,7 +95,7 @@ export default function SignupPage() {
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
-            role: isAdminEmail ? 'admin' : 'user',
+            role: isAdminEmail ? 'admin' : 'club_owner',
             createdAt: serverTimestamp(),
           });
         } else if (isAdminEmail && userSnap.data().role !== 'admin') {
@@ -104,7 +105,7 @@ export default function SignupPage() {
 
       toast({
         title: 'Signed In',
-        description: isAdminEmail ? 'SaaS Admin access granted.' : 'Welcome to Court Control AI!',
+        description: isAdminEmail ? 'SaaS Admin access granted.' : 'Welcome to your Club Console!',
       });
       router.push('/dashboard');
     } catch (error: any) {

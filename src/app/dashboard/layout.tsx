@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -44,8 +43,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
+  // Determine permissions based on role
+  // We treat 'user' as club owner by default since most signups are for club management
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
-  const isClubOwner = profile?.role === 'club_owner';
+  const isClubOwner = profile?.role === 'club_owner' || profile?.role === 'user' || !profile?.role;
   const isReferee = profile?.role === 'referee';
 
   const handleSignOut = () => signOut(auth).then(() => router.push('/'));
@@ -70,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Revenue & Costs', icon: Calculator, href: '/dashboard/admin/costs' },
     { name: 'My Profile', icon: User, href: '/dashboard/profile' },
   ] : [
-    { name: 'Club Console', icon: LayoutDashboard, href: '/dashboard', show: isClubOwner || isReferee },
+    { name: 'Club Console', icon: LayoutDashboard, href: '/dashboard', show: true },
     { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments/new', show: isClubOwner },
     { name: 'Match Planner', icon: Calendar, href: '/dashboard/schedule', show: isClubOwner },
     { name: 'Participants', icon: Users, href: '/dashboard/participants', show: isClubOwner },
@@ -115,7 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate text-white">{profile?.displayName || 'User'}</p>
-              <p className="text-[10px] text-muted-foreground uppercase font-semibold">{profile?.role || 'User'}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">{profile?.role?.replace('_', ' ') || 'Member'}</p>
             </div>
           </div>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={handleSignOut}>

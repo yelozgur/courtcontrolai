@@ -51,7 +51,7 @@ export default function LoginPage() {
           await setDoc(userRef, {
             email: loggedUser.email,
             displayName: loggedUser.displayName || email.split('@')[0],
-            role: isAdminEmail ? 'admin' : 'user',
+            role: isAdminEmail ? 'admin' : 'club_owner',
             createdAt: serverTimestamp(),
           });
         } else if (isAdminEmail && userSnap.data().role !== 'admin') {
@@ -100,7 +100,7 @@ export default function LoginPage() {
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
-            role: isAdminEmail ? 'admin' : 'user',
+            role: isAdminEmail ? 'admin' : 'club_owner',
             createdAt: serverTimestamp(),
           });
         } else if (isAdminEmail && userSnap.data().role !== 'admin') {
@@ -146,11 +146,11 @@ export default function LoginPage() {
         <span className="text-2xl font-headline font-bold text-white tracking-tighter uppercase">Court Control AI</span>
       </Link>
 
-      <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
+      <Card className="w-full max-md border-white/5 bg-card/50 backdrop-blur-xl">
         <CardHeader className="text-center space-y-1">
           <CardTitle className="text-2xl font-headline font-bold">Sign In</CardTitle>
           <CardDescription>
-            Enter your credentials to access your club.
+            Enter your credentials to access your club console.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
