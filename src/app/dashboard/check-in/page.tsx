@@ -41,6 +41,9 @@ export default function CheckInPage() {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const checkInUrl = selectedTournamentId ? `${origin}/tournaments/${selectedTournamentId}/check-in` : '';
+  
+  // Real QR Code API URL
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(checkInUrl)}&bgcolor=FFFFFF&color=0F172A&margin=10`;
 
   const copyToClipboard = (url: string) => {
     if (!url) return;
@@ -80,7 +83,7 @@ export default function CheckInPage() {
           <QrCode className="h-20 w-20 text-muted-foreground mb-4 opacity-10" />
           <h3 className="text-2xl font-bold text-muted-foreground uppercase tracking-tighter">Ready for Arrival</h3>
           <p className="text-muted-foreground max-w-sm mx-auto mt-2 text-center text-sm px-10">
-            Select an active tournament to generate the venue's day-of arrival link and QR code.
+            Select an active tournament to generate the venue's day-of arrival link and functional QR code.
           </p>
         </Card>
       ) : (
@@ -94,12 +97,12 @@ export default function CheckInPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center p-12 space-y-8">
-                <div className="p-10 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(34,211,238,0.2)]">
-                  <svg width="220" height="220" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="1.5">
-                    <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                    <path d="M14 14h3M21 14h.01M14 17v.01M17 17v3M21 17v3M14 21h3M21 21h.01" />
-                    <circle cx="17" cy="17" r="1.5" fill="#22D3EE" />
-                  </svg>
+                <div className="p-8 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(34,211,238,0.2)]">
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="Check-in QR Code" 
+                    className="w-[240px] h-[240px]"
+                  />
                 </div>
                 <div className="flex gap-4 w-full max-w-md">
                   <Button className="flex-1 bg-white/5 border-white/10 hover:bg-white/10" variant="outline" asChild>
@@ -140,7 +143,7 @@ export default function CheckInPage() {
                   <ul className="text-sm text-muted-foreground mt-2 space-y-1">
                     {selectedTournament?.locations?.length > 0 ? selectedTournament.locations.map((loc: any, i: number) => (
                       <li key={i} className="flex items-center gap-2">
-                        <div className="w-1 h-1 bg-accent rounded-full"></div> {loc.name} ({loc.numCourts} Courts)
+                        <div className="w-1 h-1 bg-accent rounded-full"></div> {typeof loc === 'object' ? loc.name : loc}
                       </li>
                     )) : <li className="italic opacity-50 text-xs">Primary Club Location Only</li>}
                   </ul>

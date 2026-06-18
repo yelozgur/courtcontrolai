@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -44,7 +45,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
-  // Default to showing management menus for now to avoid blocking the user
   const isClubOwner = profile?.role === 'club_owner' || isAdmin || true; 
   const isReferee = profile?.role === 'referee' || isAdmin;
 
@@ -78,7 +78,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen overflow-hidden bg-[#0F172A]">
       <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
         <div className="p-6 flex items-center gap-3">
-          <Zap className="text-primary h-6 w-6" />
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="18" height="18" rx="4" className="stroke-primary-foreground" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="3" className="stroke-primary-foreground" strokeWidth="2"/>
+              <path d="M12 9V15M9 12H15" className="stroke-accent" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
           <span className="font-headline font-bold text-lg text-white uppercase tracking-tighter">Court Control AI</span>
         </div>
         <ScrollArea className="flex-1 px-3">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -25,10 +26,15 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       <header className="px-4 lg:px-6 h-16 flex items-center border-b border-border bg-card/50 backdrop-blur-md sticky top-0 z-50">
         <Link className="flex items-center justify-center space-x-2" href="/">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Zap className="text-primary-foreground h-5 w-5" />
+          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="18" height="18" rx="4" className="stroke-primary-foreground" strokeWidth="2"/>
+              <path d="M12 3V21M3 12H21" className="stroke-primary-foreground/30" strokeWidth="1"/>
+              <circle cx="12" cy="12" r="3" className="stroke-primary-foreground" strokeWidth="2"/>
+              <path d="M12 9V15M9 12H15" className="stroke-accent" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </div>
-          <span className="font-headline font-bold text-xl tracking-tighter">Court Control AI</span>
+          <span className="font-headline font-bold text-xl tracking-tighter uppercase">Court Control AI</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
           <Link className="text-sm font-medium hover:text-primary transition-colors hidden sm:block" href="/tournaments">
@@ -76,10 +82,10 @@ export default function HomePage() {
                   {isAdmin ? 'Logged in as SaaS Administrator' : 'The Multi-Tenant Sports SaaS'}
                 </Badge>
                 <h1 className="text-4xl font-headline font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl/none">
-                  Choose Your <span className="text-primary">Arena</span>
+                  Control Your <span className="text-primary">Arena</span>
                 </h1>
                 <p className="mx-auto max-w-[800px] text-muted-foreground md:text-xl lg:text-2xl leading-relaxed">
-                  Manage your club, host elite tournaments, or find your next competition. <br className="hidden md:block" /> AI-powered scheduling and real-time live results for every court.
+                  The elite sports management engine. Host professional tournaments, automate schedules with AI, and broadcast live results for every court.
                 </p>
               </div>
 
@@ -126,7 +132,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-headline font-bold">Smart Scheduling</h3>
                 <p className="text-muted-foreground">
-                  Our AI scheduler handles court allocations and match timing automatically.
+                  Our AI scheduler handles court allocations and match timing automatically using Genkit intelligence.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-4 text-center p-6 bg-secondary/20 rounded-3xl border border-white/5">
@@ -144,7 +150,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-headline font-bold">Member Portal</h3>
                 <p className="text-muted-foreground">
-                  Unified player profiles and registration across all clubs on the network.
+                  Unified player profiles and global ranking tracking across the entire network.
                 </p>
               </div>
             </div>

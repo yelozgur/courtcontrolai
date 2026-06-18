@@ -88,6 +88,9 @@ export default function ParticipantManagement() {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const registerUrl = selectedTournamentId ? `${origin}/tournaments/${selectedTournamentId}/register` : '';
+  
+  // Real QR Code API URL
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(registerUrl)}&bgcolor=FFFFFF&color=0F172A&margin=10`;
 
   const copyToClipboard = (url: string) => {
     if (!url) return;
@@ -214,7 +217,7 @@ export default function ParticipantManagement() {
                 <Share2 className="h-5 w-5" />
                 Invite Players
               </CardTitle>
-              <CardDescription>Generate a public registration link for an event.</CardDescription>
+              <CardDescription>Generate a functional registration QR for an event.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -234,10 +237,11 @@ export default function ParticipantManagement() {
               {selectedTournamentId ? (
                 <div className="space-y-4 animate-in zoom-in-95 duration-300">
                   <div className="p-4 bg-white rounded-2xl flex justify-center">
-                    <svg width="140" height="140" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                      <path d="M14 14h3M21 14h.01M14 17v.01M17 17v3M21 17v3M14 21h3M21 21h.01" />
-                    </svg>
+                    <img 
+                      src={qrCodeUrl} 
+                      alt="Registration QR Code" 
+                      className="w-[140px] h-[140px]"
+                    />
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="flex-1" asChild>
