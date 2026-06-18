@@ -86,10 +86,10 @@ STRATEGIC GOALS (HIGH PRIORITY):
 {{/if}}
 
 RULES:
-1. FOR ROUND ROBIN: Every player in a category must play every other player in that same category exactly once. Pair them efficiently across courts.
-2. FOR SINGLE ELIMINATION: Create the first round of matches (Round of 16, Quarter-finals, etc.) based on the number of participants. If odd, provide a 'Bye'.
-3. CLASH PREVENTION: A participant cannot be in two places at once. Ensure a minimum of {{{recoveryTime}}} minutes between their matches.
-4. LOGISTICAL EFFICIENCY: Consolidate matches to the minimum number of locations necessary. Prioritize filling one location before moving to the next to reduce staff/operational requirements.
+1. LOGISTICAL EFFICIENCY (CRITICAL): Consolidate matches to the minimum number of locations necessary. Prioritize filling one location completely before using the next to minimize staffing and operational overhead.
+2. FOR ROUND ROBIN: Every player in a category must play every other player in that same category exactly once. Pair them efficiently across courts.
+3. FOR SINGLE ELIMINATION: Create the first round of matches (Round of 16, Quarter-finals, etc.) based on the number of participants. If odd, provide a 'Bye'.
+4. CLASH PREVENTION: A participant cannot be in two places at once. Ensure a minimum of {{{recoveryTime}}} minutes between their matches.
 5. COURT ASSIGNMENT: Distribute matches across available courts at the prioritized location. Use Court 1 for highest category matches.
 6. START TIME: Begin matches at 09:00 AM on the start date. Use 30-min or 60-min increments based on {{{matchDuration}}}.
 7. OUTPUT: Generate a comprehensive list of scheduled matches that honors these constraints.`,
