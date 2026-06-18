@@ -75,7 +75,7 @@ export default function PublicTournaments() {
                     src={t.imageUrl || `https://picsum.photos/seed/${t.id}/800/400`} 
                     alt={t.name}
                     fill
-                    priority={i < 3}
+                    priority={i < 3} // Optimize LCP for above-the-fold cards
                     className="object-cover opacity-60 group-hover:opacity-80 transition-opacity"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     data-ai-hint="sports tournament"

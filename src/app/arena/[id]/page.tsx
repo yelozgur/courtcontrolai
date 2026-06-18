@@ -24,6 +24,7 @@ export default function TournamentArena() {
   const db = useFirestore()
 
   useEffect(() => {
+    // Standard hydration fix for time-sensitive elements
     setTime(new Date())
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
@@ -149,11 +150,15 @@ export default function TournamentArena() {
           </div>
           
           <div className="text-right">
-            <div className="text-xs font-bold text-accent uppercase tracking-[0.3em] mb-1 flex items-center justify-end gap-2">
-              <Calendar className="h-3 w-3" />
-              {time ? time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : "-- --- --"}
+            <div className="text-xs font-bold text-accent uppercase tracking-[0.3em] mb-1 flex items-center justify-end gap-2 h-4">
+              {time && (
+                <>
+                  <Calendar className="h-3 w-3" />
+                  {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                </>
+              )}
             </div>
-            <div className="text-5xl font-mono font-bold leading-none">
+            <div className="text-5xl font-mono font-bold leading-none h-12">
               {time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
             </div>
           </div>
