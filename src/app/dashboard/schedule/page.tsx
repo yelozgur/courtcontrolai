@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database } from "lucide-react"
 import { collection, query, where, limit, addDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { format } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
@@ -36,6 +36,7 @@ export default function SchedulingPage() {
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isAddingMatch, setIsAddingMatch] = useState(false)
+  const [isSeeding, setIsSeeding] = useState(false)
   
   const [newMatch, setNewMatch] = useState({
     teamA: "",
@@ -97,7 +98,7 @@ export default function SchedulingPage() {
       return dateStr === selectedDateStr
     }).sort((a, b) => {
       const getTimeStr = (val: any) => {
-        if (typeof val === 'string') return val.split('T')[1] || ""
+        if (typeof val === 'string') return val.split('T')[1]?.substring(0, 5) || ""
         if (val?.toDate) return format(val.toDate(), "HH:mm")
         return ""
       }
@@ -136,6 +137,49 @@ export default function SchedulingPage() {
       })
   }
 
+  const seedDummyMatches = async () => {
+    if (!db || !clubId || !selectedTournamentId) return
+    setIsSeeding(true)
+    
+    const testDate = "2026-06-19"
+    const dummyMatches = [
+      { time: "09:00", court: 1, teamA: "Alpha Strikers", teamB: "Beta Blasters" },
+      { time: "10:30", court: 2, teamA: "Gamma Giants", teamB: "Delta Dodgers" },
+      { time: "12:00", court: 1, teamA: "Epsilon Elite", teamB: "Zeta Zenith" },
+      { time: "13:30", court: Math.min(3, activeTournament?.numCourts || 3), teamA: "Eta Heroes", teamB: "Theta Titans" }
+    ]
+
+    const matchesRef = collection(db, "matches")
+    
+    try {
+      for (const m of dummyMatches) {
+        const matchData = {
+          clubId,
+          tournamentId: selectedTournamentId,
+          status: "scheduled",
+          court: m.court,
+          startTime: `${testDate}T${m.time}:00`,
+          teamA: { name: m.teamA, score: 0, setsWon: 0 },
+          teamB: { name: m.teamB, score: 0, setsWon: 0 },
+          category: activeTournament?.categories?.[0]?.name || "Open"
+        }
+        await addDoc(matchesRef, matchData)
+      }
+      
+      toast({ 
+        title: "Seed Successful", 
+        description: "Added 4 matches for June 19, 2026. Switching view..." 
+      })
+      
+      // Auto switch to the seed date
+      setSelectedDate(parseISO(testDate))
+    } catch (e) {
+      toast({ variant: "destructive", title: "Seed Failed", description: "Could not create dummy matches." })
+    } finally {
+      setIsSeeding(false)
+    }
+  }
+
   const handleGridSlotClick = (court: number, time: string) => {
     setNewMatch(prev => ({
       ...prev,
@@ -159,6 +203,17 @@ export default function SchedulingPage() {
           <p className="text-muted-foreground">Orchestrate match timings and court allocations.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="border-accent/30 text-accent hover:bg-accent/10 hidden lg:flex"
+            onClick={seedDummyMatches}
+            disabled={!selectedTournamentId || isSeeding}
+          >
+            {isSeeding ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Database className="w-3 h-3 mr-2" />}
+            Seed June 19 Data
+          </Button>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("w-[200px] justify-start text-left font-normal bg-card border-white/5", !selectedDate && "text-muted-foreground")}>
@@ -300,6 +355,7 @@ export default function SchedulingPage() {
                            
                            let mTime = "";
                            if (typeof mStart === 'string') {
+                             // Handle ISO strings with T09:00:00 format
                              mTime = mStart.split('T')[1]?.substring(0, 5) || "";
                            } else if (mStart.toDate) {
                              mTime = format(mStart.toDate(), "HH:mm");
