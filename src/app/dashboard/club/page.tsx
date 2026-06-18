@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -16,15 +15,33 @@ import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const COMMON_TIMEZONES = [
-  { label: "UTC (Coordinated Universal Time)", value: "UTC" },
-  { label: "New York (EST/EDT)", value: "America/New_York" },
-  { label: "Los Angeles (PST/PDT)", value: "America/Los_Angeles" },
-  { label: "London (GMT/BST)", value: "Europe/London" },
-  { label: "Paris/Madrid (CET/CEST)", value: "Europe/Paris" },
-  { label: "Dubai (GST)", value: "Asia/Dubai" },
-  { label: "Singapore/Hong Kong (HKT)", value: "Asia/Singapore" },
-  { label: "Tokyo (JST)", value: "Asia/Tokyo" },
-  { label: "Sydney (AEST/AEDT)", value: "Australia/Sydney" }
+  { label: "UTC -12:00", value: "Etc/GMT+12" },
+  { label: "UTC -11:00", value: "Etc/GMT+11" },
+  { label: "UTC -10:00", value: "Etc/GMT+10" },
+  { label: "UTC -09:00", value: "Etc/GMT+9" },
+  { label: "UTC -08:00", value: "Etc/GMT+8" },
+  { label: "UTC -07:00", value: "Etc/GMT+7" },
+  { label: "UTC -06:00", value: "Etc/GMT+6" },
+  { label: "UTC -05:00", value: "Etc/GMT+5" },
+  { label: "UTC -04:00", value: "Etc/GMT+4" },
+  { label: "UTC -03:00", value: "Etc/GMT+3" },
+  { label: "UTC -02:00", value: "Etc/GMT+2" },
+  { label: "UTC -01:00", value: "Etc/GMT+1" },
+  { label: "UTC +00:00", value: "UTC" },
+  { label: "UTC +01:00", value: "Etc/GMT-1" },
+  { label: "UTC +02:00", value: "Etc/GMT-2" },
+  { label: "UTC +03:00", value: "Etc/GMT-3" },
+  { label: "UTC +04:00", value: "Etc/GMT-4" },
+  { label: "UTC +05:00", value: "Etc/GMT-5" },
+  { label: "UTC +06:00", value: "Etc/GMT-6" },
+  { label: "UTC +07:00", value: "Etc/GMT-7" },
+  { label: "UTC +08:00", value: "Etc/GMT-8" },
+  { label: "UTC +09:00", value: "Etc/GMT-9" },
+  { label: "UTC +10:00", value: "Etc/GMT-10" },
+  { label: "UTC +11:00", value: "Etc/GMT-11" },
+  { label: "UTC +12:00", value: "Etc/GMT-12" },
+  { label: "UTC +13:00", value: "Etc/GMT-13" },
+  { label: "UTC +14:00", value: "Etc/GMT-14" },
 ]
 
 export default function ClubSettings() {
@@ -100,7 +117,6 @@ export default function ClubSettings() {
         })
         .finally(() => setIsSaving(false))
     } else {
-      // Create new club if none exists
       addDoc(collection(db, "clubs"), { ...updateData, createdAt: serverTimestamp() })
         .then(() => {
           toast({ title: "Club Initialized", description: "Your organization is now active." })
@@ -160,7 +176,7 @@ export default function ClubSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="timezone">Club Timezone</Label>
+                <Label htmlFor="timezone">Club Timezone (UTC Offset)</Label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
                   <Select 
@@ -168,7 +184,7 @@ export default function ClubSettings() {
                     onValueChange={(val) => setFormData({...formData, timezone: val})}
                   >
                     <SelectTrigger className="pl-10">
-                      <SelectValue placeholder="Select timezone" />
+                      <SelectValue placeholder="Select UTC offset" />
                     </SelectTrigger>
                     <SelectContent>
                       {COMMON_TIMEZONES.map(tz => (
