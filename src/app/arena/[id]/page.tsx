@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
@@ -151,6 +150,7 @@ export default function TournamentArena() {
             <h1 className="text-4xl font-headline font-bold tracking-tighter uppercase">
               {tourneyLoading ? "Connecting..." : (tournament?.name || "Live Arena")}
             </h1>
+            {/* Fix hydration error by using div instead of p for block-level Badge descendants */}
             <div className="text-xl text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-2">
               Real-time Scoring Dashboard <Badge variant="outline" className="text-[10px] border-accent/30 text-accent font-mono"><Globe className="h-3 w-3 mr-1" /> {clubTimezone}</Badge>
             </div>

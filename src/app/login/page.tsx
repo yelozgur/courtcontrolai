@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, AlertCircle, Circle, ShieldCheck, Globe } from 'lucide-react';
-import { useAuth, useUser } from '@/firebase';
+import { Zap, LogIn, Loader2, Mail, Lock, Globe, ShieldCheck } from 'lucide-react';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -27,7 +26,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | 'domain' | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (existingUser && !loading) {
@@ -40,14 +38,9 @@ export default function LoginPage() {
     if (!auth || !db) return;
     setIsSubmitting(true);
     setErrorType(null);
-    setErrorMessage(null);
 
     try {
-      const isAdminShortcut = email === 'admin';
-      const loginEmail = isAdminShortcut ? 'admin@deneme.com' : email;
-      const loginPassword = isAdminShortcut && password === 'admins' ? 'password' : password;
-
-      const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      const result = await signInWithEmailAndPassword(auth, email, password);
       const loggedUser = result.user;
 
       const isAdminEmail = loggedUser.email?.toLowerCase() === 'admin@deneme.com';
@@ -57,7 +50,7 @@ export default function LoginPage() {
         if (!userSnap.exists()) {
           await setDoc(userRef, {
             email: loggedUser.email,
-            displayName: loggedUser.displayName || loginEmail.split('@')[0],
+            displayName: loggedUser.displayName || email.split('@')[0],
             role: isAdminEmail ? 'admin' : 'user',
             createdAt: serverTimestamp(),
           });
@@ -76,12 +69,9 @@ export default function LoginPage() {
         setErrorType('domain');
       } else if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
         setErrorType('config');
-      } else if (error.message?.includes('offline') || error.code === 'unavailable') {
-        setErrorType('firestore');
       } else {
         setErrorType('creds');
       }
-      setErrorMessage(error.message);
       toast({
         variant: 'destructive',
         title: 'Sign In Failed',
@@ -129,7 +119,6 @@ export default function LoginPage() {
       } else if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
         setErrorType('config');
       }
-      setErrorMessage(error.message);
       toast({
         variant: 'destructive',
         title: 'Google Login Failed',
@@ -244,15 +233,6 @@ export default function LoginPage() {
           <div className="text-sm text-center text-muted-foreground">
             Don't have an account?{' '}
             <Link href="/signup" className="text-primary hover:underline font-bold">Sign Up</Link>
-          </div>
-          <div className="bg-primary/10 p-4 rounded-xl border border-primary/20 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              <span className="text-[10px] font-bold text-primary uppercase tracking-widest">SaaS Administrator Access</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground font-mono">
-              User: <span className="text-primary">admin</span> / Pass: <span className="text-primary">admins</span>
-            </p>
           </div>
         </CardFooter>
       </Card>
