@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Play, Monitor, Building } from 'lucide-react';
@@ -69,12 +70,17 @@ export default function HomePage() {
       </header>
 
       <main className="flex-1">
-        <section 
-          className="w-full py-20 md:py-32 lg:py-48 bg-cover bg-center relative overflow-hidden"
-          style={{ backgroundImage: `url('${heroImage?.imageUrl}')` }}
-          data-ai-hint="sports tournament"
-        >
-          <div className="absolute inset-0 bg-background/85 backdrop-blur-[1px]"></div>
+        <section className="w-full py-20 md:py-32 lg:py-48 relative overflow-hidden">
+          {heroImage && (
+            <Image 
+              src={heroImage.imageUrl} 
+              alt="Tournament Hero" 
+              fill 
+              priority 
+              className="object-cover opacity-20 pointer-events-none"
+              data-ai-hint="sports tournament"
+            />
+          )}
           <div className="container px-4 md:px-6 relative z-10 mx-auto">
             <div className="flex flex-col items-center space-y-6 text-center">
               <div className="space-y-4">

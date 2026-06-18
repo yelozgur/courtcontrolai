@@ -1,6 +1,8 @@
+
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Heart, Loader2, ExternalLink } from "lucide-react"
@@ -94,17 +96,21 @@ export default function PublicSponsors() {
 }
 
 function SponsorCard({ sponsor, size }: { sponsor: any, size: 'lg' | 'md' | 'sm' }) {
-  const heights = { lg: 'h-40', md: 'h-32', sm: 'h-24' }
+  const heights = { lg: 160, md: 128, sm: 96 }
   const widths = { lg: 'w-full', md: 'w-full', sm: 'w-48' }
 
   return (
     <Card className={cn("bg-card/50 border-white/5 group hover:border-primary/40 transition-all", widths[size])}>
       <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-4">
-        <div className={cn("bg-white/5 rounded-2xl flex items-center justify-center overflow-hidden w-full", heights[size])}>
-          <img 
+        <div 
+          className="bg-white/5 rounded-2xl flex items-center justify-center overflow-hidden w-full relative" 
+          style={{ height: heights[size] }}
+        >
+          <Image 
             src={sponsor.logoUrl} 
             alt={sponsor.name} 
-            className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform"
+            fill
+            className="object-contain p-4 group-hover:scale-110 transition-transform"
           />
         </div>
         <div>

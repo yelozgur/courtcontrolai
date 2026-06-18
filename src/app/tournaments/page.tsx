@@ -1,6 +1,8 @@
+
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -67,13 +69,16 @@ export default function PublicTournaments() {
           </div>
         ) : filtered && filtered.length > 0 ? (
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((t) => (
+            {filtered.map((t, i) => (
               <Card key={t.id} className="bg-card/50 border-white/5 overflow-hidden group hover:border-primary/50 transition-all">
                 <div className="h-48 bg-slate-800 relative">
-                  <img 
+                  <Image 
                     src={t.imageUrl || `https://picsum.photos/seed/${t.id}/800/400`} 
                     alt={t.name}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                    fill
+                    priority={i < 3}
+                    className="object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                   <Badge className="absolute top-4 right-4 bg-primary uppercase tracking-widest">{t.sport || 'SPORTS'}</Badge>
                   <Badge className="absolute bottom-4 left-4 bg-accent text-accent-foreground uppercase text-[10px] font-bold">
