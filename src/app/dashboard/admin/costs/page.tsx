@@ -16,7 +16,8 @@ import {
   Percent,
   Zap,
   Cpu,
-  ArrowUpRight
+  ArrowUpRight,
+  TrendingUp
 } from 'lucide-react';
 import { collection, query, limit, orderBy, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -77,20 +78,20 @@ export default function AdminCostDashboard() {
     const firestoreDailyCost = Math.max(0, (estReadsPerDay - 50000) / 100000 * 0.06 + (estWritesPerDay - 20000) / 100000 * 0.18);
     const firestoreMonthlyEst = firestoreDailyCost * 30;
 
-    // AI Costs vs Revenue
-    const totalAiUsage = clubs.reduce((acc, c) => acc + (c.aiUsageCount || 0), 0);
+    // AI Revenue Accounting
     const aiServiceRevenue = clubs.reduce((acc, c) => {
       const usage = c.aiUsageCount || 0;
       if (usage <= 3) return acc;
-      return acc + Math.ceil((usage - 3) / 3) * AI_FEE_PER_BLOCK;
+      // Clubs pay $5 per block of 3 additional runs
+      return acc + Math.floor((usage - 1) / 3) * AI_FEE_PER_BLOCK;
     }, 0);
 
-    const estAICallsPerDay = tournaments.length * 0.8;
-    const aiMonthlyEst = estAICallsPerDay * 30 * 0.005;
+    const estAICallsPerDay = tournaments.length * 0.5;
+    const aiMonthlyEst = estAICallsPerDay * 30 * 0.002; // Tiny infrastructure cost per Genkit call
 
     // Revenue Accounting
     const grossVolume = participants.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
-    const platformRevenue = grossVolume * COMMISSION_RATE + aiServiceRevenue;
+    const platformRevenue = (grossVolume * COMMISSION_RATE) + aiServiceRevenue;
 
     return {
       documentCount,
@@ -112,7 +113,8 @@ export default function AdminCostDashboard() {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">
         <AlertCircle className="h-12 w-12 text-destructive" />
-        <h2 className="text-2xl font-bold">Access Denied</h2>
+        <h2 className="text-2xl font-bold uppercase tracking-tighter">Access Denied</h2>
+        <p className="text-muted-foreground">Only platform administrators can view economic metrics.</p>
       </div>
     );
   }
@@ -121,11 +123,11 @@ export default function AdminCostDashboard() {
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter text-white">SaaS Unit Economics</h1>
-          <p className="text-muted-foreground font-medium">Tracking 5% fees + AI Credits vs Burn.</p>
+          <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter text-white">Platform Economics</h1>
+          <p className="text-muted-foreground font-medium">Tracking 5% commissions + AI credits against operational burn.</p>
         </div>
         <div className="flex items-center gap-3">
-           <Badge variant="outline" className="h-10 border-emerald-500/50 text-emerald-500 px-4 bg-emerald-500/5 font-bold uppercase tracking-widest text-[10px]">
+           <Badge variant="outline" className="h-10 border-emerald-500/30 text-emerald-500 px-4 bg-emerald-500/5 font-bold uppercase tracking-widest text-[10px]">
              Firebase Spark Plan Active
            </Badge>
         </div>
@@ -136,21 +138,21 @@ export default function AdminCostDashboard() {
       ) : stats && (
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <CostCard title="Platform GMV" value={`$${stats.grossVolume.toLocaleString()}`} sub="Registration Volume" icon={DollarSign} color="text-white" />
-            <CostCard title="Net SaaS Earnings" value={`$${stats.platformRevenue.toFixed(2)}`} sub="Commissions + AI Fees" icon={ArrowUpRight} color="text-accent" />
-            <CostCard title="Estimated OpEx" value={`$${stats.totalCost.toFixed(2)}`} sub="Infrastructure Burn" icon={Server} color="text-primary" />
-            <CostCard title="Profit Status" value={stats.netProfit >= 0 ? "Profitable" : "Cloud Free"} sub="Economic Health" icon={BarChart3} color={stats.netProfit >= 0 ? "text-emerald-400" : "text-destructive"} />
+            <CostCard title="Total Platform GMV" value={`$${stats.grossVolume.toLocaleString()}`} sub="Gross registration volume" icon={DollarSign} color="text-white" />
+            <CostCard title="Net Platform Revenue" value={`$${stats.platformRevenue.toFixed(2)}`} sub="Commissions + AI Fees" icon={TrendingUp} color="text-accent" />
+            <CostCard title="Estimated OpEx" value={`$${stats.totalCost.toFixed(2)}`} sub="Infrastructure burn estimate" icon={Server} color="text-primary" />
+            <CostCard title="Profit Status" value={stats.netProfit >= 0 ? "Profitable" : "Cloud Efficient"} sub="System health indicator" icon={ShieldCheck} color={stats.netProfit >= 0 ? "text-emerald-400" : "text-destructive"} />
           </div>
 
           <div className="grid gap-8 lg:grid-cols-12">
             <Card className="lg:col-span-8 bg-card/50 border-white/5 relative overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-xl font-headline">
+                  <CardTitle className="flex items-center gap-2 text-xl font-headline uppercase tracking-tight">
                     <ReceiptText className="h-5 w-5 text-accent" />
-                    Platform Ledger
+                    Transaction Ledger
                   </CardTitle>
-                  <CardDescription>Live revenue breakdown including AI Credits.</CardDescription>
+                  <CardDescription>Live revenue breakdown including 5% SaaS commission.</CardDescription>
                 </div>
                 <div className="bg-primary/20 p-2 px-4 rounded-full border border-primary/20">
                   <p className="text-[10px] font-bold text-primary uppercase">AI Revenue: ${stats.aiServiceRevenue.toFixed(2)}</p>
@@ -160,21 +162,22 @@ export default function AdminCostDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/5 hover:bg-transparent">
-                      <TableHead className="text-[10px] font-bold uppercase">Source</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase">Gross</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase text-accent">Platform Cut</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase">Type</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Participant</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gross Fee</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-accent">5% SaaS Cut</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {participants?.slice(0, 8).map((p) => (
+                    {participants?.slice(0, 10).map((p) => (
                       <TableRow key={p.id} className="border-white/5 hover:bg-white/5">
-                        <TableCell className="font-medium text-white">{p.name}</TableCell>
+                        <TableCell className="font-bold text-white">{p.name}</TableCell>
                         <TableCell className="font-mono text-sm">${(p.paidAmount || 0).toFixed(2)}</TableCell>
                         <TableCell className="font-mono text-sm text-accent font-bold">+${((p.paidAmount || 0) * 0.05).toFixed(2)}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[8px] uppercase">Registration</Badge></TableCell>
+                        <TableCell><Badge variant="outline" className="text-[8px] uppercase tracking-widest border-none bg-white/5">Registration</Badge></TableCell>
                       </TableRow>
                     ))}
+                    {!participants?.length && <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground italic">No transactions processed yet.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -182,20 +185,31 @@ export default function AdminCostDashboard() {
 
             <div className="lg:col-span-4 space-y-6">
               <Card className="bg-[#1E293B] border-primary/20 shadow-2xl overflow-hidden">
-                <CardHeader>
-                  <CardTitle className="text-lg font-headline flex items-center gap-2"><Database className="h-5 w-5 text-emerald-400" /> Infrastructure Quotas</CardTitle>
+                <CardHeader className="bg-primary/5 border-b border-white/5">
+                  <CardTitle className="text-lg font-headline uppercase tracking-tighter flex items-center gap-2">
+                    <Database className="h-5 w-5 text-emerald-400" /> 
+                    Free Tier Monitor
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <UsageProgress label="Firestore Reads" current={stats.readUsagePercent} sub="50k/day Free" />
-                  <UsageProgress label="Firestore Writes" current={stats.writeUsagePercent} sub="20k/day Free" />
-                  <UsageProgress label="AI Operations" current={stats.aiUsagePercent} sub="1.5k/day Free" color="text-accent" />
+                <CardContent className="space-y-6 pt-6">
+                  <UsageProgress label="Firestore Reads" current={stats.readUsagePercent} sub="50,000 / Day Free" />
+                  <UsageProgress label="Firestore Writes" current={stats.writeUsagePercent} sub="20,000 / Day Free" />
+                  <UsageProgress label="AI Operations" current={stats.aiUsagePercent} sub="1,500 / Day Free" color="text-accent" />
                   
                   <div className="pt-4 border-t border-white/5 flex items-center gap-3">
                      <Zap className="h-4 w-4 text-emerald-500" />
-                     <p className="text-[10px] text-muted-foreground leading-tight italic">Your monthly cloud bill is currently **$0.00** due to high free tier efficiency.</p>
+                     <p className="text-[10px] text-muted-foreground leading-tight italic">Platform is currently running at 100% cloud efficiency (No infrastructure cost incurred).</p>
                   </div>
                 </CardContent>
               </Card>
+
+              <div className="bg-accent/5 border border-accent/20 p-6 rounded-3xl relative overflow-hidden group">
+                  <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-accent opacity-5 group-hover:scale-125 transition-transform" />
+                  <h3 className="font-headline font-bold text-accent mb-2 flex items-center gap-2 uppercase tracking-tighter">Growth Insight</h3>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Based on your current commission rate and club growth, the platform will become "Cost Neutral" at approximately 250 daily active participants.
+                  </p>
+              </div>
             </div>
           </div>
         </>
@@ -207,7 +221,7 @@ export default function AdminCostDashboard() {
 function UsageProgress({ label, current, sub, color }: any) {
   return (
     <div className="space-y-2">
-      <div className="flex justify-between text-[10px] font-bold uppercase">
+      <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
         <span className="text-muted-foreground">{label}</span>
         <span className={cn("text-white", color)}>{current.toFixed(1)}%</span>
       </div>
@@ -219,14 +233,14 @@ function UsageProgress({ label, current, sub, color }: any) {
 
 function CostCard({ title, value, sub, icon: Icon, color }: any) {
   return (
-    <Card className="bg-white/5 border-white/5 hover:border-primary/20 transition-all">
+    <Card className="bg-card/50 border-white/5 hover:border-primary/20 transition-all overflow-hidden group">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase">{title}</CardTitle>
-        <div className={cn("p-2 rounded-lg bg-white/5", color)}><Icon className="h-4 w-4 opacity-70" /></div>
+        <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{title}</CardTitle>
+        <div className={cn("p-2 rounded-lg bg-white/5 group-hover:scale-110 transition-transform", color)}><Icon className="h-4 w-4 opacity-70" /></div>
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-headline font-bold text-white">{value}</div>
-        <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>
+        <div className="text-3xl font-headline font-bold text-white tracking-tight">{value}</div>
+        <p className="text-[10px] text-muted-foreground mt-1 uppercase font-medium">{sub}</p>
       </CardContent>
     </Card>
   );

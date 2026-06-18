@@ -42,20 +42,20 @@ service cloud.firestore {
     // Matches
     match /matches/{matchId} {
       allow read: if true;
-      allow write: if isSignedIn() || isAdmin(); // Simplified for Referee hub access
+      allow write: if isSignedIn() || isAdmin(); 
     }
 
     // Participants
     match /participants/{participantId} {
       allow read: if true;
-      allow create: if true; // Allows public registration
+      allow create: if true; // Public Registration
       allow update, delete: if isSignedIn() || isAdmin();
     }
 
     // Check-ins
     match /checkins/{checkInId} {
       allow read: if isSignedIn() || isAdmin();
-      allow create: if true; // Allows venue check-in scans
+      allow create: if true; // Venue Scans
     }
 
     // Sponsors

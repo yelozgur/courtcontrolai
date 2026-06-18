@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database, AlertCircle, Building, Sparkles, Trash2, Info, DollarSign, BrainCircuit, Users2, History } from "lucide-react"
-import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, updateDoc, increment } from "firebase/firestore"
+import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, updateDoc, increment, deleteDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -152,6 +152,16 @@ export default function SchedulingPage() {
       })
   }
 
+  const handleDeleteMatch = (matchId: string) => {
+    if (!db) return
+    const matchRef = doc(db, "matches", matchId);
+    deleteDoc(matchRef)
+      .then(() => toast({ title: "Match Deleted" }))
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: matchRef.path, operation: 'delete' }));
+      });
+  }
+
   const handleAutoScheduleTrigger = () => {
     if (!selectedTournamentId) return
     setShowOptimizationSettings(true)
@@ -230,13 +240,13 @@ export default function SchedulingPage() {
   const isFreeRun = aiUsage < 3
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
           <p className="text-muted-foreground flex items-center gap-2">
             Manage timings and court allocations. 
-            <Badge variant="outline" className={cn("text-[10px]", isFreeRun ? "text-emerald-500 border-emerald-500/20" : "text-amber-500 border-amber-500/20")}>
+            <Badge variant="outline" className={cn("text-[10px] border-none font-bold uppercase", isFreeRun ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500")}>
               AI Runs: {aiUsage}/3 Free
             </Badge>
           </p>
@@ -260,7 +270,7 @@ export default function SchedulingPage() {
                 {format(selectedDate, "PPP")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} /></PopoverContent>
+            <PopoverContent className="w-auto p-0 border-white/10"><Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} /></PopoverContent>
           </Popover>
 
           <Select onValueChange={setSelectedTournamentId} value={selectedTournamentId || undefined}>
@@ -272,16 +282,15 @@ export default function SchedulingPage() {
         </div>
       </div>
 
-      {/* Optimization Settings Dialog */}
       <Dialog open={showOptimizationSettings} onOpenChange={setShowOptimizationSettings}>
         <DialogContent className="bg-card border-white/10 max-w-lg">
           <DialogHeader>
             <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-4">
               <BrainCircuit className="w-6 h-6 text-primary" />
             </div>
-            <DialogTitle>AI Optimization Strategy</DialogTitle>
+            <DialogTitle className="font-headline text-2xl uppercase">AI Optimization Strategy</DialogTitle>
             <DialogDescription>
-              Provide specific instructions to the Tournament Director AI to refine the schedule.
+              Provide specific instructions to the Tournament Director AI.
             </DialogDescription>
           </DialogHeader>
           
@@ -300,47 +309,19 @@ export default function SchedulingPage() {
              <div className="space-y-2">
                 <Label className="text-xs uppercase font-bold text-muted-foreground">Strategic Instructions</Label>
                 <Textarea 
-                  placeholder="e.g. 'Finish Men's Pro by 2pm', 'Allocate court 1 strictly for gold category', 'Prioritize recovery time over compact scheduling'..."
+                  placeholder="e.g. 'Finish Men's Pro by 2pm', 'Allocate court 1 strictly for gold category'..."
                   className="min-h-[120px] bg-background/50 border-white/10"
                   value={aiInstructions}
                   onChange={(e) => setAiInstructions(e.target.value)}
                 />
-                <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-                   <Info className="h-3 w-3" /> Tip: Explicit constraints help the AI prevent manual re-shuffling later.
-                </p>
              </div>
           </div>
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowOptimizationSettings(false)}>Cancel</Button>
             <Button onClick={proceedToAutoSchedule} className="bg-primary">
-              Generate Optimized Schedule
+              Generate Schedule
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showAiPricing} onOpenChange={setShowAiPricing}>
-        <DialogContent className="bg-card border-white/10 max-w-sm">
-          <DialogHeader>
-            <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-4">
-              <DollarSign className="w-6 h-6 text-primary" />
-            </div>
-            <DialogTitle>AI Credit Purchase</DialogTitle>
-            <DialogDescription>
-              Your free scheduling runs have been exhausted. Professional AI optimization costs **$5.00 for 3 additional runs**.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-2">
-             <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">3 AI Runs Block</span>
-                <span className="font-bold text-white">$5.00</span>
-             </div>
-             <p className="text-[10px] text-muted-foreground italic">Charge will be added to your monthly club invoice.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowAiPricing(false)}>Cancel</Button>
-            <Button onClick={handleAutoSchedule} className="bg-emerald-500">Authorize & Schedule</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -364,12 +345,12 @@ export default function SchedulingPage() {
                  <p className="text-muted-foreground italic">Select a tournament to view the planner.</p>
                </Card>
              ) : (
-               <Card className="bg-card/50 border-white/5 overflow-x-auto">
-                 <CardContent className="p-0">
-                   <div className="grid border-b border-white/5 bg-white/5 min-h-[400px]">
-                      <div className="p-20 text-center text-muted-foreground opacity-30 italic">Interactive Grid Displaying {filteredMatches.length} Matches</div>
-                   </div>
-                 </CardContent>
+               <Card className="bg-card/50 border-white/5 overflow-x-auto min-h-[400px] flex items-center justify-center">
+                  <div className="text-center space-y-4 opacity-30">
+                     <LayoutGrid className="h-16 w-16 mx-auto" />
+                     <p className="text-xl font-bold uppercase tracking-tighter">Interactive Grid View</p>
+                     <p className="text-sm italic">Displaying {filteredMatches.length} matches for {selectedDateStr}</p>
+                  </div>
                </Card>
              )}
           </TabsContent>
@@ -377,23 +358,60 @@ export default function SchedulingPage() {
           <TabsContent value="list">
              <div className="space-y-4">
                 {filteredMatches.length > 0 ? filteredMatches.map(match => (
-                  <Card key={match.id} className="bg-card/50 border-white/5 p-4 flex items-center justify-between">
+                  <Card key={match.id} className="bg-card/50 border-white/5 p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
                      <div className="flex items-center gap-6">
                         <div className="w-20 text-center bg-secondary/30 p-2 rounded-xl">
                           <p className="text-xs font-bold text-primary">{getTimeStr(match.startTime)}</p>
                         </div>
                         <div>
                           <h4 className="font-bold">{match.teamA?.name} vs {match.teamB?.name}</h4>
-                          <p className="text-[10px] text-muted-foreground uppercase">{match.category} • Court {match.court}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{match.category} • Court {match.court} • {typeof match.location === 'object' ? match.location.name : match.location}</p>
                         </div>
                      </div>
-                     <Badge variant="outline" className="uppercase text-[10px]">{match.status}</Badge>
+                     <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="uppercase text-[10px] border-white/10">{match.status}</Badge>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-all" onClick={() => handleDeleteMatch(match.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                     </div>
                   </Card>
                 )) : <div className="p-20 text-center italic text-muted-foreground border-dashed border-2 rounded-xl border-white/5">No matches for this date.</div>}
              </div>
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={isAddingMatch} onOpenChange={setIsAddingMatch}>
+        <DialogContent className="bg-card border-white/10">
+          <DialogHeader><DialogTitle>Manual Match Entry</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2">
+                 <Label>Home Team/Player</Label>
+                 <Input value={newMatch.teamA} onChange={e => setNewMatch({...newMatch, teamA: e.target.value})} />
+               </div>
+               <div className="space-y-2">
+                 <Label>Away Team/Player</Label>
+                 <Input value={newMatch.teamB} onChange={e => setNewMatch({...newMatch, teamB: e.target.value})} />
+               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2">
+                 <Label>Court #</Label>
+                 <Input type="number" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
+               </div>
+               <div className="space-y-2">
+                 <Label>Time (HH:MM)</Label>
+                 <Input type="time" value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} />
+               </div>
+            </div>
+          </div>
+          <DialogFooter>
+             <Button variant="ghost" onClick={() => setIsAddingMatch(false)}>Cancel</Button>
+             <Button onClick={handleCreateMatch} className="bg-primary">Schedule Match</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
