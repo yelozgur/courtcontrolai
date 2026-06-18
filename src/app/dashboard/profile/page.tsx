@@ -1,9 +1,9 @@
-
 "use client"
 
 import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { collection, query, where, orderBy, doc, limit } from "firebase/firestore"
 import { 
@@ -333,7 +333,7 @@ export default function PlayerProfile() {
                 ))
               ) : (
                 <div className="p-10 text-center bg-white/5 rounded-3xl border border-white/5">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest italic opacity-50">No check-in history yet</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest italic opacity-50"> No check-in history yet</p>
                 </div>
               )}
             </div>
