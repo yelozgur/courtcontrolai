@@ -11,6 +11,7 @@
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
         "entryFee": { "type": "number", "description": "Price in USD for registration" },
+        "isFeatured": { "type": "boolean", "default": false },
         "locations": { 
           "type": "array", 
           "items": { 
@@ -97,7 +98,19 @@
         "logoUrl": { "type": "string" },
         "telegramBotToken": { "type": "string" },
         "telegramBotUsername": { "type": "string" },
+        "aiUsageCount": { "type": "number", "default": 0 },
         "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PromoCode": {
+      "title": "PromoCode",
+      "description": "Platform-wide marketing discounts.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "discountPercent": { "type": "number" },
+        "active": { "type": "boolean" },
+        "expiryDate": { "type": "string", "format": "date" }
       }
     },
     "CheckIn": {
@@ -147,6 +160,7 @@
     "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global." },
     "/participants/{participantId}": { "schema": "Participant", "description": "Global Read. Public Create." },
     "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global Read. Public Create." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read. Auth Write." }
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read. Auth Write." },
+    "/promocodes/{codeId}": { "schema": "PromoCode", "description": "Admin Manage. Club Use." }
   }
 }

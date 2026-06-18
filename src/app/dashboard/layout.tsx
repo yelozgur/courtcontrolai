@@ -19,7 +19,8 @@ import {
   Gavel,
   User,
   Calculator,
-  Users2
+  Users2,
+  Megaphone
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -63,6 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Split Navigation strictly by role
   const navItems = isAdmin ? [
     { name: 'SaaS Overview', icon: LayoutDashboard, href: '/dashboard' },
+    { name: 'Marketing Center', icon: Megaphone, href: '/dashboard/admin/marketing' },
     { name: 'Manage Clubs', icon: Building, href: '/dashboard/admin/clubs' },
     { name: 'System Users', icon: Users2, href: '/dashboard/admin/users' },
     { name: 'Revenue & Costs', icon: Calculator, href: '/dashboard/admin/costs' },
