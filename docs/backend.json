@@ -106,6 +106,27 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "MarketplaceListing": {
+      "title": "MarketplaceListing",
+      "description": "FUTURE: Used sports gear listings.",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "sold", "hidden"] }
+      }
+    },
+    "SponsorshipOpportunity": {
+      "title": "SponsorshipOpportunity",
+      "description": "FUTURE: Platform-led sponsorship matching with 5% cut.",
+      "type": "object",
+      "properties": {
+        "tournamentId": { "type": "string" },
+        "requiredAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["open", "matched"] }
+      }
+    },
     "PromoCode": {
       "title": "PromoCode",
       "description": "Platform-wide marketing discounts.",

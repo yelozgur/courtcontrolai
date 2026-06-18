@@ -17,7 +17,10 @@ import {
   Building,
   Users,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  ShoppingBag,
+  Handshake,
+  ArrowRight
 } from "lucide-react"
 import { collection, query, limit, doc, where } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
@@ -80,7 +83,7 @@ export default function DashboardOverview() {
             <p className="text-muted-foreground mt-1 font-medium">Global system status and SaaS metrics.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="border-accent text-accent hover:bg-accent/10">
               <Link href="/dashboard/admin/costs">
                 <DollarSign className="mr-2 h-4 w-4" /> Cloud Costs
               </Link>
@@ -96,38 +99,77 @@ export default function DashboardOverview() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-12">
-          <Card className="lg:col-span-8 bg-white/5 border-white/5">
-            <CardHeader>
-              <CardTitle>Recent Club Activity</CardTitle>
-              <CardDescription>Latest sports organizations joining Court Control AI.</CardDescription>
-            </CardHeader>
-            <CardContent>
-               <div className="space-y-4">
-                 {allClubs?.slice(0, 5).map(club => (
-                   <div key={club.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold">{club.name.charAt(0)}</div>
-                        <div>
-                          <p className="font-bold">{club.name}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase">{club.location}</p>
+          <div className="lg:col-span-8 space-y-6">
+            <Card className="bg-white/5 border-white/5">
+              <CardHeader>
+                <CardTitle>Recent Club Activity</CardTitle>
+                <CardDescription>Latest sports organizations joining Court Control AI.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                 <div className="space-y-4">
+                   {allClubs?.slice(0, 5).map(club => (
+                     <div key={club.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold">{club.name.charAt(0)}</div>
+                          <div>
+                            <p className="font-bold">{club.name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{club.location}</p>
+                          </div>
                         </div>
-                      </div>
-                      <Badge variant="outline">{club.primarySport}</Badge>
-                   </div>
-                 ))}
-                 {!allClubs?.length && <p className="text-center text-muted-foreground py-10 italic">No clubs registered yet.</p>}
-               </div>
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-4 bg-primary/10 border-primary/20">
-             <CardHeader>
-                <CardTitle className="text-primary">Admin Tips</CardTitle>
-             </CardHeader>
-             <CardContent className="text-xs text-muted-foreground space-y-4">
-                <p>Use the <strong>System Users</strong> tab to promote new signups to "Club Owner" or "Referee" roles.</p>
-                <p>Monitor <strong>Revenue & Costs</strong> daily to ensure Spark Plan quotas aren't exceeded by heavy AI scheduling sessions.</p>
-             </CardContent>
-          </Card>
+                        <Badge variant="outline">{club.primarySport}</Badge>
+                     </div>
+                   ))}
+                   {!allClubs?.length && <p className="text-center text-muted-foreground py-10 italic">No clubs registered yet.</p>}
+                 </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <Card className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] border-accent/20 relative overflow-hidden group">
+                  <ShoppingBag className="absolute -right-4 -bottom-4 h-24 w-24 text-accent opacity-5 group-hover:scale-125 transition-transform" />
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                       <CardTitle className="text-accent flex items-center gap-2">Marketplace</CardTitle>
+                       <Badge variant="outline" className="text-[8px] border-accent text-accent">PASSIVE</Badge>
+                    </div>
+                    <CardDescription className="text-xs">Monetize used rackets and gear sales with a platform commission.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                     <Button variant="ghost" size="sm" className="text-accent p-0 hover:bg-transparent hover:text-accent/80">
+                        View Vision <ArrowRight className="ml-2 h-3 w-3" />
+                     </Button>
+                  </CardContent>
+               </Card>
+               <Card className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] border-primary/20 relative overflow-hidden group">
+                  <Handshake className="absolute -right-4 -bottom-4 h-24 w-24 text-primary opacity-5 group-hover:scale-125 transition-transform" />
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                       <CardTitle className="text-primary flex items-center gap-2">Sponsor Hub</CardTitle>
+                       <Badge variant="outline" className="text-[8px] border-primary text-primary">STRATEGY</Badge>
+                    </div>
+                    <CardDescription className="text-xs">Automated matching for tournament sponsors. 5% Finder's Fee model.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                     <Button variant="ghost" size="sm" className="text-primary p-0 hover:bg-transparent hover:text-primary/80">
+                        Expansion Plan <ArrowRight className="ml-2 h-3 w-3" />
+                     </Button>
+                  </CardContent>
+               </Card>
+            </div>
+          </div>
+
+          <div className="lg:col-span-4 space-y-6">
+            <Card className="bg-primary/10 border-primary/20">
+               <CardHeader>
+                  <CardTitle className="text-primary">Admin Tips</CardTitle>
+               </CardHeader>
+               <CardContent className="text-xs text-muted-foreground space-y-4">
+                  <p>Use the <strong>System Users</strong> tab to promote new signups to "Club Owner" or "Referee" roles.</p>
+                  <p>Monitor <strong>Revenue & Costs</strong> daily to ensure Spark Plan quotas aren't exceeded by heavy AI scheduling sessions.</p>
+                  <p>The <strong>Sponsorship Finder's Fee</strong> (5%) logic is planned for Q3 release.</p>
+               </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
