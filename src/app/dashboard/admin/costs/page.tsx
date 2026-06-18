@@ -12,11 +12,10 @@ import {
   Server,
   Sparkles,
   ReceiptText,
-  ArrowDownLeft,
-  ArrowUpRight,
   ShieldCheck,
   Percent,
-  Zap
+  Zap,
+  Cpu
 } from 'lucide-react';
 import { collection, query, limit, orderBy, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -70,6 +69,9 @@ export default function AdminCostDashboard() {
     // Firestore Free Tier Thresholds (Spark Plan)
     const DAILY_FREE_READS = 50000;
     const DAILY_FREE_WRITES = 20000;
+    
+    // AI Free Tier Threshold (Gemini 1.5 Flash via Genkit)
+    const DAILY_FREE_AI_CALLS = 1500;
 
     // Estimate daily volume based on total active docs
     const documentCount = tournaments.length + participants.length + matches.length;
@@ -83,9 +85,9 @@ export default function AdminCostDashboard() {
     const firestoreDailyCost = (paidReads / 100000) * 0.06 + (paidWrites / 100000) * 0.18;
     const firestoreMonthlyEst = firestoreDailyCost * 30;
 
-    // AI Costs (Genkit Gemini 1.5 Flash is very cheap/free for small volumes)
-    const estAIFlows = tournaments.length * 2; 
-    const aiMonthlyEst = estAIFlows * 0.005;
+    // AI Costs estimate (Manual scheduling volume)
+    const estAICallsPerDay = tournaments.length * 0.5; // Roughly 1 opt call per 2 tournaments daily
+    const aiMonthlyEst = estAICallsPerDay * 30 * 0.005; // Base estimate for token usage
 
     // Revenue Accounting
     const grossVolume = participants.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
@@ -101,7 +103,8 @@ export default function AdminCostDashboard() {
       commissionRate: COMMISSION_RATE * 100,
       netProfit: platformRevenue - (firestoreMonthlyEst + aiMonthlyEst),
       readUsagePercent: Math.min(100, (estReadsPerDay / DAILY_FREE_READS) * 100),
-      writeUsagePercent: Math.min(100, (estWritesPerDay / DAILY_FREE_WRITES) * 100)
+      writeUsagePercent: Math.min(100, (estWritesPerDay / DAILY_FREE_WRITES) * 100),
+      aiUsagePercent: Math.min(100, (estAICallsPerDay / DAILY_FREE_AI_CALLS) * 100)
     };
   }, [tournaments, participants, matches]);
 
@@ -127,7 +130,7 @@ export default function AdminCostDashboard() {
              Firebase Spark Plan Active
            </Badge>
            <Badge variant="outline" className="h-10 border-primary text-primary px-4 bg-primary/5 font-bold uppercase tracking-widest text-[10px]">
-             Auto-Scaling Enabled
+             AI Gen Free Tier Enabled
            </Badge>
         </div>
       </div>
@@ -154,13 +157,13 @@ export default function AdminCostDashboard() {
             <CostCard 
               title="Estimated OpEx" 
               value={`$${stats.totalCost.toFixed(2)}`} 
-              sub="Cloud Burn Above Free Tier" 
+              sub="Cloud Burn (Over quota)" 
               icon={Server} 
               color="text-primary"
             />
             <CostCard 
               title="Current Runway" 
-              value={`${stats.netProfit > 0 ? "Profitable" : "Free Usage"}`} 
+              value={`${stats.netProfit > 0 ? "Profitable" : "Free Tier Usage"}`} 
               sub="Financial Health Status" 
               icon={BarChart3} 
               color={stats.netProfit >= 0 ? "text-emerald-400" : "text-destructive"}
@@ -188,7 +191,7 @@ export default function AdminCostDashboard() {
                       <TableHead className="text-[10px] font-bold uppercase tracking-widest">Participant</TableHead>
                       <TableHead className="text-[10px] font-bold uppercase tracking-widest">Gross Paid</TableHead>
                       <TableHead className="text-[10px] font-bold uppercase tracking-widest text-accent">SaaS Cut (5%)</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest">Club Payout</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest">Net to Club</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -226,7 +229,7 @@ export default function AdminCostDashboard() {
                     <Database className="h-5 w-5 text-emerald-400" />
                     Free Tier Monitor
                   </CardTitle>
-                  <CardDescription className="text-[10px]">Real-time usage vs Spark Plan limits.</CardDescription>
+                  <CardDescription className="text-[10px]">Real-time cloud usage vs Free limits.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
@@ -243,6 +246,13 @@ export default function AdminCostDashboard() {
                     </div>
                     <Progress value={stats.writeUsagePercent} className="h-1.5 bg-white/5" />
                   </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-[10px] font-bold uppercase">
+                      <span className="text-muted-foreground">AI Generation (1.5k/day)</span>
+                      <span className="text-accent">{stats.aiUsagePercent.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={stats.aiUsagePercent} className="h-1.5 bg-white/5" />
+                  </div>
                   <div className="pt-4 border-t border-white/5 flex items-center gap-3">
                      <div className="p-2 bg-emerald-500/10 rounded-lg">
                         <Zap className="h-4 w-4 text-emerald-500" />
@@ -254,13 +264,13 @@ export default function AdminCostDashboard() {
                 </CardContent>
               </Card>
 
-              <div className="bg-accent/5 border border-accent/20 p-6 rounded-3xl">
+              <div className="bg-accent/5 border border-accent/20 p-6 rounded-3xl group">
                  <div className="flex items-center gap-3 mb-2">
-                    <Sparkles className="h-4 w-4 text-accent" />
-                    <h4 className="text-xs font-bold text-accent uppercase tracking-widest">SaaS Margin Forecast</h4>
+                    <Cpu className="h-4 w-4 text-accent group-hover:rotate-45 transition-transform" />
+                    <h4 className="text-xs font-bold text-accent uppercase tracking-widest">AI Quota Safety</h4>
                  </div>
                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                   Based on current growth, you will remain on the **Free Tier** until you process approximately **$1,500** in total tournament GMV per month.
+                   AI Scheduler uses **Gemini 1.5 Flash**. You have 1,500 free requests per day, ensuring unlimited tournament optimizations for all your clubs.
                  </p>
               </div>
             </div>
