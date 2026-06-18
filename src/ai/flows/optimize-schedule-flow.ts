@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI Tournament Director Flow
@@ -29,6 +30,7 @@ const ScheduleInputSchema = z.object({
   tournamentName: z.string(),
   startDate: z.string(),
   endDate: z.string().optional(),
+  timezone: z.string().optional().describe('The local timezone of the club.'),
   matchDuration: z.number(),
   recoveryTime: z.number(),
   locations: z.array(LocationSchema),
@@ -66,6 +68,7 @@ Your task is to generate a logical, fair, and efficient match schedule for the t
 CONTEXT:
 - Start Date: {{{startDate}}}
 {{#if endDate}}- End Date: {{{endDate}}}{{/if}}
+- Timezone: {{{timezone}}} (Generate all times strictly in this local context)
 - Match Duration: {{{matchDuration}}} minutes
 - Recovery Time: {{{recoveryTime}}} minutes (players must have this buffer between matches)
 - Venues: {{#each locations}} {{name}} ({{numCourts}} courts), {{/each}}
@@ -87,7 +90,7 @@ RULES:
 2. FOR SINGLE ELIMINATION: Create the first round of matches based on the number of participants. If odd, provide one 'Bye' or simply pair as many as possible.
 3. CLASH PREVENTION: A participant cannot be in two places at once. Schedule their matches with at least {{{recoveryTime}}} minutes of buffer.
 4. COURT ASSIGNMENT: Distribute matches across available courts in the specified locations.
-5. START TIME: Begin matches at 09:00 AM on the start date. If multiple days are available, distribute matches across days logically.
+5. START TIME: Begin matches at 09:00 AM on the start date. If multiple days are available, distribute matches across days logically. Use the specified {{{timezone}}} for all output timestamps.
 6. OUTPUT: Generate a comprehensive list of scheduled matches that honors the STRATEGIC GOALS if provided.`,
 });
 

@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle, MapPin, Calendar, Activity } from "lucide-react"
+import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle, MapPin, Calendar, Activity, Globe } from "lucide-react"
 import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { Button } from "@/components/ui/button"
@@ -24,19 +24,28 @@ export default function TournamentArena() {
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const db = useFirestore()
 
-  useEffect(() => {
-    // Standard hydration fix for time-sensitive elements
-    setTime(new Date())
-    const timer = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
   const tournamentRef = useMemoFirebase(() => {
     if (!db || !id) return null
     return doc(db, "tournaments", id as string)
   }, [db, id])
 
   const { data: tournament, loading: tourneyLoading } = useDoc(tournamentRef)
+
+  // Fetch club to get the correct timezone
+  const clubRef = useMemoFirebase(() => {
+    if (!db || !tournament?.clubId) return null
+    return doc(db, "clubs", tournament.clubId)
+  }, [db, tournament?.clubId])
+  const { data: club } = useDoc(clubRef)
+  
+  const clubTimezone = club?.timezone || "UTC"
+
+  useEffect(() => {
+    // Synchronize Arena clock with venue time
+    setTime(new Date())
+    const timer = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const allMatchesQuery = useMemoFirebase(() => {
     if (!db || !id) return null
@@ -97,6 +106,24 @@ export default function TournamentArena() {
       .slice(0, 4)
   }, [allMatches, selectedLocation])
 
+  // Helper to format time in club timezone
+  const formatVenueTime = (date: Date) => {
+    return date.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: clubTimezone
+    });
+  }
+
+  const formatVenueDate = (date: Date) => {
+    return date.toLocaleDateString([], { 
+      weekday: 'long', 
+      month: 'short', 
+      day: 'numeric',
+      timeZone: clubTimezone
+    });
+  }
+
   if (matchesError) {
     return (
       <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
@@ -124,8 +151,8 @@ export default function TournamentArena() {
             <h1 className="text-4xl font-headline font-bold tracking-tighter uppercase">
               {tourneyLoading ? "Connecting..." : (tournament?.name || "Live Arena")}
             </h1>
-            <p className="text-xl text-muted-foreground font-medium uppercase tracking-widest">
-              Real-time Scoring Dashboard
+            <p className="text-xl text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-2">
+              Real-time Scoring Dashboard <Badge variant="outline" className="text-[10px] border-accent/30 text-accent font-mono"><Globe className="h-3 w-3 mr-1" /> {clubTimezone}</Badge>
             </p>
           </div>
         </div>
@@ -155,12 +182,12 @@ export default function TournamentArena() {
               {time && (
                 <>
                   <Calendar className="h-3 w-3" />
-                  {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                  {formatVenueDate(time)}
                 </>
               )}
             </div>
             <div className="text-5xl font-mono font-bold leading-none h-12">
-              {time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
+              {time ? formatVenueTime(time) : "--:--"}
             </div>
           </div>
         </div>
@@ -233,7 +260,7 @@ export default function TournamentArena() {
                             <div className="flex items-center gap-6">
                                <div className="bg-secondary/30 p-3 rounded-xl text-center min-w-[80px]">
                                   <Clock className="h-4 w-4 mx-auto mb-1 text-primary" />
-                                  <span className="text-sm font-bold">{m.startTime ? (typeof m.startTime === 'string' ? m.startTime.split('T')[1]?.substring(0, 5) : format(m.startTime.toDate(), "HH:mm")) : 'TBD'}</span>
+                                  <span className="text-sm font-bold">{m.startTime ? (typeof m.startTime === 'string' ? m.startTime.split('T')[1]?.substring(0, 5) : formatVenueTime(m.startTime.toDate())) : 'TBD'}</span>
                                </div>
                                <div className="text-left">
                                   <p className="text-xl font-bold">{m.teamA.name} vs {m.teamB.name}</p>

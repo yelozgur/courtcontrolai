@@ -6,13 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon, Send, MessageSquare } from "lucide-react"
+import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon, Send, MessageSquare, Globe } from "lucide-react"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+const COMMON_TIMEZONES = [
+  { label: "UTC (Coordinated Universal Time)", value: "UTC" },
+  { label: "New York (EST/EDT)", value: "America/New_York" },
+  { label: "Los Angeles (PST/PDT)", value: "America/Los_Angeles" },
+  { label: "London (GMT/BST)", value: "Europe/London" },
+  { label: "Paris/Madrid (CET/CEST)", value: "Europe/Paris" },
+  { label: "Dubai (GST)", value: "Asia/Dubai" },
+  { label: "Singapore/Hong Kong (HKT)", value: "Asia/Singapore" },
+  { label: "Tokyo (JST)", value: "Asia/Tokyo" },
+  { label: "Sydney (AEST/AEDT)", value: "Australia/Sydney" }
+]
 
 export default function ClubSettings() {
   const db = useFirestore()
@@ -35,6 +47,7 @@ export default function ClubSettings() {
     numCourts: 1,
     primarySport: "padel",
     logoUrl: "",
+    timezone: "UTC",
     telegramBotToken: "",
     telegramBotUsername: ""
   })
@@ -49,6 +62,7 @@ export default function ClubSettings() {
         numCourts: clubData.numCourts || 1,
         primarySport: clubData.primarySport || "padel",
         logoUrl: clubData.logoUrl || "",
+        timezone: clubData.timezone || "UTC",
         telegramBotToken: clubData.telegramBotToken || "",
         telegramBotUsername: clubData.telegramBotUsername || ""
       })
@@ -77,7 +91,7 @@ export default function ClubSettings() {
       .then(() => {
         toast({
           title: "Settings Saved",
-          description: "Your club profile and Telegram config have been updated."
+          description: "Your club profile and timezone have been updated."
         })
       })
       .catch(async (e) => {
@@ -127,6 +141,26 @@ export default function ClubSettings() {
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g. Ace Padel Club"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="timezone">Club Timezone</Label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                  <Select 
+                    value={formData.timezone} 
+                    onValueChange={(val) => setFormData({...formData, timezone: val})}
+                  >
+                    <SelectTrigger className="pl-10">
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMMON_TIMEZONES.map(tz => (
+                        <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[10px] text-muted-foreground italic mt-1">This determines "Match Day" times for the public Arena dashboard.</p>
               </div>
               <div className="space-y-2">
                 <Label>Club Logo URL</Label>

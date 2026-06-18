@@ -96,6 +96,7 @@
         "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "location": { "type": "string" },
+        "timezone": { "type": "string", "default": "UTC" },
         "contactEmail": { "type": "string" },
         "numCourts": { "type": "number" },
         "primarySport": { "type": "string" },
