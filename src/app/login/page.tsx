@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -46,7 +45,6 @@ export default function LoginPage() {
     try {
       const isAdminShortcut = email === 'admin';
       const loginEmail = isAdminShortcut ? 'admin@deneme.com' : email;
-      // Shortcut password updated to 'admins' as requested
       const loginPassword = isAdminShortcut && password === 'admins' ? 'password' : password;
 
       const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
@@ -156,7 +154,7 @@ export default function LoginPage() {
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
           <Zap className="text-white h-6 w-6" />
         </div>
-        <span className="text-2xl font-headline font-bold text-white tracking-tighter uppercase">CourtControl AI</span>
+        <span className="text-2xl font-headline font-bold text-white tracking-tighter uppercase">Court Control AI</span>
       </Link>
 
       <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
@@ -178,19 +176,6 @@ export default function LoginPage() {
                   <p>2. Auth &gt; Settings &gt; Authorized domains</p>
                   <p>3. Add: <span className="text-primary font-mono">{typeof window !== 'undefined' ? window.location.hostname : 'current domain'}</span></p>
                 </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {errorType === 'config' && (
-            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle className="font-bold">Setup Required</AlertTitle>
-              <AlertDescription className="mt-2 space-y-2">
-                <p className="text-xs">Authentication providers not enabled in console:</p>
-                <ul className="text-[11px] space-y-1 bg-black/20 p-2 rounded border border-white/5">
-                  <li className="flex items-center gap-2"><Circle className="h-2 w-2 fill-destructive" /> Enable <strong>Email/Password</strong> and <strong>Google</strong></li>
-                </ul>
               </AlertDescription>
             </Alert>
           )}

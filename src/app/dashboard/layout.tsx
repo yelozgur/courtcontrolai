@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -80,7 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
         <div className="p-6 flex items-center gap-3">
           <Zap className="text-primary h-6 w-6" />
-          <span className="font-headline font-bold text-lg text-white uppercase tracking-tighter">CourtControl</span>
+          <span className="font-headline font-bold text-lg text-white uppercase tracking-tighter">Court Control AI</span>
         </div>
         <ScrollArea className="flex-1 px-3">
           <div className="space-y-1 py-2">

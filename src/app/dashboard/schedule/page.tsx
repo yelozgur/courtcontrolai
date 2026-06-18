@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
@@ -38,7 +37,6 @@ export default function SchedulingPage() {
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isAddingMatch, setIsAddingMatch] = useState(false)
-  const [isSeeding, setIsSeeding] = useState(false)
   const [isOptimizing, setIsOptimizing] = useState(false)
   
   const [newMatch, setNewMatch] = useState({
@@ -247,37 +245,6 @@ export default function SchedulingPage() {
     }
   }
 
-  const handleSeedData = () => {
-    if (!db || !clubId || !selectedTournamentId) return
-    setIsSeeding(true)
-    const matchesColl = collection(db, "matches")
-    const testDate = "2026-06-19"
-    const dummyMatches = [
-      { court: 1, time: "09:00", teamA: "Ace Kings", teamB: "Padel Pros" },
-      { court: 2, time: "10:30", teamA: "Spin Masters", teamB: "Wall Hitters" },
-      { court: 1, time: "12:00", teamA: "Court Crushers", teamB: "Net Ninjas" },
-      { court: 3, time: "13:30", teamA: "Power Servers", teamB: "Lobbyists" },
-    ]
-
-    const promises = dummyMatches.map(m => addDoc(matchesColl, {
-      clubId,
-      tournamentId: selectedTournamentId,
-      status: "scheduled",
-      court: m.court,
-      startTime: `${testDate}T${m.time}:00`,
-      teamA: { name: m.teamA, score: 0, setsWon: 0 },
-      teamB: { name: m.teamB, score: 0, setsWon: 0 },
-      category: activeTournament?.categories?.[0]?.name || "Open",
-      location: selectedLocation !== "all" ? selectedLocation : (activeTournament?.locations?.[0]?.name || "Main Venue")
-    }))
-
-    Promise.all(promises).then(() => {
-      toast({ title: "Seed Success", description: "Matches created for June 19, 2026." })
-      setSelectedDate(new Date("2026-06-19T12:00:00"))
-      setIsSeeding(false)
-    })
-  }
-
   const handleGridSlotClick = (court: number, time: string) => {
     setNewMatch(prev => ({
       ...prev,
@@ -314,11 +281,6 @@ export default function SchedulingPage() {
           >
             {isOptimizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
             AI Auto-Schedule
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={handleSeedData} disabled={isSeeding || !selectedTournamentId} className="border-accent text-accent">
-            {isSeeding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
-            Seed Data
           </Button>
 
           <Button variant="ghost" size="sm" onClick={handleClearAll} className="text-destructive hover:bg-destructive/10">

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
@@ -294,7 +293,7 @@ export default function TournamentArena() {
                 <Activity className="h-10 w-10 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-headline font-bold">Arena Hub</h3>
                 <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                  Real-time court assignments and automated scheduling powered by CourtControl AI.
+                  Real-time court assignments and automated scheduling powered by Court Control AI.
                 </p>
                 <div className="mt-6 flex justify-center opacity-40">
                   <div className="w-24 h-24 bg-white rounded-xl p-2">

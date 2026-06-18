@@ -4,7 +4,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'CourtControl AI | Smart Sports Management',
+  title: 'Court Control AI | Smart Sports Management',
   description: 'Manage tournaments, schedules, and player stats with AI-powered precision.',
 };
 

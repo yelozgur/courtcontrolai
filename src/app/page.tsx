@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -29,7 +28,7 @@ export default function HomePage() {
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <Zap className="text-primary-foreground h-5 w-5" />
           </div>
-          <span className="font-headline font-bold text-xl tracking-tighter">CourtControl AI</span>
+          <span className="font-headline font-bold text-xl tracking-tighter">Court Control AI</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
           <Link className="text-sm font-medium hover:text-primary transition-colors hidden sm:block" href="/tournaments">
@@ -158,7 +157,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <Zap className="h-6 w-6 text-primary" />
             <p className="text-center text-sm leading-loose text-muted-foreground md:text-left font-medium">
-              &copy; 2024 CourtControl AI. The elite sports management engine.
+              &copy; 2024 Court Control AI. The elite sports management engine.
             </p>
           </div>
           <div className="flex items-center gap-6 text-sm font-bold text-muted-foreground">
