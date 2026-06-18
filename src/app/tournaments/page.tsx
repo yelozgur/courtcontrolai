@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -40,7 +41,7 @@ export default function PublicTournaments() {
             placeholder="Search events..." 
             className="pl-10 bg-white/5 border-white/10" 
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => setSearch(search)}
           />
         </div>
         <Button asChild variant="outline" className="border-primary text-primary">

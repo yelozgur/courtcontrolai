@@ -18,13 +18,13 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/clubs/$(clubId)).data.ownerId == request.auth.uid;
     }
 
-    // User Profiles
+    // User Profiles: Private read/write, Admin global oversight
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isAdmin();
       allow write: if request.auth.uid == userId || isAdmin();
     }
 
-    // Clubs
+    // Clubs: Anyone can read branding, only owner or admin can update
     match /clubs/{clubId} {
       allow read: if true;
       allow create: if isSignedIn();
@@ -32,7 +32,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Tournaments
+    // Tournaments: Public Read (Feed/Registration), Owner/Admin Write
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if isSignedIn();
@@ -40,33 +40,33 @@ service cloud.firestore {
       allow delete: if isClubOwner(resource.data.clubId) || isAdmin();
     }
 
-    // Matches
+    // Matches: Public Read (Live Arena), Referees/Owners/Admins Write
     match /matches/{matchId} {
       allow read: if true;
-      // Allow referees (managed via tournament.referees array) or owners or admins
+      // Note: matches are linked to clubId
       allow write: if isSignedIn() || isAdmin(); 
     }
 
-    // Participants
+    // Participants: Public registration (Create), Owner/Admin management (Read/Update/Delete)
     match /participants/{participantId} {
       allow read: if true;
-      allow create: if true; // Public Registration
+      allow create: if true; // Allows anyone to register
       allow update, delete: if isSignedIn() || isAdmin();
     }
 
-    // Check-ins
+    // Check-ins: Venue scanners can create, Staff can read
     match /checkins/{checkInId} {
       allow read: if isSignedIn() || isAdmin();
-      allow create: if true; // Venue Scans
+      allow create: if true; // Anyone scanning the venue QR
     }
 
-    // Sponsors
+    // Sponsors: Public read, Owner/Admin write
     match /sponsors/{sponsorId} {
       allow read: if true;
       allow write: if isSignedIn() || isAdmin();
     }
 
-    // Promo Codes
+    // Promo Codes: Global read for validation, Admin only management
     match /promocodes/{codeId} {
       allow read: if true;
       allow write: if isAdmin();
