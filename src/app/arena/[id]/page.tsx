@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle, MapPin, Calendar } from "lucide-react"
+import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle, MapPin, Calendar, Activity } from "lucide-react"
 import { collection, query, where, limit, doc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { Button } from "@/components/ui/button"
@@ -36,29 +36,26 @@ export default function TournamentArena() {
 
   const { data: tournament, loading: tourneyLoading } = useDoc(tournamentRef)
 
-  // Fetch all matches for this tournament to avoid composite index issues with multiple where clauses
   const allMatchesQuery = useMemoFirebase(() => {
     if (!db || !id) return null
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", id),
-      limit(100)
+      limit(200)
     )
   }, [db, id])
 
   const { data: allMatches, loading: matchesLoading, error: matchesError } = useCollection(allMatchesQuery)
 
-  // Filter matches client-side for live results with location context
   const liveMatches = useMemo(() => {
     if (!allMatches) return []
     let filtered = allMatches.filter(m => m.status === "live")
     if (selectedLocation !== "all") {
       filtered = filtered.filter(m => m.location === selectedLocation)
     }
-    return filtered.slice(0, 4)
+    return filtered.slice(0, 6)
   }, [allMatches, selectedLocation])
 
-  // Filter matches client-side for recent results with location context
   const finishedMatches = useMemo(() => {
     if (!allMatches) return []
     let filtered = allMatches.filter(m => m.status === "completed")
@@ -74,13 +71,28 @@ export default function TournamentArena() {
       .slice(0, 3)
   }, [allMatches, selectedLocation])
 
+  const upcomingMatches = useMemo(() => {
+    if (!allMatches) return []
+    let filtered = allMatches.filter(m => m.status === "scheduled")
+    if (selectedLocation !== "all") {
+      filtered = filtered.filter(m => m.location === selectedLocation)
+    }
+    return filtered
+      .sort((a, b) => {
+        const aStart = a.startTime ? new Date(a.startTime).getTime() : 0
+        const bStart = b.startTime ? new Date(b.startTime).getTime() : 0
+        return aStart - bStart
+      })
+      .slice(0, 4)
+  }, [allMatches, selectedLocation])
+
   if (matchesError) {
     return (
       <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
         <AlertCircle className="h-16 w-16 text-destructive mb-4 opacity-50" />
         <h2 className="text-3xl font-headline font-bold uppercase">Arena Restricted</h2>
         <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-          We encountered an error loading live results. Please check security rules or composite indexes.
+          We encountered an error loading live results. Please check security rules or connection.
         </p>
         <Button onClick={() => window.location.reload()} variant="outline" className="mt-8">Retry Connection</Button>
       </div>
@@ -102,7 +114,7 @@ export default function TournamentArena() {
               {tourneyLoading ? "Connecting..." : (tournament?.name || "Live Arena")}
             </h1>
             <p className="text-xl text-muted-foreground font-medium uppercase tracking-widest">
-              Live Results Arena
+              Real-time Scoring Dashboard
             </p>
           </div>
         </div>
@@ -110,16 +122,18 @@ export default function TournamentArena() {
         <div className="flex items-center gap-12">
           <div className="w-64">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
-              <MapPin className="h-3 w-3" /> Venue Filter
+              <MapPin className="h-3 w-3" /> Venue Selection
             </p>
             <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+              <SelectTrigger className="bg-white/5 border-white/10 text-white h-12">
                 <SelectValue placeholder="All Locations" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Locations</SelectItem>
                 {tournament?.locations?.map((loc: any, i: number) => (
-                  <SelectItem key={i} value={loc.name}>{loc.name}</SelectItem>
+                  <SelectItem key={i} value={typeof loc === 'string' ? loc : loc.name}>
+                    {typeof loc === 'string' ? loc : loc.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -138,7 +152,7 @@ export default function TournamentArena() {
       </div>
 
       <div className="grid grid-cols-3 gap-8 flex-1 overflow-hidden">
-        <div className="col-span-2 space-y-8 overflow-y-auto pr-4">
+        <div className="col-span-2 space-y-8 overflow-y-auto pr-4 scrollbar-hide">
           <h2 className="text-3xl font-headline font-bold flex items-center gap-4">
             <span className="w-4 h-4 rounded-full bg-accent animate-pulse"></span>
             Live On Courts {selectedLocation !== "all" && <span className="text-muted-foreground text-xl font-normal">at {selectedLocation}</span>}
@@ -189,23 +203,46 @@ export default function TournamentArena() {
 
                   <div className="text-right pl-12 border-l border-white/5 min-w-[150px]">
                     <Badge className="bg-primary/20 text-primary border-primary mb-2 text-sm px-4 py-1 uppercase">{match.category}</Badge>
-                    <p className="text-muted-foreground font-mono text-xs mb-1 uppercase tracking-widest">{match.location || 'Main Venue'}</p>
+                    <p className="text-muted-foreground font-mono text-xs mb-1 uppercase tracking-widest">{typeof match.location === 'object' ? match.location.name : (match.location || 'Main Venue')}</p>
                     <p className="text-accent font-bold font-mono">LIVE</p>
                   </div>
                 </div>
               ))
+            ) : upcomingMatches.length > 0 ? (
+              <div className="space-y-6">
+                 <div className="bg-card/40 border border-white/5 rounded-3xl p-12 text-center">
+                    <p className="text-xl text-muted-foreground mb-8">No matches currently in progress. Showing upcoming scheduled matches.</p>
+                    <div className="grid gap-4">
+                       {upcomingMatches.map(m => (
+                         <div key={m.id} className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
+                            <div className="flex items-center gap-6">
+                               <div className="bg-secondary/30 p-3 rounded-xl text-center min-w-[80px]">
+                                  <Clock className="h-4 w-4 mx-auto mb-1 text-primary" />
+                                  <span className="text-sm font-bold">{m.startTime ? (typeof m.startTime === 'string' ? m.startTime.split('T')[1]?.substring(0, 5) : format(m.startTime.toDate(), "HH:mm")) : 'TBD'}</span>
+                               </div>
+                               <div className="text-left">
+                                  <p className="text-xl font-bold">{m.teamA.name} vs {m.teamB.name}</p>
+                                  <p className="text-xs text-muted-foreground uppercase tracking-widest">{m.category} • Court {m.court}</p>
+                               </div>
+                            </div>
+                            <Badge variant="outline" className="text-accent border-accent/20">READY</Badge>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+              </div>
             ) : (
               <div className="bg-card/40 border border-white/5 rounded-3xl p-20 text-center">
-                <p className="text-2xl text-muted-foreground">No matches currently live {selectedLocation !== "all" ? `at ${selectedLocation}` : "in this arena"}.</p>
+                <p className="text-2xl text-muted-foreground">No matches scheduled or live {selectedLocation !== "all" ? `at ${selectedLocation}` : "in this arena"}.</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="space-y-8 overflow-y-auto pr-2">
+        <div className="space-y-8 overflow-y-auto pr-2 scrollbar-hide">
           <div className="bg-[#1E293B] rounded-3xl p-8 border border-white/5">
-            <h2 className="text-3xl font-headline font-bold mb-8 flex items-center gap-4 text-accent">
-              <CheckCircle className="h-8 w-8" />
+            <h2 className="text-2xl font-headline font-bold mb-8 flex items-center gap-4 text-accent">
+              <CheckCircle className="h-6 w-6" />
               Recent Results
             </h2>
             <div className="space-y-6">
@@ -217,40 +254,40 @@ export default function TournamentArena() {
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{m.category}</span>
-                        <span className="text-[8px] uppercase text-muted-foreground/60">{m.location}</span>
+                        <span className="text-[8px] uppercase text-muted-foreground/60">{typeof m.location === 'object' ? m.location.name : m.location}</span>
                       </div>
                       <Badge variant="outline" className="text-[10px] h-5 border-emerald-500/30 text-emerald-400">FINAL</Badge>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className={m.teamA.setsWon > m.teamB.setsWon ? "font-bold text-white" : "text-muted-foreground"}>
+                        <span className={(m.teamA.setsWon || 0) > (m.teamB.setsWon || 0) ? "font-bold text-white" : "text-muted-foreground"}>
                           {m.teamA.name}
                         </span>
-                        <span className="font-mono font-bold text-accent">{m.teamA.setsWon}</span>
+                        <span className="font-mono font-bold text-accent">{m.teamA.setsWon || 0}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className={m.teamB.setsWon > m.teamA.setsWon ? "font-bold text-white" : "text-muted-foreground"}>
+                        <span className={(m.teamB.setsWon || 0) > (m.teamA.setsWon || 0) ? "font-bold text-white" : "text-muted-foreground"}>
                           {m.teamB.name}
                         </span>
-                        <span className="font-mono font-bold text-accent">{m.teamB.setsWon}</span>
+                        <span className="font-mono font-bold text-accent">{m.teamB.setsWon || 0}</span>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground italic py-10">No matches finished yet.</p>
+                <p className="text-center text-muted-foreground italic py-10 text-sm">No matches finished yet.</p>
               )}
             </div>
           </div>
           <div className="bg-[#1E293B]/50 rounded-3xl p-8 border border-white/5">
             <div className="bg-primary/10 rounded-3xl p-6 text-center">
-                <Users className="h-10 w-10 text-primary mx-auto mb-4" />
-                <h3 className="text-2xl font-headline font-bold">Tournament Hub</h3>
+                <Activity className="h-10 w-10 text-primary mx-auto mb-4" />
+                <h3 className="text-xl font-headline font-bold">Arena Hub</h3>
                 <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                  Scan the QR code at the reception for real-time schedule updates and match-ready notifications.
+                  Real-time court assignments and automated scheduling powered by CourtControl AI.
                 </p>
-                <div className="mt-6 flex justify-center">
-                  <div className="w-32 h-32 bg-white rounded-xl p-2">
+                <div className="mt-6 flex justify-center opacity-40">
+                  <div className="w-24 h-24 bg-white rounded-xl p-2">
                      <svg viewBox="0 0 24 24" fill="black"><path d="M3 3h7v7H3zm2 2v3h3V5zm8-2h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zm10 0h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4-2h2v2h-2zm0-4h2v2h-2z"/></svg>
                   </div>
                 </div>

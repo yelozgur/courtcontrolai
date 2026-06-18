@@ -1,10 +1,10 @@
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database, AlertCircle } from "lucide-react"
 import { collection, query, where, limit, addDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { format, parseISO } from "date-fns"
+import { format, parseISO, isValid } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
@@ -62,6 +62,14 @@ export default function SchedulingPage() {
   }, [db, clubId])
 
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery)
+  
+  // Auto-select first tournament
+  useEffect(() => {
+    if (tournaments && tournaments.length > 0 && !selectedTournamentId) {
+      setSelectedTournamentId(tournaments[0].id)
+    }
+  }, [tournaments, selectedTournamentId])
+
   const activeTournament = tournaments?.find(t => t.id === selectedTournamentId)
 
   // Fetch matches for the selected tournament
@@ -70,7 +78,7 @@ export default function SchedulingPage() {
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", selectedTournamentId),
-      limit(100)
+      limit(200)
     )
   }, [db, selectedTournamentId])
 
@@ -79,31 +87,33 @@ export default function SchedulingPage() {
   // Normalized date string for filtering
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd")
 
+  // Helper to extract date string from various Firestore formats
+  const getDateStr = (val: any) => {
+    if (!val) return ""
+    if (typeof val === 'string') return val.split('T')[0]
+    if (val.toDate) return format(val.toDate(), "yyyy-MM-dd")
+    if (val.seconds) return format(new Date(val.seconds * 1000), "yyyy-MM-dd")
+    return ""
+  }
+
+  // Helper to extract time string (HH:mm)
+  const getTimeStr = (val: any) => {
+    if (!val) return ""
+    if (typeof val === 'string') {
+      const parts = val.split('T')
+      return parts.length > 1 ? parts[1].substring(0, 5) : ""
+    }
+    if (val.toDate) return format(val.toDate(), "HH:mm")
+    if (val.seconds) return format(new Date(val.seconds * 1000), "HH:mm")
+    return ""
+  }
+
   // Filter matches based on selected date
   const filteredMatches = useMemo(() => {
     if (!rawMatches) return []
     return rawMatches.filter(m => {
-      const start = m.startTime
-      if (!start) return false
-      
-      let dateStr = ""
-      if (typeof start === 'string') {
-        dateStr = start.split('T')[0]
-      } else if (start.toDate) {
-        dateStr = format(start.toDate(), "yyyy-MM-dd")
-      } else if (start.seconds) {
-        dateStr = format(new Date(start.seconds * 1000), "yyyy-MM-dd")
-      }
-      
-      return dateStr === selectedDateStr
-    }).sort((a, b) => {
-      const getTimeStr = (val: any) => {
-        if (typeof val === 'string') return val.split('T')[1]?.substring(0, 5) || ""
-        if (val?.toDate) return format(val.toDate(), "HH:mm")
-        return ""
-      }
-      return getTimeStr(a.startTime).localeCompare(getTimeStr(b.startTime))
-    })
+      return getDateStr(m.startTime) === selectedDateStr
+    }).sort((a, b) => getTimeStr(a.startTime).localeCompare(getTimeStr(b.startTime)))
   }, [rawMatches, selectedDateStr])
 
   const handleCreateMatch = () => {
@@ -117,7 +127,8 @@ export default function SchedulingPage() {
       startTime: `${selectedDateStr}T${newMatch.time}:00`,
       teamA: { name: newMatch.teamA, score: 0, setsWon: 0 },
       teamB: { name: newMatch.teamB, score: 0, setsWon: 0 },
-      category: newMatch.category || activeTournament?.categories?.[0]?.name || "Open"
+      category: newMatch.category || activeTournament?.categories?.[0]?.name || "Open",
+      location: activeTournament?.locations?.[0]?.name || "Main Venue"
     }
 
     const matchesRef = collection(db, "matches")
@@ -161,7 +172,8 @@ export default function SchedulingPage() {
           startTime: `${testDate}T${m.time}:00`,
           teamA: { name: m.teamA, score: 0, setsWon: 0 },
           teamB: { name: m.teamB, score: 0, setsWon: 0 },
-          category: activeTournament?.categories?.[0]?.name || "Open"
+          category: activeTournament?.categories?.[0]?.name || "Open",
+          location: activeTournament?.locations?.[0]?.name || "Main Venue"
         }
         await addDoc(matchesRef, matchData)
       }
@@ -171,7 +183,6 @@ export default function SchedulingPage() {
         description: "Added 4 matches for June 19, 2026. Switching view..." 
       })
       
-      // Auto switch to the seed date
       setSelectedDate(parseISO(testDate))
     } catch (e) {
       toast({ variant: "destructive", title: "Seed Failed", description: "Could not create dummy matches." })
@@ -350,19 +361,7 @@ export default function SchedulingPage() {
                          const currentCourt = courtIdx + 1;
                          const match = filteredMatches?.find(m => {
                            const mCourt = Number(m.court);
-                           const mStart = m.startTime;
-                           if (!mStart) return false;
-                           
-                           let mTime = "";
-                           if (typeof mStart === 'string') {
-                             // Handle ISO strings with T09:00:00 format
-                             mTime = mStart.split('T')[1]?.substring(0, 5) || "";
-                           } else if (mStart.toDate) {
-                             mTime = format(mStart.toDate(), "HH:mm");
-                           } else if (mStart.seconds) {
-                             mTime = format(new Date(mStart.seconds * 1000), "HH:mm");
-                           }
-                           
+                           const mTime = getTimeStr(m.startTime);
                            return mCourt === currentCourt && mTime === time;
                          });
 
@@ -420,11 +419,7 @@ export default function SchedulingPage() {
                         <div className="flex flex-col items-center justify-center bg-secondary/30 p-2 rounded-xl border border-white/5 w-24">
                           <Clock className="w-4 h-4 mb-1 text-primary" />
                           <span className="text-sm font-bold">
-                            {match.startTime ? (
-                              typeof match.startTime === 'string' 
-                                ? match.startTime.split('T')[1]?.substring(0, 5) 
-                                : format(match.startTime.toDate(), "HH:mm")
-                            ) : 'TBD'}
+                            {getTimeStr(match.startTime) || 'TBD'}
                           </span>
                         </div>
                         <div>
@@ -448,7 +443,7 @@ export default function SchedulingPage() {
                   </Card>
                 ))
               ) : (
-                <div className="text-center py-24 bg-white/5 rounded-2xl border-dashed border-2 border-white/5">
+                <div className="text-center py-24 bg-white/5 rounded-2xl border-dashed border-2 border-white/10">
                    <p className="text-muted-foreground italic">No matches scheduled for {selectedDateStr} yet.</p>
                 </div>
               )}
