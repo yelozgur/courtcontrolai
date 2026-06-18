@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
@@ -244,12 +245,12 @@ export default function SchedulingPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
-          <p className="text-muted-foreground flex items-center gap-2">
+          <div className="text-muted-foreground flex items-center gap-2">
             Manage timings and court allocations. 
             <Badge variant="outline" className={cn("text-[10px] border-none font-bold uppercase", isFreeRun ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500")}>
               AI Runs: {aiUsage}/3 Free
             </Badge>
-          </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button 
