@@ -126,9 +126,9 @@ export default function TournamentArena() {
       <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
         <AlertCircle className="h-16 w-16 text-destructive mb-4 opacity-50" />
         <h2 className="text-3xl font-headline font-bold uppercase">Arena Offline</h2>
-        <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
+        <div className="text-muted-foreground mt-2 max-w-sm mx-auto">
           We encountered an error loading live results. Please check your connection.
-        </p>
+        </div>
         <Button onClick={() => window.location.reload()} variant="outline" className="mt-8">Retry Connection</Button>
       </div>
     )
@@ -250,7 +250,7 @@ export default function TournamentArena() {
             ) : upcomingMatches.length > 0 ? (
               <div className="space-y-6">
                  <div className="bg-card/40 border border-white/5 rounded-3xl p-12 text-center">
-                    <p className="text-xl text-muted-foreground mb-8">No live matches. Displaying upcoming queue.</p>
+                    <div className="text-xl text-muted-foreground mb-8">No live matches. Displaying upcoming queue.</div>
                     <div className="grid gap-4">
                        {upcomingMatches.map(m => (
                          <div key={m.id} className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
@@ -272,7 +272,7 @@ export default function TournamentArena() {
               </div>
             ) : (
               <div className="bg-card/40 border border-white/5 rounded-3xl p-20 text-center">
-                <p className="text-2xl text-muted-foreground">No matches scheduled or live.</p>
+                <div className="text-2xl text-muted-foreground">No matches scheduled or live.</div>
               </div>
             )}
           </div>
@@ -314,7 +314,7 @@ export default function TournamentArena() {
                   </div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground italic py-10 text-sm">Waiting for results...</p>
+                <div className="text-center text-muted-foreground italic py-10 text-sm">Waiting for results...</div>
               )}
             </div>
           </div>

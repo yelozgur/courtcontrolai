@@ -37,7 +37,6 @@ export default function SchedulingPage() {
   
   const [view, setView] = useState<'matrix' | 'list'>('matrix')
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
-  const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isAddingMatch, setIsAddingMatch] = useState(false)
   const [isOptimizing, setIsOptimizing] = useState(false)
@@ -54,7 +53,6 @@ export default function SchedulingPage() {
     location: ""
   })
 
-  // Get current user's clubId
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
@@ -65,7 +63,6 @@ export default function SchedulingPage() {
   const clubId = clubData?.id
   const aiUsage = clubData?.aiUsageCount || 0
 
-  // Fetch tournaments for the club
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null
     return query(collection(db, "tournaments"), where("clubId", "==", clubId))
@@ -81,14 +78,12 @@ export default function SchedulingPage() {
 
   const activeTournament = tournaments?.find(t => t.id === selectedTournamentId)
 
-  // Fetch participants count
   useEffect(() => {
     if (!db || !selectedTournamentId) return
     const pQuery = query(collection(db, "participants"), where("tournamentId", "==", selectedTournamentId))
     getDocs(pQuery).then(snap => setParticipantsCount(snap.size))
   }, [db, selectedTournamentId])
 
-  // Fetch matches
   const matchesQuery = useMemoFirebase(() => {
     if (!db || !selectedTournamentId) return null
     return query(
@@ -102,21 +97,35 @@ export default function SchedulingPage() {
   
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd")
 
-  const getTimeStr = (val: any) => {
+  const getTimeKey = (val: any) => {
     if (!val) return ""
     try {
       if (typeof val === 'string') {
         const parts = val.split('T')
-        return parts.length > 1 ? parts[1].substring(0, 5) : val.substring(0, 5)
+        const timePart = parts.length > 1 ? parts[1].substring(0, 5) : val.substring(0, 5)
+        // Normalize time to 30-min slots for matrix indexing if needed, 
+        // but here we just return the exact string to match the slots array
+        return timePart;
       }
     } catch (e) { return "" }
     return ""
   }
 
-  // Matrix Construction Logic: Show all courts defined in the tournament
-  const timeSlots = Array.from({ length: 14 }, (_, i) => `${(i + 9).toString().padStart(2, '0')}:00`)
-  const totalCourts = activeTournament?.numCourts || 1
-  const courts = Array.from({ length: totalCourts }, (_, i) => i + 1)
+  // Matrix Construction Logic: 30-minute intervals from 08:00 to 22:30
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let hour = 8; hour <= 22; hour++) {
+      const h = hour.toString().padStart(2, '0');
+      slots.push(`${h}:00`);
+      slots.push(`${h}:30`);
+    }
+    return slots;
+  }, []);
+
+  const courts = useMemo(() => {
+    const count = activeTournament?.numCourts || 1;
+    return Array.from({ length: count }, (_, i) => i + 1);
+  }, [activeTournament?.numCourts]);
 
   const matrixData = useMemo(() => {
     const grid: Record<string, any> = {}
@@ -126,7 +135,7 @@ export default function SchedulingPage() {
       const mDate = m.startTime?.split('T')[0]
       if (mDate !== selectedDateStr) return
       
-      const mTime = getTimeStr(m.startTime)
+      const mTime = getTimeKey(m.startTime)
       const mCourt = m.court
       const key = `${mTime}-${mCourt}`
       grid[key] = m
@@ -322,7 +331,7 @@ export default function SchedulingPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="p-4 bg-black/20 border-b border-r border-white/5 w-24 sticky left-0 z-10">
+                  <th className="p-4 bg-black/20 border-b border-r border-white/5 w-24 sticky left-0 z-20">
                     <Clock className="w-4 h-4 text-muted-foreground mx-auto" />
                   </th>
                   {courts.map(c => (
@@ -337,7 +346,7 @@ export default function SchedulingPage() {
               <tbody className="divide-y divide-white/5">
                 {timeSlots.map(time => (
                   <tr key={time} className="group">
-                    <td className="p-4 text-center font-mono text-sm font-bold text-muted-foreground bg-black/10 border-r border-white/5 sticky left-0 z-10">
+                    <td className="p-4 text-center font-mono text-sm font-bold text-muted-foreground bg-black/10 border-r border-white/5 sticky left-0 z-20">
                       {time}
                     </td>
                     {courts.map(court => {
@@ -394,7 +403,7 @@ export default function SchedulingPage() {
               <Card key={match.id} className="bg-card/50 border-white/5 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-6">
                   <div className="bg-secondary/30 p-2 rounded-xl text-center min-w-[80px]">
-                    <p className="text-xs font-bold text-primary">{getTimeStr(match.startTime)}</p>
+                    <p className="text-xs font-bold text-primary">{getTimeKey(match.startTime)}</p>
                   </div>
                   <div>
                     <h4 className="font-bold">{match.teamA.name} vs {match.teamB.name}</h4>
