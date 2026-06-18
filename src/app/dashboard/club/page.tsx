@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon, Send, MessageSquare, Globe, PlusCircle } from "lucide-react"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit, addDoc, serverTimestamp } from "firebase/firestore"

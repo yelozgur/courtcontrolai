@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -146,7 +147,7 @@ export default function LoginPage() {
         <span className="text-2xl font-headline font-bold text-white tracking-tighter uppercase">Court Control AI</span>
       </Link>
 
-      <Card className="w-full max-md border-white/5 bg-card/50 backdrop-blur-xl">
+      <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
         <CardHeader className="text-center space-y-1">
           <CardTitle className="text-2xl font-headline font-bold">Sign In</CardTitle>
           <CardDescription>
