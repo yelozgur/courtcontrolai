@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy } from "lucide-react"
+import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon } from "lucide-react"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -33,7 +33,8 @@ export default function ClubSettings() {
     location: "",
     contactEmail: "",
     numCourts: 1,
-    primarySport: "padel"
+    primarySport: "padel",
+    logoUrl: ""
   })
   const [isSaving, setIsSaving] = useState(false)
 
@@ -44,7 +45,8 @@ export default function ClubSettings() {
         location: clubData.location || "",
         contactEmail: clubData.contactEmail || "",
         numCourts: clubData.numCourts || 1,
-        primarySport: clubData.primarySport || "padel"
+        primarySport: clubData.primarySport || "padel",
+        logoUrl: clubData.logoUrl || ""
       })
     }
   }, [clubData])
@@ -98,8 +100,8 @@ export default function ClubSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-headline font-bold">Club Settings</h1>
-        <p className="text-muted-foreground">Manage your organization's profile and global configuration.</p>
+        <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter">Club Identity</h1>
+        <p className="text-muted-foreground">Manage your organization's brand and global configuration.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -120,6 +122,18 @@ export default function ClubSettings() {
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="e.g. Ace Padel Club"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Club Logo URL</Label>
+              <div className="relative">
+                <ImageIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  className="pl-10"
+                  value={formData.logoUrl} 
+                  onChange={(e) => setFormData({...formData, logoUrl: e.target.value})}
+                  placeholder="https://example.com/logo.png"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="primary-sport">Primary Sport Type</Label>
@@ -158,53 +172,58 @@ export default function ClubSettings() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="club-location">Location</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  id="club-location" 
-                  className="pl-10"
-                  value={formData.location} 
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  placeholder="Street Address, City"
-                />
-              </div>
-            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Hash className="h-5 w-5 text-accent" />
-              Venue Capacity
-            </CardTitle>
-            <CardDescription>Configure the number of courts available for matches.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="num-courts">Number of Courts</Label>
-              <Input 
-                id="num-courts" 
-                type="number" 
-                min="1"
-                value={formData.numCourts} 
-                onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
-              />
-            </div>
-            <div className="pt-4">
+        <div className="space-y-6">
+          <Card className="bg-card/50 border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-accent" />
+                Brand Preview
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center p-12">
+               <div className="w-32 h-32 rounded-3xl bg-secondary flex items-center justify-center overflow-hidden border border-white/5 mb-4">
+                  {formData.logoUrl ? (
+                    <img src={formData.logoUrl} alt="Logo Preview" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <Building2 className="h-12 w-12 text-muted-foreground opacity-20" />
+                  )}
+               </div>
+               <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{formData.name || 'Your Club'}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/50 border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Hash className="h-5 w-5 text-accent" />
+                Venue Capacity
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="num-courts">Global Court Count</Label>
+                <Input 
+                  id="num-courts" 
+                  type="number" 
+                  min="1"
+                  value={formData.numCourts} 
+                  onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})}
+                />
+              </div>
               <Button 
                 onClick={handleSave} 
                 className="w-full bg-primary"
                 disabled={isSaving}
               >
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Club Profile
+                Sync Club Profile
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

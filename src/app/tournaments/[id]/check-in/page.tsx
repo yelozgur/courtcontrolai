@@ -31,14 +31,20 @@ export default function PublicCheckInPage() {
     return doc(db, "tournaments", id as string)
   }, [db, id])
 
-  const { data: tournament, loading: tournamentLoading, error: tournamentError } = useDoc(tournamentRef)
+  const { data: tournament, loading: tournamentLoading } = useDoc(tournamentRef)
 
-  // Fetch sponsors for branding
+  // Fetch club details
+  const clubRef = useMemoFirebase(() => {
+    if (!db || !tournament?.clubId) return null;
+    return doc(db, "clubs", tournament.clubId);
+  }, [db, tournament]);
+  const { data: club } = useDoc(clubRef);
+
+  // Fetch sponsors
   const sponsorsQuery = useMemoFirebase(() => {
-    if (!db || !tournament) return null;
+    if (!db || !tournament?.clubId) return null;
     return query(collection(db, "sponsors"), where("clubId", "==", tournament.clubId));
   }, [db, tournament]);
-
   const { data: allSponsors } = useCollection(sponsorsQuery);
 
   const tournamentSponsors = allSponsors?.filter(s => 
@@ -48,84 +54,43 @@ export default function PublicCheckInPage() {
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!db || !tournament) return
-
-    // Ensure location is selected if multiple exist
     if (tournament.locations?.length > 1 && !selectedLocation) {
-      toast({ variant: "destructive", title: "Venue Selection Required", description: "Please select which location you are at." })
+      toast({ variant: "destructive", title: "Location Required" })
       return
     }
     
     setIsSubmitting(true)
-
     try {
-      // Find participant
       const pQuery = query(
         collection(db, "participants"), 
         where("tournamentId", "==", id),
         where("email", "==", email.toLowerCase().trim()),
         limit(1)
       )
-      
       const pSnap = await getDocs(pQuery)
-      
       if (pSnap.empty) {
-        toast({
-          variant: "destructive",
-          title: "Registration Required",
-          description: "No player found with this email for this tournament."
-        })
+        toast({ variant: "destructive", title: "Player Not Found", description: "Register for the event first." })
         setIsSubmitting(false)
         return
       }
 
       const participantId = pSnap.docs[0].id
-
-      // Create Check-In
       const checkInData = {
         participantId,
         tournamentId: id,
         timestamp: serverTimestamp(),
-        location: selectedLocation || (typeof tournament.locations?.[0] === 'object' ? tournament.locations[0].name : (tournament.locations?.[0] || "Main Venue"))
+        location: selectedLocation || (tournament.locations?.[0]?.name || "Main Venue")
       }
-
       await addDoc(collection(db, "checkins"), checkInData)
       setSubmitted(true)
-      toast({ title: "Check-In Success", description: "You are now verified and ready to play." })
-    } catch (e: any) {
-      console.error("Check-in error:", e)
-      toast({ 
-        variant: "destructive", 
-        title: "Check-In Failed", 
-        description: "An error occurred. Please verify your connection." 
-      })
+    } catch (e) {
+      toast({ variant: "destructive", title: "Check-In Failed" })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  if (tournamentLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
-        <Loader2 className="animate-spin text-primary h-12 w-12" />
-        <p className="text-muted-foreground font-headline font-bold uppercase tracking-widest">Verifying Venue...</p>
-      </div>
-    )
-  }
-
-  if (tournamentError || !tournament) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] text-white p-6 text-center">
-        <AlertCircle className="h-16 w-16 text-destructive mb-4 opacity-50" />
-        <h2 className="text-3xl font-headline font-bold uppercase">Access Restricted</h2>
-        <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-          Tournament details are unavailable.
-        </p>
-        <Button asChild className="mt-8" variant="outline">
-           <Link href="/tournaments">View All Events</Link>
-        </Button>
-      </div>
-    )
-  }
+  if (tournamentLoading) return <div className="min-h-screen flex items-center justify-center bg-[#0F172A]"><Loader2 className="animate-spin text-primary h-12 w-12" /></div>
 
   if (submitted) {
     return (
@@ -134,26 +99,12 @@ export default function PublicCheckInPage() {
           <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-8">
             <CheckCircle2 className="h-12 w-12 text-primary" />
           </div>
-          <h2 className="text-4xl font-headline font-bold mb-4 uppercase tracking-tighter">Verified</h2>
-          <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
-            Welcome to <span className="text-white font-bold">{tournament.name}</span>.<br />
-            Arrival verified at <span className="text-primary font-bold">{selectedLocation || "Main Venue"}</span>.
+          <h2 className="text-4xl font-headline font-bold mb-4 uppercase">Verified</h2>
+          <p className="text-muted-foreground mb-8 text-lg">
+            Welcome to <span className="text-white font-bold">{tournament.name}</span>. Arrival verified.
           </p>
-          <Button onClick={() => window.location.reload()} variant="outline" className="w-full">
-            Done
-          </Button>
+          <Button onClick={() => window.location.reload()} variant="outline" className="w-full">Done</Button>
         </Card>
-
-        {tournamentSponsors && tournamentSponsors.length > 0 && (
-          <div className="mt-12 text-center space-y-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-50">Event Partners</p>
-            <div className="flex flex-wrap justify-center gap-8">
-              {tournamentSponsors.map(s => (
-                <img key={s.id} src={s.logoUrl} alt={s.name} className="h-10 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     )
   }
@@ -161,45 +112,35 @@ export default function PublicCheckInPage() {
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white">
       <div className="mb-10 text-center space-y-4">
-        <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-primary/20">
-          <MapPin className="h-8 w-8 text-white" />
-        </div>
-        <div>
-          <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter leading-none">Venue Arrival</h1>
-          <p className="text-lg text-muted-foreground font-medium mt-2">{tournament.name}</p>
-        </div>
+        {club?.logoUrl ? (
+          <img src={club.logoUrl} alt={club.name} className="h-16 w-16 object-contain mx-auto mb-4" />
+        ) : (
+          <MapPin className="h-12 w-12 text-primary mx-auto mb-4 shadow-2xl shadow-primary/20" />
+        )}
+        <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter leading-none">Venue Arrival</h1>
+        <p className="text-lg text-muted-foreground font-medium">{tournament.name}</p>
       </div>
 
       <Card className="max-w-md w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl overflow-hidden">
-        <div className="h-2 bg-primary"></div>
+        <div className="h-1 bg-gradient-to-r from-accent to-primary"></div>
         <CardHeader className="text-center pt-10">
           <CardTitle className="font-headline font-bold uppercase text-2xl">Confirm Check-In</CardTitle>
-          <CardDescription>Verify your location for {tournament.name}.</CardDescription>
+          <CardDescription>Verify your location context.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCheckIn} className="space-y-6">
             <div className="space-y-2">
               <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Registered Email</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  required
-                  type="email"
-                  className="pl-10 bg-white/5 border-white/10 h-12 text-lg"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-              </div>
+              <Input required type="email" className="bg-white/5 border-white/10 h-12 text-lg" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
 
-            {tournament.locations && tournament.locations.length > 0 && (
+            {tournament.locations?.length > 0 && (
               <div className="space-y-2">
-                <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Your Venue Location</Label>
+                <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Playing At</Label>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                   <SelectTrigger className="bg-white/5 border-white/10 h-12">
                     <Building className="w-4 h-4 mr-2 opacity-50" />
-                    <SelectValue placeholder="Where are you playing?" />
+                    <SelectValue placeholder="Select venue..." />
                   </SelectTrigger>
                   <SelectContent>
                     {tournament.locations.map((loc: any, i: number) => (
@@ -225,23 +166,11 @@ export default function PublicCheckInPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-10">
             {tournamentSponsors.map(s => (
-              <img 
-                key={s.id} 
-                src={s.logoUrl} 
-                alt={s.name} 
-                className={cn(
-                  "opacity-30 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer",
-                  s.tier === "gold" ? "h-10" : s.tier === "silver" ? "h-8" : "h-6"
-                )} 
-              />
+              <img key={s.id} src={s.logoUrl} alt={s.name} className={cn("opacity-30 grayscale hover:grayscale-0 hover:opacity-100 transition-all", s.tier === "gold" ? "h-10" : s.tier === "silver" ? "h-8" : "h-6")} />
             ))}
           </div>
         </div>
       )}
-      
-      <p className="mt-8 text-muted-foreground text-xs text-center flex items-center gap-2">
-        <ArrowLeft className="h-3 w-3" /> <Link href="/tournaments" className="hover:text-primary transition-colors underline">Browse Events</Link>
-      </p>
     </div>
   )
 }

@@ -1,11 +1,12 @@
+
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
-import { collection, query, where, orderBy, doc, limit } from "firebase/firestore"
+import { collection, query, where, orderBy, doc, limit, setDoc } from "firebase/firestore"
 import { 
   Trophy, 
   Calendar, 
@@ -22,15 +23,24 @@ import {
   Zap,
   ChevronRight,
   ShieldCheck,
-  Building
+  Building,
+  Image as ImageIcon,
+  Save
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 
 export default function PlayerProfile() {
   const { user } = useUser()
   const db = useFirestore()
+  const { toast } = useToast()
+
+  const [avatarUrl, setAvatarUrl] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
 
   // 1. Get User Profile
   const userProfileRef = useMemoFirebase(() => {
@@ -38,6 +48,10 @@ export default function PlayerProfile() {
     return doc(db, "users", user.uid)
   }, [db, user])
   const { data: profile } = useDoc(userProfileRef)
+
+  useEffect(() => {
+    if (profile?.photoURL) setAvatarUrl(profile.photoURL)
+  }, [profile])
 
   // 2. Get User's Club (if they are an owner)
   const clubQuery = useMemoFirebase(() => {
@@ -57,8 +71,7 @@ export default function PlayerProfile() {
   }, [db, user])
   const { data: registrations, loading: regsLoading } = useCollection(registrationsQuery)
 
-  // 4. Get Club Leaderboard (to calculate rank)
-  // For MVP, we'll fetch all participants from the user's primary club to show relative rank
+  // 4. Get Club Leaderboard
   const clubId = registrations?.[0]?.clubId || ownedClub?.id
   const clubLeaderboardQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null
@@ -78,12 +91,18 @@ export default function PlayerProfile() {
   }, [db, registrations])
   const { data: checkins, loading: checkinsLoading } = useCollection(checkinsQuery)
 
-  // STATS CALCULATION
+  const handleUpdateAvatar = () => {
+    if (!db || !user) return
+    setIsSaving(true)
+    setDoc(doc(db, "users", user.uid), { photoURL: avatarUrl }, { merge: true })
+      .then(() => {
+        toast({ title: "Profile Updated" })
+      })
+      .finally(() => setIsSaving(false))
+  }
+
   const stats = useMemo(() => {
     if (!registrations) return { points: 0, rank: 0, level: 'Novice', progress: 0 }
-    
-    // Simple MVP Ranking Logic: 
-    // Participation = 100pts, Pro skill = +50pts, Intermediate = +20pts
     const points = registrations.reduce((acc, reg) => {
       let val = 100
       if (reg.skillLevel === 'pro') val += 50
@@ -91,11 +110,9 @@ export default function PlayerProfile() {
       return acc + val
     }, 0)
 
-    // Rank calculation within club
     let rank = 0
     if (clubParticipants && user?.email) {
       const sorted = [...clubParticipants].sort((a, b) => {
-        // Mock points for others too
         const getPts = (p: any) => (p.verified ? 100 : 50) + (p.skillLevel === 'pro' ? 50 : 20)
         return getPts(b) - getPts(a)
       })
@@ -104,7 +121,6 @@ export default function PlayerProfile() {
 
     const level = points > 500 ? 'Elite' : points > 200 ? 'Competitor' : 'Novice'
     const progress = (points % 200) / 2
-
     return { points, rank, level, progress }
   }, [registrations, clubParticipants, user?.email])
 
@@ -115,14 +131,17 @@ export default function PlayerProfile() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
-      {/* HEADER SECTION */}
       <div className="relative overflow-hidden p-8 bg-card/30 rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
         <Zap className="absolute -right-10 -top-10 h-64 w-64 text-primary/5 rotate-12" />
         
         <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
           <div className="relative">
-            <div className="w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-[2rem] flex items-center justify-center text-5xl font-bold shadow-2xl shadow-primary/20">
-              {profile?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
+            <div className="w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-[2rem] flex items-center justify-center text-5xl font-bold shadow-2xl shadow-primary/20 overflow-hidden border-2 border-white/10">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                profile?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()
+              )}
             </div>
             <div className="absolute -bottom-2 -right-2 bg-emerald-500 p-2 rounded-full border-4 border-[#0F172A]">
                <CheckCircle className="h-5 w-5 text-white" />
@@ -149,9 +168,17 @@ export default function PlayerProfile() {
             </div>
 
             <div className="pt-4 flex flex-wrap justify-center md:justify-start gap-3">
-              {isClubOwner && <Badge className="bg-primary text-white">CLUB OWNER</Badge>}
-              {isAdmin && <Badge className="bg-accent text-accent-foreground">SYSTEM ADMIN</Badge>}
-              {registrations && registrations.length > 0 && <Badge variant="secondary" className="bg-white/5 border-white/10">ACTIVE PLAYER</Badge>}
+              <div className="flex gap-2 max-w-xs">
+                <Input 
+                  placeholder="Avatar URL" 
+                  value={avatarUrl} 
+                  onChange={e => setAvatarUrl(e.target.value)} 
+                  className="h-8 text-[10px] bg-white/5" 
+                />
+                <Button size="sm" onClick={handleUpdateAvatar} disabled={isSaving} className="h-8 px-3">
+                  {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -172,10 +199,7 @@ export default function PlayerProfile() {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
-        {/* LEFT COLUMN: PLAYER STATS & HISTORY */}
         <div className="lg:col-span-8 space-y-8">
-          
-          {/* STATS TILES */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Card className="bg-white/5 border-white/5">
               <CardContent className="p-6">
@@ -200,7 +224,6 @@ export default function PlayerProfile() {
             </Card>
           </div>
 
-          {/* TOURNAMENTS LIST */}
           <div className="space-y-4">
             <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
               <Star className="h-6 w-6 text-primary" /> My Tournament Circuit
@@ -224,19 +247,13 @@ export default function PlayerProfile() {
                                <Zap className="h-3 w-3" /> {reg.skillLevel || 'Intermediate'}
                             </span>
                             <span>•</span>
-                            <span>Registered: {new Date(reg.registeredAt?.seconds * 1000).toLocaleDateString()}</span>
+                            <span>ID: #{reg.id.slice(-6).toUpperCase()}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="text-right flex items-center gap-6">
-                         <div className="hidden md:block">
-                            <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest border-primary/20 text-primary mb-1">In Roster</Badge>
-                            <p className="text-[10px] text-muted-foreground font-mono">#{reg.id.slice(-6).toUpperCase()}</p>
-                         </div>
-                         <Button variant="ghost" size="icon" className="group-hover:bg-primary group-hover:text-white transition-all rounded-full" asChild>
-                            <Link href={`/tournaments/${reg.tournamentId}/register`}><ChevronRight className="h-5 w-5" /></Link>
-                         </Button>
-                      </div>
+                      <Button variant="ghost" size="icon" className="group-hover:bg-primary group-hover:text-white transition-all rounded-full" asChild>
+                         <Link href={`/tournaments/${reg.tournamentId}/register`}><ChevronRight className="h-5 w-5" /></Link>
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -249,7 +266,7 @@ export default function PlayerProfile() {
                   </div>
                   <h3 className="text-xl font-bold uppercase tracking-tighter">No Active Competitions</h3>
                   <p className="text-muted-foreground max-w-xs mx-auto text-sm">
-                    You haven't registered for any tournaments yet. Join an arena to start building your global ranking.
+                    Register for a tournament to start building your profile.
                   </p>
                   <Button asChild className="bg-primary hover:bg-primary/90 mt-4">
                     <Link href="/tournaments">Find Your First Arena</Link>
@@ -260,10 +277,7 @@ export default function PlayerProfile() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: LEADERBOARD & ACTIVITY */}
         <div className="lg:col-span-4 space-y-8">
-          
-          {/* CLUB LEADERBOARD SUMMARY */}
           <Card className="bg-[#1E293B] border-white/5 rounded-[2rem] overflow-hidden shadow-2xl">
             <CardHeader className="bg-primary/10 border-b border-white/5">
               <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -288,23 +302,14 @@ export default function PlayerProfile() {
                         <span className="text-[10px] uppercase text-muted-foreground">{player.skillLevel}</span>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-[9px] font-bold border-white/10">
-                      {player.verified ? 'VERIFIED' : 'PENDING'}
-                    </Badge>
                   </div>
                 )) : (
-                  <p className="p-8 text-center text-xs text-muted-foreground italic">No club rankings available.</p>
+                  <p className="p-8 text-center text-xs text-muted-foreground italic">No rankings yet.</p>
                 )}
-              </div>
-              <div className="p-4 border-t border-white/5">
-                <Button variant="ghost" className="w-full text-xs text-muted-foreground hover:text-white" asChild>
-                  <Link href="/dashboard/participants">View Full Club Roster <ChevronRight className="h-3 w-3 ml-2" /></Link>
-                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* ARRIVAL HISTORY */}
           <div className="space-y-4">
             <h2 className="text-xl font-headline font-bold flex items-center gap-2">
               <Clock className="h-5 w-5 text-accent" /> Arrival Log
@@ -324,40 +329,17 @@ export default function PlayerProfile() {
                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1">
                           <MapPin className="h-3 w-3 text-accent" /> {check.location}
                         </div>
-                        <p className="text-[9px] text-muted-foreground mt-1 font-mono uppercase">
-                          {check.timestamp?.toDate ? check.timestamp.toDate().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Just now"}
-                        </p>
                       </div>
                     </CardContent>
                   </Card>
                 ))
               ) : (
                 <div className="p-10 text-center bg-white/5 rounded-3xl border border-white/5">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest italic opacity-50"> No check-in history yet</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest italic opacity-50"> No check-ins yet</p>
                 </div>
               )}
             </div>
           </div>
-
-          {/* MANAGEMENT QUICK LINK FOR OWNERS */}
-          {isClubOwner && (
-            <Card className="bg-accent/10 border-accent/20 border">
-               <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-accent/20 rounded-xl">
-                      <ShieldCheck className="h-5 w-5 text-accent" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">Manager Perspective</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">You are managing {ownedClub.name}</p>
-                    </div>
-                  </div>
-                  <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" asChild>
-                    <Link href="/dashboard/club">Club Command Console</Link>
-                  </Button>
-               </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>

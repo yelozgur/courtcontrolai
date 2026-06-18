@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, Send, Award, ArrowLeft, Heart } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, doc, query, where } from 'firebase/firestore';
+import { Trophy, CheckCircle2, Loader2, User, Mail, Send, Award, ArrowLeft, Heart, Building } from 'lucide-react';
+import { collection, addDoc, serverTimestamp, doc, query, where, limit } from 'firebase/firestore';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { cn } from "@/lib/utils";
 
 export default function TournamentRegistration() {
   const { id } = useParams();
@@ -30,15 +31,22 @@ export default function TournamentRegistration() {
 
   const { data: tournament, loading: tournamentLoading } = useDoc(tournamentRef);
 
-  // Fetch sponsors for branding
+  // Fetch club details for logo/branding
+  const clubRef = useMemoFirebase(() => {
+    if (!db || !tournament?.clubId) return null;
+    return doc(db, "clubs", tournament.clubId);
+  }, [db, tournament]);
+
+  const { data: club } = useDoc(clubRef);
+
+  // Fetch sponsors
   const sponsorsQuery = useMemoFirebase(() => {
-    if (!db || !tournament) return null;
+    if (!db || !tournament?.clubId) return null;
     return query(collection(db, "sponsors"), where("clubId", "==", tournament.clubId));
   }, [db, tournament]);
 
   const { data: allSponsors } = useCollection(sponsorsQuery);
 
-  // Filter sponsors that either support the club or this specific event
   const tournamentSponsors = allSponsors?.filter(s => 
     !s.tournamentId || s.tournamentId === id
   );
@@ -73,7 +81,7 @@ export default function TournamentRegistration() {
     try {
       await addDoc(collection(db, "participants"), registrationData);
       setSubmitted(true);
-      toast({ title: "Registration Successful!", description: "You've been added to the tournament roster." });
+      toast({ title: "Registration Successful!" });
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: "Could not complete registration." });
     } finally {
@@ -85,7 +93,7 @@ export default function TournamentRegistration() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
         <Loader2 className="animate-spin text-primary h-12 w-12" />
-        <p className="text-muted-foreground font-headline font-bold uppercase tracking-widest animate-pulse">Loading Event Details...</p>
+        <p className="text-muted-foreground font-headline font-bold uppercase tracking-widest animate-pulse">Loading Event...</p>
       </div>
     );
   }
@@ -95,7 +103,6 @@ export default function TournamentRegistration() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] text-white p-6 text-center">
         <Trophy className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
         <h2 className="text-3xl font-headline font-bold">Tournament Not Found</h2>
-        <p className="text-muted-foreground mt-2">This event may have been moved or archived.</p>
         <Button onClick={() => router.push("/tournaments")} className="mt-8">View All Events</Button>
       </div>
     );
@@ -109,46 +116,34 @@ export default function TournamentRegistration() {
             <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           </div>
           <h2 className="text-4xl font-headline font-bold mb-2 tracking-tight uppercase">Confirmed!</h2>
-          <p className="text-muted-foreground mb-8 text-lg leading-tight">
-            Registration for <span className="text-white font-bold">{tournament.name}</span> is complete. 
-            Keep an eye on your Telegram for court assignments.
+          <p className="text-muted-foreground mb-8 text-lg">
+            Registration for <span className="text-white font-bold">{tournament.name}</span> is complete.
           </p>
           <Button onClick={() => router.push("/tournaments")} className="w-full h-12 font-bold uppercase tracking-widest">
             Back to Tournaments
           </Button>
         </Card>
-
-        {tournamentSponsors && tournamentSponsors.length > 0 && (
-          <div className="mt-12 text-center space-y-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-50">Event Partners</p>
-            <div className="flex flex-wrap justify-center gap-8">
-              {tournamentSponsors.map(s => (
-                <img key={s.id} src={s.logoUrl} alt={s.name} className="h-10 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer" />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white overflow-x-hidden">
-      <div className="mb-10 text-center space-y-2">
-        <Trophy className="h-14 w-14 text-primary mx-auto mb-4" />
-        <h1 className="text-5xl font-headline font-bold uppercase tracking-tighter leading-none">Event Registration</h1>
-        <p className="text-xl text-muted-foreground font-medium">{tournament.name} • {tournament.sport.toUpperCase()}</p>
+    <div className="min-h-screen bg-[#0F172A] flex flex-col items-center py-12 px-6 text-white overflow-x-hidden">
+      <div className="max-w-lg w-full mb-10 flex flex-col items-center text-center space-y-4">
+        {club?.logoUrl ? (
+          <img src={club.logoUrl} alt={club.name} className="h-20 w-20 object-contain mb-2" />
+        ) : (
+          <Building className="h-12 w-12 text-primary/50 mb-2" />
+        )}
+        <h1 className="text-5xl font-headline font-bold uppercase tracking-tighter leading-none">{tournament.name}</h1>
+        <p className="text-xl text-muted-foreground font-medium uppercase tracking-widest">{club?.name || 'Sports Club'}</p>
       </div>
 
-      <Card className="max-w-lg w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl relative">
-        <div className="absolute top-4 left-4">
-           <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-             <Link href="/tournaments"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Link>
-           </Button>
-        </div>
-        <CardHeader className="pt-16">
+      <Card className="max-w-lg w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-primary to-accent"></div>
+        <CardHeader className="pt-10">
           <CardTitle className="font-headline font-bold uppercase text-2xl">Entry Details</CardTitle>
-          <CardDescription className="text-base">Join the competition roster for {tournament.name}.</CardDescription>
+          <CardDescription className="text-base">Join the competition roster.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -156,13 +151,7 @@ export default function TournamentRegistration() {
               <Label className="uppercase tracking-widest text-xs font-bold opacity-60">Full Name</Label>
               <div className="relative">
                 <User className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  required
-                  className="pl-10 bg-white/5 border-white/10 h-12 text-lg"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                />
+                <Input required className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
             </div>
             
@@ -170,14 +159,7 @@ export default function TournamentRegistration() {
               <Label className="uppercase tracking-widest text-xs font-bold opacity-60">Email Address</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  required
-                  type="email"
-                  className="pl-10 bg-white/5 border-white/10 h-12 text-lg"
-                  placeholder="john@example.com"
-                  value={formData.email}
-                  onChange={e => setFormData({...formData, email: e.target.value})}
-                />
+                <Input required type="email" className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
               </div>
             </div>
 
@@ -188,7 +170,7 @@ export default function TournamentRegistration() {
                   <Award className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
                   <Select value={formData.categoryId} onValueChange={val => setFormData({...formData, categoryId: val})}>
                     <SelectTrigger className="pl-10 bg-white/5 border-white/10 h-12 text-lg">
-                      <SelectValue placeholder="Choose competition..." />
+                      <SelectValue placeholder="Choose bracket..." />
                     </SelectTrigger>
                     <SelectContent>
                       {tournament.categories.map((cat: any) => (
@@ -206,62 +188,50 @@ export default function TournamentRegistration() {
               <div className="space-y-2">
                 <Label className="uppercase tracking-widest text-xs font-bold opacity-60">Skill Level</Label>
                 <Select value={formData.skillLevel} onValueChange={val => setFormData({...formData, skillLevel: val})}>
-                  <SelectTrigger className="bg-white/5 border-white/10 h-12">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="bg-white/5 border-white/10 h-12"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="beginner">Beginner</SelectItem>
                     <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="pro">Pro / Advanced</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="uppercase tracking-widest text-xs font-bold opacity-60">Telegram Handle</Label>
-                <div className="relative">
-                  <Send className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    className="pl-10 bg-white/5 border-white/10 h-12"
-                    placeholder="@username"
-                    value={formData.telegramHandle}
-                    onChange={e => setFormData({...formData, telegramHandle: e.target.value})}
-                  />
-                </div>
+                <Label className="uppercase tracking-widest text-xs font-bold opacity-60">Telegram @Handle</Label>
+                <Input className="bg-white/5 border-white/10 h-12" placeholder="@username" value={formData.telegramHandle} onChange={e => setFormData({...formData, telegramHandle: e.target.value})} />
               </div>
             </div>
             
             <Button type="submit" className="w-full h-14 text-xl font-bold bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 uppercase tracking-widest" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : null}
-              Confirm Registration
+              Confirm Entry
             </Button>
           </form>
         </CardContent>
       </Card>
 
       {tournamentSponsors && tournamentSponsors.length > 0 && (
-        <div className="mt-12 text-center space-y-6">
+        <div className="mt-16 w-full max-w-4xl text-center space-y-8">
           <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground flex items-center justify-center gap-3">
              <Heart className="h-3 w-3 text-primary" /> Supported By
           </p>
-          <div className="flex flex-wrap justify-center gap-12">
+          <div className="flex flex-wrap justify-center gap-12 items-center">
             {tournamentSponsors.map(s => (
-              <img 
-                key={s.id} 
-                src={s.logoUrl} 
-                alt={s.name} 
-                className={cn(
-                  "opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer",
-                  s.tier === "gold" ? "h-12" : s.tier === "silver" ? "h-10" : "h-8"
-                )} 
-              />
+              <div key={s.id} className="flex flex-col items-center gap-2 group cursor-default">
+                <img 
+                  src={s.logoUrl} 
+                  alt={s.name} 
+                  className={cn(
+                    "opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all",
+                    s.tier === "gold" ? "h-14" : s.tier === "silver" ? "h-11" : "h-8"
+                  )} 
+                />
+                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{s.name}</span>
+              </div>
             ))}
           </div>
         </div>
       )}
-      
-      <p className="mt-8 text-muted-foreground text-sm max-w-sm text-center opacity-40">
-        By registering, you agree to the tournament rules and local venue policies.
-      </p>
     </div>
   );
 }
