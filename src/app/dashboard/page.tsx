@@ -1,15 +1,12 @@
-
 "use client"
 
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
   Trophy, 
-  Users, 
   Activity, 
-  Clock, 
   ArrowUpRight,
   Zap,
   Loader2,
@@ -129,12 +126,12 @@ export default function DashboardOverview() {
                       <span className="text-[10px] text-muted-foreground">Court {match.court}</span>
                     </div>
                     <div className="flex items-center justify-between font-bold">
-                      <span>{match.teamA.name}</span>
-                      <span className="text-accent">{match.teamA.score}</span>
+                      <span>{match.teamA?.name}</span>
+                      <span className="text-accent">{match.teamA?.score}</span>
                     </div>
                     <div className="flex items-center justify-between font-bold opacity-60">
-                      <span>{match.teamB.name}</span>
-                      <span>{match.teamB.score}</span>
+                      <span>{match.teamB?.name}</span>
+                      <span>{match.teamB?.score}</span>
                     </div>
                   </CardContent>
                 </Card>

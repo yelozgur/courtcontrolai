@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Building, MapPin, Mail, ExternalLink, Loader2, Search } from 'lucide-react';
+import { MapPin, Mail, ExternalLink, Loader2, Search } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useState } from 'react';

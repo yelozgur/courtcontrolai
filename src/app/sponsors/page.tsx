@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -7,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Heart, Loader2, ExternalLink } from "lucide-react"
 import { collection, query, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { cn } from "@/lib/utils"
 
 export default function PublicSponsors() {
   const db = useFirestore()

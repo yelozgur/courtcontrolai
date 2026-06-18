@@ -1,14 +1,10 @@
-
 'use client';
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Calculator, 
   Database, 
-  Zap, 
-  TrendingUp, 
   AlertCircle, 
   Loader2, 
   DollarSign, 
@@ -21,9 +17,8 @@ import {
   ShieldCheck,
   Percent
 } from 'lucide-react';
-import { collection, query, limit, orderBy } from 'firebase/firestore';
-import { useFirestore, useCollection, useUser, useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { collection, query, limit, orderBy, doc } from 'firebase/firestore';
+import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { Progress } from '@/components/ui/progress';
 import {
   Table,
@@ -33,24 +28,38 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 export default function AdminCostDashboard() {
   const db = useFirestore();
   const { user } = useUser();
 
-  const userProfileRef = doc(db || {}, 'users', user?.uid || 'none');
+  const userProfileRef = useMemoFirebase(() => {
+    if (!db || !user) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user]);
+  
   const { data: profile } = useDoc(userProfileRef);
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
 
-  const { data: tournaments, loading: toursLoading } = useCollection(
-    db ? query(collection(db, 'tournaments'), limit(1000)) : null
-  );
-  const { data: participants, loading: partsLoading } = useCollection(
-    db ? query(collection(db, 'participants'), orderBy('createdAt', 'desc'), limit(100)) : null
-  );
-  const { data: matches, loading: matchesLoading } = useCollection(
-    db ? query(collection(db, 'matches'), limit(10000)) : null
-  );
+  const tournamentsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'tournaments'), limit(1000));
+  }, [db]);
+
+  const participantsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'participants'), orderBy('createdAt', 'desc'), limit(100));
+  }, [db]);
+
+  const matchesQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'matches'), limit(10000));
+  }, [db]);
+
+  const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
+  const { data: participants, loading: partsLoading } = useCollection(participantsQuery);
+  const { data: matches, loading: matchesLoading } = useCollection(matchesQuery);
 
   const stats = useMemo(() => {
     if (!tournaments || !participants || !matches) return null;
@@ -87,7 +96,7 @@ export default function AdminCostDashboard() {
     };
   }, [tournaments, participants, matches]);
 
-  if (!isAdmin) {
+  if (!isAdmin && !toursLoading && !partsLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">
         <AlertCircle className="h-12 w-12 text-destructive" />
@@ -102,7 +111,7 @@ export default function AdminCostDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter">SaaS Unit Economics</h1>
-          <p className="text-muted-foreground font-medium">Tracking your {stats?.commissionRate}% platform fee against real-time infrastructure burn.</p>
+          <p className="text-muted-foreground font-medium">Tracking your {stats?.commissionRate || 5}% platform fee against real-time infrastructure burn.</p>
         </div>
         <div className="flex items-center gap-3">
            <Badge variant="outline" className="h-10 border-accent text-accent px-4 bg-accent/5 font-bold uppercase tracking-widest text-[10px]">

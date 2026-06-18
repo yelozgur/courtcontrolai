@@ -1,23 +1,19 @@
-
 "use client"
 
 import { useState } from "react"
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { Trophy, Zap, Loader2, Search, ArrowRight, Gavel } from "lucide-react"
+import { Trophy, Loader2, Search, ArrowRight, Gavel } from "lucide-react"
 import { collection, query, where, limit } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
+import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export default function RefereeTournamentSelector() {
   const db = useFirestore()
-  const { user } = useUser()
   const [search, setSearch] = useState("")
 
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null
-    // Remove complex orderBy to avoid composite index requirements
     return query(
       collection(db, "tournaments"), 
       where("status", "==", "active"),

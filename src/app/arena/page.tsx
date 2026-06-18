@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -16,7 +15,6 @@ export default function ArenaTournamentSelector() {
 
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db) return null
-    // Remove strict server-side filtering to avoid composite index issues
     return query(collection(db, "tournaments"), limit(50))
   }, [db])
 
