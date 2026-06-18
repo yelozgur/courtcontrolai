@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -40,8 +41,6 @@ const COMMON_TIMEZONES = [
   { label: "UTC +10:00", value: "Etc/GMT-10" },
   { label: "UTC +11:00", value: "Etc/GMT-11" },
   { label: "UTC +12:00", value: "Etc/GMT-12" },
-  { label: "UTC +13:00", value: "Etc/GMT-13" },
-  { label: "UTC +14:00", value: "Etc/GMT-14" },
 ]
 
 export default function ClubSettings() {

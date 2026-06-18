@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
@@ -151,16 +152,16 @@ export default function TournamentArena() {
               {tourneyLoading ? "Connecting..." : (tournament?.name || "Live Arena")}
             </h1>
             <div className="text-xl text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-2">
-              Real-time Scoring Dashboard <Badge variant="outline" className="text-[10px] border-accent/30 text-accent font-mono"><Globe className="h-3 w-3 mr-1" /> {clubTimezone}</Badge>
+              Real-time Scoring Dashboard <Badge variant="outline" className="text-[10px] border-accent/30 text-accent font-mono flex items-center gap-1"><Globe className="h-3 w-3" /> {clubTimezone}</Badge>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-12">
           <div className="w-64">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
               <MapPin className="h-3 w-3" /> Venue Selection
-            </p>
+            </div>
             <Select value={selectedLocation} onValueChange={setSelectedLocation}>
               <SelectTrigger className="bg-white/5 border-white/10 text-white h-12">
                 <SelectValue placeholder="All Locations" />

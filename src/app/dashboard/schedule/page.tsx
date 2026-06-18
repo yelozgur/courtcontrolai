@@ -345,14 +345,42 @@ export default function SchedulingPage() {
                  <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-10" />
                  <p className="text-muted-foreground italic">Select a tournament to view the planner.</p>
                </Card>
+             ) : filteredMatches.length > 0 ? (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {filteredMatches.map(match => (
+                   <Card key={match.id} className="bg-card/50 border-white/5 group hover:border-primary/40 transition-all overflow-hidden">
+                      <div className="h-1.5 bg-primary/20 group-hover:bg-primary transition-all"></div>
+                      <CardHeader className="p-4 pb-2">
+                        <div className="flex justify-between items-center mb-2">
+                           <Badge variant="outline" className="text-[10px] uppercase border-white/10">{match.category}</Badge>
+                           <div className="flex items-center gap-1 text-[10px] font-bold text-accent">
+                              <Clock className="w-3 h-3" /> {getTimeStr(match.startTime)}
+                           </div>
+                        </div>
+                        <CardTitle className="text-lg font-bold flex flex-col">
+                           <span>{match.teamA?.name}</span>
+                           <span className="text-xs text-muted-foreground my-1">vs</span>
+                           <span>{match.teamB?.name}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0 text-[10px] uppercase font-bold text-muted-foreground flex justify-between items-center">
+                         <div className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> {typeof match.location === 'object' ? match.location.name : match.location}
+                         </div>
+                         <div className="bg-secondary/30 px-2 py-0.5 rounded">Court {match.court}</div>
+                      </CardContent>
+                      <div className="p-2 bg-black/20 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteMatch(match.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                         </Button>
+                      </div>
+                   </Card>
+                 ))}
+               </div>
              ) : (
-               <Card className="bg-card/50 border-white/5 overflow-x-auto min-h-[400px] flex items-center justify-center">
-                  <div className="text-center space-y-4 opacity-30">
-                     <LayoutGrid className="h-16 w-16 mx-auto" />
-                     <p className="text-xl font-bold uppercase tracking-tighter">Interactive Grid View</p>
-                     <p className="text-sm italic">Displaying {filteredMatches.length} matches for {selectedDateStr}</p>
-                  </div>
-               </Card>
+                <div className="p-20 text-center italic text-muted-foreground border-dashed border-2 rounded-xl border-white/5">
+                  No matches for this date.
+                </div>
              )}
           </TabsContent>
 
