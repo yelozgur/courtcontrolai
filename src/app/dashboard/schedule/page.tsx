@@ -4,8 +4,8 @@
 import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database, AlertCircle, Building } from "lucide-react"
-import { collection, query, where, limit, addDoc } from "firebase/firestore"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database, AlertCircle, Building, Sparkles, Trash2 } from "lucide-react"
+import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, deleteDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -26,6 +26,7 @@ import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
+import { optimizeTournamentSchedule } from "@/ai/dev"
 
 export default function SchedulingPage() {
   const db = useFirestore()
@@ -38,6 +39,7 @@ export default function SchedulingPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isAddingMatch, setIsAddingMatch] = useState(false)
   const [isSeeding, setIsSeeding] = useState(false)
+  const [isOptimizing, setIsOptimizing] = useState(false)
   
   const [newMatch, setNewMatch] = useState({
     teamA: "",
@@ -97,7 +99,6 @@ export default function SchedulingPage() {
 
   const { data: rawMatches, loading: matchesLoading } = useCollection(matchesQuery)
   
-  // Normalized date string for filtering
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd")
 
   const getDateStr = (val: any) => {
@@ -123,7 +124,6 @@ export default function SchedulingPage() {
     return ""
   }
 
-  // Filter matches based on selected date AND location
   const filteredMatches = useMemo(() => {
     if (!rawMatches) return []
     return rawMatches.filter(m => {
@@ -163,6 +163,88 @@ export default function SchedulingPage() {
         })
         errorEmitter.emit('permission-error', error)
       })
+  }
+
+  const handleClearAll = async () => {
+    if (!db || !selectedTournamentId || !confirm("Delete all matches for this tournament?")) return
+    const q = query(collection(db, "matches"), where("tournamentId", "==", selectedTournamentId))
+    const snap = await getDocs(q)
+    const batch = writeBatch(db)
+    snap.docs.forEach(d => batch.delete(d.ref))
+    await batch.commit()
+    toast({ title: "Schedule Cleared" })
+  }
+
+  const handleAutoSchedule = async () => {
+    if (!db || !activeTournament || !clubId) return
+    setIsOptimizing(true)
+
+    try {
+      // 1. Fetch participants
+      const participantsQuery = query(
+        collection(db, "participants"),
+        where("tournamentId", "==", activeTournament.id)
+      )
+      const pSnap = await getDocs(participantsQuery)
+      const participants = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
+
+      if (participants.length < 2) {
+        toast({ variant: "destructive", title: "No Participants", description: "At least 2 registered players needed." })
+        setIsOptimizing(false)
+        return
+      }
+
+      // 2. Call AI Optimizer
+      const input = {
+        tournamentName: activeTournament.name,
+        startDate: activeTournament.startDate,
+        matchDuration: activeTournament.matchDuration || 60,
+        recoveryTime: activeTournament.recoveryTime || 15,
+        locations: activeTournament.locations || [{ name: "Main Venue", numCourts: 1 }],
+        categories: activeTournament.categories || [],
+        participants: participants.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          categoryId: p.categoryId || "default"
+        }))
+      }
+
+      const result = await optimizeTournamentSchedule(input)
+
+      // 3. Batch Create Matches
+      const batch = writeBatch(db)
+      const matchesColl = collection(db, "matches")
+      
+      result.scheduledMatches.forEach(m => {
+        const matchRef = doc(matchesColl)
+        batch.set(matchRef, {
+          clubId,
+          tournamentId: activeTournament.id,
+          status: "scheduled",
+          court: m.court,
+          startTime: m.startTime,
+          teamA: { name: m.teamA.name, score: 0, setsWon: 0 },
+          teamB: { name: m.teamB.name, score: 0, setsWon: 0 },
+          category: m.category,
+          categoryId: m.categoryId,
+          location: m.location
+        })
+      })
+
+      await batch.commit()
+      toast({ title: "AI Scheduling Complete", description: `Optimized ${result.scheduledMatches.length} matches.` })
+      
+      if (result.scheduledMatches.length > 0) {
+        const firstMatchDate = new Date(result.scheduledMatches[0].startTime)
+        setSelectedDate(firstMatchDate)
+      }
+
+    } catch (e: any) {
+      console.error(e)
+      toast({ variant: "destructive", title: "Optimization Failed", description: "AI could not generate a valid schedule." })
+    } finally {
+      setIsOptimizing(false)
+    }
   }
 
   const handleSeedData = () => {
@@ -211,7 +293,6 @@ export default function SchedulingPage() {
 
   const timeSlots = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"]
   
-  // Important: numCourts should be specific to the selected location if filtered
   const venueCourts = selectedLocation !== "all" 
     ? (activeTournament?.locations?.find((l: any) => l.name === selectedLocation)?.numCourts || activeTournament?.numCourts || 1)
     : (activeTournament?.numCourts || 1)
@@ -224,9 +305,24 @@ export default function SchedulingPage() {
           <p className="text-muted-foreground">Manage timings and court allocations per venue.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleAutoSchedule} 
+            disabled={isOptimizing || !selectedTournamentId} 
+            className="border-primary text-primary hover:bg-primary/10 shadow-[0_0_15px_rgba(139,92,246,0.2)]"
+          >
+            {isOptimizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+            AI Auto-Schedule
+          </Button>
+
           <Button variant="outline" size="sm" onClick={handleSeedData} disabled={isSeeding || !selectedTournamentId} className="border-accent text-accent">
             {isSeeding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
-            Seed June 19 Data
+            Seed Data
+          </Button>
+
+          <Button variant="ghost" size="sm" onClick={handleClearAll} className="text-destructive hover:bg-destructive/10">
+            <Trash2 className="w-4 h-4" />
           </Button>
 
           <Popover>

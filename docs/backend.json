@@ -55,10 +55,12 @@
         "court": { "type": "number" },
         "location": { "type": "string" },
         "categoryId": { "type": "string" },
+        "category": { "type": "string" },
         "teamA": { "type": "object" },
         "teamB": { "type": "object" },
         "status": { "type": "string", "enum": ["scheduled", "live", "completed"] },
-        "startTime": { "type": "string", "format": "date-time" }
+        "startTime": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" }
       }
     },
     "Participant": {
@@ -68,6 +70,8 @@
       "properties": {
         "clubId": { "type": "string" },
         "tournamentId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "categoryName": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
         "skillLevel": { "type": "string" },
