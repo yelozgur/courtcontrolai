@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCard, ShieldCheck, Zap, Lock, Info } from 'lucide-react';
+import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCard, ShieldCheck, Zap, Lock, Info, Send, MessageSquare } from 'lucide-react';
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +32,12 @@ export default function TournamentRegistration() {
   }, [db, id]);
 
   const { data: tournament, loading: tournamentLoading } = useDoc(tournamentRef);
+
+  const clubRef = useMemoFirebase(() => {
+    if (!db || !tournament?.clubId) return null
+    return doc(db, "clubs", tournament.clubId)
+  }, [db, tournament?.clubId])
+  const { data: club } = useDoc(clubRef)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -65,7 +72,6 @@ export default function TournamentRegistration() {
       verified: true
     };
 
-    // Mutation follows non-blocking guide: use .then() / .catch() instead of await
     addDoc(collection(db, "participants"), registrationData)
       .then(() => {
         setSubmitted(true);
@@ -93,11 +99,27 @@ export default function TournamentRegistration() {
           <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-8">
             <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           </div>
-          <h2 className="text-4xl font-headline font-bold mb-4 uppercase">Registration Verified</h2>
+          <h2 className="text-4xl font-headline font-bold mb-4 uppercase tracking-tighter">Verified Entry</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            Welcome to <span className="text-white font-bold">{tournament?.name}</span>. Your entry is confirmed and receipt sent to your email.
+            Welcome to <span className="text-white font-bold">{tournament?.name}</span>. Your registration is confirmed.
           </p>
-          <Button onClick={() => router.push("/tournaments")} className="w-full h-14 uppercase font-bold tracking-widest bg-primary hover:bg-primary/90">Return to Tournaments</Button>
+          
+          <div className="bg-primary/10 border border-primary/20 p-6 rounded-3xl mb-8 space-y-4">
+             <div className="flex items-center justify-center gap-3 text-primary">
+                <Send className="h-5 w-5" />
+                <span className="font-bold uppercase tracking-widest text-xs">Live Notifications</span>
+             </div>
+             <p className="text-[11px] text-muted-foreground leading-relaxed">
+               Join our Telegram Bot to receive real-time court assignments and match alerts directly on your phone.
+             </p>
+             <Button className="w-full bg-[#22D3EE] hover:bg-[#22D3EE]/90 text-black font-bold h-12" asChild>
+                <a href={`https://t.me/${club?.telegramBotUsername || 'CourtControlBot'}`} target="_blank">
+                  <MessageSquare className="mr-2 h-4 w-4" /> Start Club Bot
+                </a>
+             </Button>
+          </div>
+
+          <Button onClick={() => router.push("/tournaments")} variant="outline" className="w-full h-14 uppercase font-bold tracking-widest">Return to Feed</Button>
         </Card>
       </div>
     );
@@ -106,9 +128,13 @@ export default function TournamentRegistration() {
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col items-center py-16 px-6 text-white">
       <div className="max-w-lg w-full mb-12 text-center space-y-4">
-        <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/20 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
-           <Trophy className="h-8 w-8 text-primary" />
-        </div>
+        {club?.logoUrl ? (
+          <img src={club.logoUrl} className="h-16 w-16 object-contain mx-auto mb-4" alt="Club Logo" />
+        ) : (
+          <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/20 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
+             <Trophy className="h-8 w-8 text-primary" />
+          </div>
+        )}
         <h1 className="text-5xl font-headline font-bold uppercase tracking-tighter leading-none">{tournament?.name}</h1>
         <p className="text-xl text-muted-foreground uppercase tracking-widest font-medium opacity-60">Official Entry Portal</p>
       </div>
@@ -131,6 +157,13 @@ export default function TournamentRegistration() {
                 <div className="relative">
                   <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                   <Input required type="email" className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="uppercase text-[10px] font-bold tracking-[0.2em] opacity-60">Telegram @Handle (Optional)</Label>
+                <div className="relative">
+                  <MessageSquare className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="@username" value={formData.telegramHandle} onChange={e => setFormData({...formData, telegramHandle: e.target.value})} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -160,9 +193,6 @@ export default function TournamentRegistration() {
               <Button type="submit" className="w-full h-16 text-xl font-bold bg-primary uppercase tracking-[0.2em] shadow-xl shadow-primary/20">
                 Continue to Secure Payment
               </Button>
-              <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest mt-4 flex items-center justify-center gap-2">
-                <ShieldCheck className="h-3 w-3" /> Secure Data Encryption Active
-              </p>
             </form>
           </CardContent>
         ) : (
@@ -228,13 +258,7 @@ export default function TournamentRegistration() {
                     </>
                   )}
                </Button>
-
-               <div className="flex items-center justify-center gap-6 opacity-40 grayscale">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-4" alt="Visa" />
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-6" alt="Mastercard" />
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" className="h-4" alt="PayPal" />
-               </div>
-
+               
                <Button variant="ghost" className="w-full text-muted-foreground text-xs uppercase tracking-widest font-bold" onClick={() => setStep('details')}>
                  Go Back to Details
                </Button>
@@ -242,15 +266,6 @@ export default function TournamentRegistration() {
           </CardContent>
         )}
       </Card>
-      
-      <div className="mt-12 text-center flex items-center justify-center gap-4 text-muted-foreground">
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 text-[10px] font-bold uppercase tracking-widest">
-           <Lock className="h-3 w-3 text-accent" /> SSL SECURED
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 text-[10px] font-bold uppercase tracking-widest">
-           <Info className="h-3 w-3 text-accent" /> PCI COMPLIANT
-        </div>
-      </div>
     </div>
   );
 }

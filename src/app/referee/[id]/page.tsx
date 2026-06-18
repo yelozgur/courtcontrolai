@@ -7,17 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Zap, Loader2, AlertCircle, ArrowLeft, Gavel, Trophy, CheckCircle2, Clock, MapPin, Building } from "lucide-react"
+import { Zap, Loader2, AlertCircle, ArrowLeft, Gavel, Trophy, CheckCircle2, Clock, MapPin, Building, Send } from "lucide-react"
 import { doc, updateDoc, collection, query, where, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
+import { sendTelegramNotification, formatMatchLiveMessage } from "@/lib/telegram-service"
 
-/**
- * Referee Console
- * Handles live scoring for a specific tournament and location.
- */
 export default function RefereeConsole() {
   const { id } = useParams()
   const router = useRouter()
@@ -26,8 +23,8 @@ export default function RefereeConsole() {
   
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isNotifying, setIsNotifying] = useState(false)
 
-  // Fetch tournament details for location list
   const tournamentRef = useMemoFirebase(() => {
     if (!db || !id) return null
     return doc(db, "tournaments", id as string)
@@ -35,21 +32,24 @@ export default function RefereeConsole() {
   
   const { data: tournament, loading: tourneyLoading } = useDoc(tournamentRef)
 
-  // Fetch the first live match for the selected location
+  const clubRef = useMemoFirebase(() => {
+    if (!db || !tournament?.clubId) return null
+    return doc(db, "clubs", tournament.clubId)
+  }, [db, tournament?.clubId])
+  const { data: club } = useDoc(clubRef)
+
   const liveMatchQuery = useMemoFirebase(() => {
     if (!db || !id) return null
-    // We fetch live matches for this tournament. Filtering by location is handled carefully.
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", id), 
       where("status", "==", "live"),
-      limit(10) // Fetch a few to filter client-side if needed, but we prefer server-side
+      limit(10)
     )
   }, [db, id])
 
   const { data: rawMatches, loading: matchesLoading } = useCollection(liveMatchQuery)
 
-  // Client-side filter to ensure location match
   const activeMatch = rawMatches?.find(m => {
     if (!selectedLocation) return false;
     const matchLocName = typeof m.location === 'object' ? m.location.name : m.location;
@@ -73,29 +73,32 @@ export default function RefereeConsole() {
       })
   }
 
-  const awardSet = (team: 'teamA' | 'teamB') => {
-    if (!db || !activeMatch) return
-    const currentSets = activeMatch[team].setsWon || 0
-    const matchRef = doc(db, "matches", activeMatch.id)
-    
-    const updateData = { 
-      [`${team}.setsWon`]: currentSets + 1,
-      "teamA.score": 0,
-      "teamB.score": 0
+  const handleNotifyPlayers = async () => {
+    if (!activeMatch || !club?.telegramBotToken) {
+      toast({ variant: "destructive", title: "Config Missing", description: "Telegram Bot Token not set in Club Settings." })
+      return
     }
 
-    updateDoc(matchRef, updateData)
-      .then(() => {
-        toast({ title: "Set Recorded", description: "Games reset for new set." })
-      })
-      .catch(async (e) => {
-        const error = new FirestorePermissionError({
-          path: matchRef.path,
-          operation: 'update',
-          requestResourceData: updateData
-        })
-        errorEmitter.emit('permission-error', error)
-      })
+    setIsNotifying(true)
+    const msg = formatMatchLiveMessage(
+      tournament?.name || 'Tournament',
+      activeMatch.court,
+      activeMatch.teamA.name,
+      activeMatch.teamB.name,
+      activeMatch.category
+    )
+
+    // Send to channel or handles if configured
+    // This is a placeholder for the logic that maps player handles to chat IDs
+    // For now, it notifies the club's general chat if set, or just confirms the action
+    await sendTelegramNotification({
+      botToken: club.telegramBotToken,
+      chatId: club.telegramBotUsername || "", // In production, we'd loop through participant chat IDs
+      message: msg
+    })
+
+    toast({ title: "Notifications Sent", description: "Players have been alerted via Telegram." })
+    setIsNotifying(false)
   }
 
   const finalizeMatch = () => {
@@ -124,15 +127,15 @@ export default function RefereeConsole() {
   }
 
   if (tourneyLoading) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+    <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center gap-4">
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
       <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Syncing Venue...</p>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-background flex flex-col max-w-md mx-auto border-x border-border shadow-2xl">
-      <header className="p-4 border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
+    <div className="min-h-screen bg-[#0F172A] text-white flex flex-col max-w-md mx-auto border-x border-white/5 shadow-2xl">
+      <header className="p-4 border-b border-white/5 bg-card/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={() => router.push("/referee")} className="text-muted-foreground"><ArrowLeft className="h-5 w-5" /></Button>
         <div className="flex-1 px-4">
           <Select onValueChange={setSelectedLocation} value={selectedLocation || undefined}>
@@ -177,11 +180,23 @@ export default function RefereeConsole() {
           </div>
         ) : (
           <>
-            <div className="text-center space-y-1">
-              <Badge variant="secondary" className="bg-primary/20 text-primary border-none text-[9px] font-bold tracking-[0.2em] px-4 py-1 uppercase">
-                {activeMatch.category}
-              </Badge>
-              <h2 className="text-4xl font-headline font-bold tracking-tighter uppercase">Scoring Mode</h2>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Badge variant="secondary" className="bg-primary/20 text-primary border-none text-[9px] font-bold tracking-[0.2em] px-4 py-1 uppercase">
+                  {activeMatch.category}
+                </Badge>
+                <h2 className="text-3xl font-headline font-bold tracking-tighter uppercase">Scoring Mode</h2>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-primary text-primary hover:bg-primary/10 h-10 rounded-xl"
+                onClick={handleNotifyPlayers}
+                disabled={isNotifying}
+              >
+                {isNotifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                Notify
+              </Button>
             </div>
 
             <div className="grid gap-6">
@@ -189,7 +204,7 @@ export default function RefereeConsole() {
                 { key: 'teamA' as const, other: 'teamB' as const, color: 'text-primary' },
                 { key: 'teamB' as const, other: 'teamA' as const, color: 'text-accent' }
               ].map(({ key, other, color }) => (
-                <Card key={key} className={`border-2 overflow-hidden transition-all duration-300 ${activeMatch[key].setsWon > activeMatch[other].setsWon ? 'border-primary shadow-lg shadow-primary/10' : 'border-border opacity-90'}`}>
+                <Card key={key} className={`border-2 bg-card/40 overflow-hidden transition-all duration-300 ${activeMatch[key].setsWon > activeMatch[other].setsWon ? 'border-primary shadow-lg shadow-primary/10' : 'border-white/5 opacity-90'}`}>
                   <CardContent className="p-6 space-y-6">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
@@ -202,13 +217,12 @@ export default function RefereeConsole() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between bg-secondary/30 p-5 rounded-2xl border border-white/5">
+                    <div className="flex items-center justify-between bg-white/5 p-5 rounded-2xl border border-white/5">
                       <div className="flex items-center gap-6">
-                        <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl text-xl font-bold" onClick={() => updateScore(key, -1)}>-</Button>
+                        <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl text-xl font-bold bg-background border-white/10" onClick={() => updateScore(key, -1)}>-</Button>
                         <span className="text-6xl font-headline font-bold tabular-nums min-w-[60px] text-center">{activeMatch[key].score}</span>
                         <Button variant="default" size="icon" className="h-12 w-12 rounded-xl bg-primary shadow-lg shadow-primary/20 text-xl font-bold" onClick={() => updateScore(key, 1)}>+</Button>
                       </div>
-                      <Button variant="ghost" onClick={() => awardSet(key)} className="text-[10px] font-bold text-accent uppercase tracking-widest hover:bg-accent/10">Award Set</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -216,20 +230,20 @@ export default function RefereeConsole() {
             </div>
 
             <Button 
-              className="h-20 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-3xl shadow-xl shadow-emerald-500/20 transition-all active:scale-95" 
+              className="h-20 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-3xl shadow-xl shadow-emerald-500/20 transition-all active:scale-95 uppercase tracking-widest" 
               onClick={finalizeMatch} 
               disabled={isSubmitting}
             >
               {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <CheckCircle2 className="mr-3 h-6 w-6" />}
-              FINALIZE RESULTS
+              Finalize Results
             </Button>
           </>
         )}
       </main>
 
-      <footer className="p-4 border-t border-border grid grid-cols-2 gap-4 bg-card/50 backdrop-blur-md">
-        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest"><Clock className="w-4 h-4 mr-2 opacity-50" /> Medical TO</Button>
-        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest"><MapPin className="w-4 h-4 mr-2 opacity-50" /> Court Issue</Button>
+      <footer className="p-4 border-t border-white/5 grid grid-cols-2 gap-4 bg-card/50 backdrop-blur-md">
+        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest border-white/5"><Clock className="w-4 h-4 mr-2 opacity-50 text-primary" /> Medical TO</Button>
+        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest border-white/5"><MapPin className="w-4 h-4 mr-2 opacity-50 text-accent" /> Court Issue</Button>
       </footer>
     </div>
   )

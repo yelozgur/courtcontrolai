@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon } from "lucide-react"
+import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon, Send, MessageSquare } from "lucide-react"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -34,7 +34,9 @@ export default function ClubSettings() {
     contactEmail: "",
     numCourts: 1,
     primarySport: "padel",
-    logoUrl: ""
+    logoUrl: "",
+    telegramBotToken: "",
+    telegramBotUsername: ""
   })
   const [isSaving, setIsSaving] = useState(false)
 
@@ -46,7 +48,9 @@ export default function ClubSettings() {
         contactEmail: clubData.contactEmail || "",
         numCourts: clubData.numCourts || 1,
         primarySport: clubData.primarySport || "padel",
-        logoUrl: clubData.logoUrl || ""
+        logoUrl: clubData.logoUrl || "",
+        telegramBotToken: clubData.telegramBotToken || "",
+        telegramBotUsername: clubData.telegramBotUsername || ""
       })
     }
   }, [clubData])
@@ -73,7 +77,7 @@ export default function ClubSettings() {
       .then(() => {
         toast({
           title: "Settings Saved",
-          description: "Your club profile has been updated."
+          description: "Your club profile and Telegram config have been updated."
         })
       })
       .catch(async (e) => {
@@ -100,80 +104,101 @@ export default function ClubSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter">Club Identity</h1>
-        <p className="text-muted-foreground">Manage your organization's brand and global configuration.</p>
+        <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">Club Identity</h1>
+        <p className="text-muted-foreground font-medium">Manage your organization's brand and automated notifications.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="bg-card/50 border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              General Information
-            </CardTitle>
-            <CardDescription>Basic details about your sports organization.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="club-name">Club Name</Label>
-              <Input 
-                id="club-name" 
-                value={formData.name} 
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                placeholder="e.g. Ace Padel Club"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Club Logo URL</Label>
-              <div className="relative">
-                <ImageIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <div className="space-y-6">
+          <Card className="bg-card/50 border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                General Information
+              </CardTitle>
+              <CardDescription>Basic details about your sports organization.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="club-name">Club Name</Label>
                 <Input 
-                  className="pl-10"
-                  value={formData.logoUrl} 
-                  onChange={(e) => setFormData({...formData, logoUrl: e.target.value})}
-                  placeholder="https://example.com/logo.png"
+                  id="club-name" 
+                  value={formData.name} 
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="e.g. Ace Padel Club"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="primary-sport">Primary Sport Type</Label>
-              <div className="relative">
-                <Trophy className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                <Select 
-                  value={formData.primarySport} 
-                  onValueChange={(val) => setFormData({...formData, primarySport: val})}
-                >
-                  <SelectTrigger className="pl-10">
-                    <SelectValue placeholder="Select primary sport" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="padel">Padel</SelectItem>
-                    <SelectItem value="tennis">Tennis</SelectItem>
-                    <SelectItem value="badminton">Badminton</SelectItem>
-                    <SelectItem value="pickleball">Pickleball</SelectItem>
-                    <SelectItem value="squash">Squash</SelectItem>
-                    <SelectItem value="basketball">Basketball</SelectItem>
-                    <SelectItem value="table-tennis">Table Tennis</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <Label>Club Logo URL</Label>
+                <div className="relative">
+                  <ImageIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    className="pl-10"
+                    value={formData.logoUrl} 
+                    onChange={(e) => setFormData({...formData, logoUrl: e.target.value})}
+                    placeholder="https://example.com/logo.png"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="club-email">Contact Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <div className="space-y-2">
+                <Label htmlFor="primary-sport">Primary Sport Type</Label>
+                <div className="relative">
+                  <Trophy className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                  <Select 
+                    value={formData.primarySport} 
+                    onValueChange={(val) => setFormData({...formData, primarySport: val})}
+                  >
+                    <SelectTrigger className="pl-10">
+                      <SelectValue placeholder="Select primary sport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="padel">Padel</SelectItem>
+                      <SelectItem value="tennis">Tennis</SelectItem>
+                      <SelectItem value="badminton">Badminton</SelectItem>
+                      <SelectItem value="pickleball">Pickleball</SelectItem>
+                      <SelectItem value="squash">Squash</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[#1E293B] border-primary/20 shadow-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-primary font-headline">
+                <Send className="h-5 w-5" />
+                Telegram Bot Integration
+              </CardTitle>
+              <CardDescription>Automate player notifications with your club's bot.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white">Bot API Token</Label>
                 <Input 
-                  id="club-email" 
-                  type="email"
-                  className="pl-10"
-                  value={formData.contactEmail} 
-                  onChange={(e) => setFormData({...formData, contactEmail: e.target.value})}
-                  placeholder="admin@club.com"
+                  type="password"
+                  placeholder="123456789:ABCDefGhIjK..." 
+                  value={formData.telegramBotToken}
+                  onChange={(e) => setFormData({...formData, telegramBotToken: e.target.value})}
+                  className="bg-background/50"
                 />
+                <p className="text-[10px] text-muted-foreground italic">Obtained from @BotFather on Telegram.</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="space-y-2">
+                <Label className="text-white">Bot Username</Label>
+                <div className="relative">
+                  <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="MyClubBot" 
+                    className="pl-10 bg-background/50"
+                    value={formData.telegramBotUsername}
+                    onChange={(e) => setFormData({...formData, telegramBotUsername: e.target.value.replace('@', '')})}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="space-y-6">
           <Card className="bg-card/50 border-border">
@@ -215,11 +240,11 @@ export default function ClubSettings() {
               </div>
               <Button 
                 onClick={handleSave} 
-                className="w-full bg-primary"
+                className="w-full bg-primary h-12 text-lg font-bold"
                 disabled={isSaving}
               >
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Sync Club Profile
+                Save Club Profile
               </Button>
             </CardContent>
           </Card>

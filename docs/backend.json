@@ -94,6 +94,9 @@
         "contactEmail": { "type": "string" },
         "numCourts": { "type": "number" },
         "primarySport": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "telegramBotToken": { "type": "string" },
+        "telegramBotUsername": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
