@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft, AlertCircle, Heart } from "lucide-react"
+import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft, AlertCircle, Heart, Building } from "lucide-react"
 import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, limit } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
@@ -41,7 +41,6 @@ export default function PublicCheckInPage() {
 
   const { data: allSponsors } = useCollection(sponsorsQuery);
 
-  // Filter sponsors that either support the club or this specific event
   const tournamentSponsors = allSponsors?.filter(s => 
     !s.tournamentId || s.tournamentId === id
   );
@@ -49,6 +48,12 @@ export default function PublicCheckInPage() {
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!db || !tournament) return
+
+    // Ensure location is selected if multiple exist
+    if (tournament.locations?.length > 1 && !selectedLocation) {
+      toast({ variant: "destructive", title: "Venue Selection Required", description: "Please select which location you are at." })
+      return
+    }
     
     setIsSubmitting(true)
 
@@ -80,7 +85,7 @@ export default function PublicCheckInPage() {
         participantId,
         tournamentId: id,
         timestamp: serverTimestamp(),
-        location: selectedLocation || (tournament.locations?.[0]?.name) || "Main Venue"
+        location: selectedLocation || (typeof tournament.locations?.[0] === 'object' ? tournament.locations[0].name : (tournament.locations?.[0] || "Main Venue"))
       }
 
       await addDoc(collection(db, "checkins"), checkInData)
@@ -113,7 +118,7 @@ export default function PublicCheckInPage() {
         <AlertCircle className="h-16 w-16 text-destructive mb-4 opacity-50" />
         <h2 className="text-3xl font-headline font-bold uppercase">Access Restricted</h2>
         <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-          Tournament details are unavailable. This may be due to security rules or the event being archived.
+          Tournament details are unavailable.
         </p>
         <Button asChild className="mt-8" variant="outline">
            <Link href="/tournaments">View All Events</Link>
@@ -125,14 +130,14 @@ export default function PublicCheckInPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
-        <Card className="max-w-md w-full bg-card/50 border-white/5 p-12 backdrop-blur-xl">
+        <Card className="max-w-md w-full bg-card/50 border-white/5 p-12 backdrop-blur-xl shadow-2xl">
           <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-8">
             <CheckCircle2 className="h-12 w-12 text-primary" />
           </div>
           <h2 className="text-4xl font-headline font-bold mb-4 uppercase tracking-tighter">Verified</h2>
           <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
             Welcome to <span className="text-white font-bold">{tournament.name}</span>.<br />
-            You've successfully checked in at <span className="text-primary font-bold">{selectedLocation || "Main Venue"}</span>.
+            Arrival verified at <span className="text-primary font-bold">{selectedLocation || "Main Venue"}</span>.
           </p>
           <Button onClick={() => window.location.reload()} variant="outline" className="w-full">
             Done
@@ -144,7 +149,7 @@ export default function PublicCheckInPage() {
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground opacity-50">Event Partners</p>
             <div className="flex flex-wrap justify-center gap-8">
               {tournamentSponsors.map(s => (
-                <img key={s.id} src={s.logoUrl} alt={s.name} className="h-10 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer" />
+                <img key={s.id} src={s.logoUrl} alt={s.name} className="h-10 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />
               ))}
             </div>
           </div>
@@ -169,7 +174,7 @@ export default function PublicCheckInPage() {
         <div className="h-2 bg-primary"></div>
         <CardHeader className="text-center pt-10">
           <CardTitle className="font-headline font-bold uppercase text-2xl">Confirm Check-In</CardTitle>
-          <CardDescription>Enter your email to verify your tournament entry.</CardDescription>
+          <CardDescription>Verify your location for {tournament.name}.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCheckIn} className="space-y-6">
@@ -190,14 +195,15 @@ export default function PublicCheckInPage() {
 
             {tournament.locations && tournament.locations.length > 0 && (
               <div className="space-y-2">
-                <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Current Location</Label>
+                <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Your Venue Location</Label>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                   <SelectTrigger className="bg-white/5 border-white/10 h-12">
-                    <SelectValue placeholder="Select Venue" />
+                    <Building className="w-4 h-4 mr-2 opacity-50" />
+                    <SelectValue placeholder="Where are you playing?" />
                   </SelectTrigger>
                   <SelectContent>
                     {tournament.locations.map((loc: any, i: number) => (
-                      <SelectItem key={i} value={loc.name}>{loc.name}</SelectItem>
+                      <SelectItem key={i} value={typeof loc === 'object' ? loc.name : loc}>{typeof loc === 'object' ? loc.name : loc}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -234,7 +240,7 @@ export default function PublicCheckInPage() {
       )}
       
       <p className="mt-8 text-muted-foreground text-xs text-center flex items-center gap-2">
-        <ArrowLeft className="h-3 w-3" /> <Link href="/tournaments" className="hover:text-primary transition-colors underline">Browse Other Events</Link>
+        <ArrowLeft className="h-3 w-3" /> <Link href="/tournaments" className="hover:text-primary transition-colors underline">Browse Events</Link>
       </p>
     </div>
   )
