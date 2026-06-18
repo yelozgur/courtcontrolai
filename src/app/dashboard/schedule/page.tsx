@@ -87,24 +87,46 @@ export default function SchedulingPage() {
   // Normalized date string for filtering
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd")
 
-  // Helper to extract date string from various Firestore formats
+  // Robust helper to extract date string (YYYY-MM-DD) from various formats
   const getDateStr = (val: any) => {
     if (!val) return ""
-    if (typeof val === 'string') return val.split('T')[0]
-    if (val.toDate) return format(val.toDate(), "yyyy-MM-dd")
-    if (val.seconds) return format(new Date(val.seconds * 1000), "yyyy-MM-dd")
+    try {
+      // If it's a Firestore Timestamp or object with seconds
+      if (val.seconds !== undefined) {
+        return format(new Date(val.seconds * 1000), "yyyy-MM-dd")
+      }
+      // If it's a JS Date
+      if (val instanceof Date) {
+        return format(val, "yyyy-MM-dd")
+      }
+      // If it's a string (ISO or simple date)
+      if (typeof val === 'string') {
+        return val.split('T')[0]
+      }
+    } catch (e) {
+      return ""
+    }
     return ""
   }
 
-  // Helper to extract time string (HH:mm)
+  // Robust helper to extract time string (HH:mm)
   const getTimeStr = (val: any) => {
     if (!val) return ""
-    if (typeof val === 'string') {
-      const parts = val.split('T')
-      return parts.length > 1 ? parts[1].substring(0, 5) : ""
+    try {
+      if (val.seconds !== undefined) {
+        return format(new Date(val.seconds * 1000), "HH:mm")
+      }
+      if (val instanceof Date) {
+        return format(val, "HH:mm")
+      }
+      if (typeof val === 'string') {
+        const parts = val.split('T')
+        if (parts.length > 1) return parts[1].substring(0, 5)
+        if (val.includes(':')) return val.substring(0, 5)
+      }
+    } catch (e) {
+      return ""
     }
-    if (val.toDate) return format(val.toDate(), "HH:mm")
-    if (val.seconds) return format(new Date(val.seconds * 1000), "HH:mm")
     return ""
   }
 
@@ -112,7 +134,8 @@ export default function SchedulingPage() {
   const filteredMatches = useMemo(() => {
     if (!rawMatches) return []
     return rawMatches.filter(m => {
-      return getDateStr(m.startTime) === selectedDateStr
+      const matchDate = getDateStr(m.startTime)
+      return matchDate === selectedDateStr
     }).sort((a, b) => getTimeStr(a.startTime).localeCompare(getTimeStr(b.startTime)))
   }, [rawMatches, selectedDateStr])
 
@@ -152,6 +175,7 @@ export default function SchedulingPage() {
     if (!db || !clubId || !selectedTournamentId) return
     setIsSeeding(true)
     
+    // Explicitly seed for June 19, 2026
     const testDate = "2026-06-19"
     const dummyMatches = [
       { time: "09:00", court: 1, teamA: "Alpha Strikers", teamB: "Beta Blasters" },
@@ -173,7 +197,7 @@ export default function SchedulingPage() {
           teamA: { name: m.teamA, score: 0, setsWon: 0 },
           teamB: { name: m.teamB, score: 0, setsWon: 0 },
           category: activeTournament?.categories?.[0]?.name || "Open",
-          location: activeTournament?.locations?.[0]?.name || "Main Venue"
+          location: typeof activeTournament?.locations?.[0] === 'object' ? activeTournament.locations[0].name : (activeTournament?.locations?.[0] || "Main Venue")
         }
         await addDoc(matchesRef, matchData)
       }
@@ -183,7 +207,8 @@ export default function SchedulingPage() {
         description: "Added 4 matches for June 19, 2026. Switching view..." 
       })
       
-      setSelectedDate(parseISO(testDate))
+      // Force switch to June 19
+      setSelectedDate(new Date(2026, 5, 19)) // Month is 0-indexed, so 5 = June
     } catch (e) {
       toast({ variant: "destructive", title: "Seed Failed", description: "Could not create dummy matches." })
     } finally {
