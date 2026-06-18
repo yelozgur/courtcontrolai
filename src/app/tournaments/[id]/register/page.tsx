@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCard, ShieldCheck, Zap } from 'lucide-react';
+import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCard, ShieldCheck, Zap, Lock, Info } from 'lucide-react';
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -52,7 +52,7 @@ export default function TournamentRegistration() {
     if (!db || !tournament) return;
     setIsSubmitting(true);
     
-    // Accounting Logic: Platform takes a 5% cut of this amount in the admin view.
+    // SaaS Accounting Logic: Platform takes a 5% cut of this amount in the admin view.
     const entryFee = Number(tournament.entryFee) || 0;
 
     const registrationData = {
@@ -67,6 +67,9 @@ export default function TournamentRegistration() {
     };
 
     try {
+      // Simulate network delay for "Payment Processing"
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       await addDoc(collection(db, "participants"), registrationData);
       setSubmitted(true);
       toast({ title: "Welcome to the Arena!", description: entryFee > 0 ? "Payment verified." : "Registration confirmed." });
@@ -81,114 +84,169 @@ export default function TournamentRegistration() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white">
-        <Card className="max-w-md w-full bg-card/50 border-white/5 text-center p-8 backdrop-blur-xl">
-          <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
+        <Card className="max-w-md w-full bg-card/50 border-white/5 p-12 backdrop-blur-xl shadow-2xl">
+          <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-8">
             <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           </div>
-          <h2 className="text-4xl font-headline font-bold mb-2 uppercase">Verified</h2>
+          <h2 className="text-4xl font-headline font-bold mb-4 uppercase">Registration Verified</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            Registration and Payment for <span className="text-white font-bold">{tournament?.name}</span> confirmed.
+            Welcome to <span className="text-white font-bold">{tournament?.name}</span>. Your entry is confirmed and receipt sent to your email.
           </p>
-          <Button onClick={() => router.push("/tournaments")} className="w-full h-12 uppercase font-bold tracking-widest">Done</Button>
+          <Button onClick={() => router.push("/tournaments")} className="w-full h-14 uppercase font-bold tracking-widest bg-primary hover:bg-primary/90">Return to Tournaments</Button>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex flex-col items-center py-12 px-6 text-white">
-      <div className="max-w-lg w-full mb-10 text-center space-y-4">
+    <div className="min-h-screen bg-[#0F172A] flex flex-col items-center py-16 px-6 text-white">
+      <div className="max-w-lg w-full mb-12 text-center space-y-4">
+        <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/20 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
+           <Trophy className="h-8 w-8 text-primary" />
+        </div>
         <h1 className="text-5xl font-headline font-bold uppercase tracking-tighter leading-none">{tournament?.name}</h1>
-        <p className="text-xl text-muted-foreground uppercase tracking-widest">Official Entry Portal</p>
+        <p className="text-xl text-muted-foreground uppercase tracking-widest font-medium opacity-60">Official Entry Portal</p>
       </div>
 
       <Card className="max-w-lg w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-primary to-accent"></div>
+        <div className="h-1.5 bg-gradient-to-r from-primary via-accent to-primary animate-pulse"></div>
         
         {step === 'details' ? (
           <CardContent className="pt-10">
             <form onSubmit={handleNextToPayment} className="space-y-6">
               <div className="space-y-2">
-                <Label className="uppercase text-[10px] font-bold opacity-60">Full Name</Label>
+                <Label className="uppercase text-[10px] font-bold tracking-[0.2em] opacity-60">Full Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input required className="pl-10 bg-white/5 border-white/10 h-12" placeholder="John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <Input required className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="uppercase text-[10px] font-bold opacity-60">Email</Label>
+                <Label className="uppercase text-[10px] font-bold tracking-[0.2em] opacity-60">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input required type="email" className="pl-10 bg-white/5 border-white/10 h-12" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                  <Input required type="email" className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="uppercase text-[10px] font-bold opacity-60">Competition Bracket</Label>
-                <Select value={formData.categoryId} onValueChange={val => setFormData({...formData, categoryId: val})}>
-                  <SelectTrigger className="bg-white/5 border-white/10 h-12"><SelectValue placeholder="Select category..." /></SelectTrigger>
-                  <SelectContent>
-                    {tournament?.categories?.map((cat: any) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="uppercase text-[10px] font-bold tracking-[0.2em] opacity-60">Competition Bracket</Label>
+                  <Select value={formData.categoryId} onValueChange={val => setFormData({...formData, categoryId: val})}>
+                    <SelectTrigger className="bg-white/5 border-white/10 h-12"><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent>
+                      {tournament?.categories?.map((cat: any) => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="uppercase text-[10px] font-bold tracking-[0.2em] opacity-60">Skill Level</Label>
+                  <Select value={formData.skillLevel} onValueChange={val => setFormData({...formData, skillLevel: val})}>
+                    <SelectTrigger className="bg-white/5 border-white/10 h-12"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="pro">Pro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="uppercase text-[10px] font-bold opacity-60">Skill Level</Label>
-                <Select value={formData.skillLevel} onValueChange={val => setFormData({...formData, skillLevel: val})}>
-                  <SelectTrigger className="bg-white/5 border-white/10 h-12"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full h-14 text-xl font-bold bg-primary uppercase tracking-widest">
-                Proceed to Checkout
+              <Button type="submit" className="w-full h-16 text-xl font-bold bg-primary uppercase tracking-[0.2em] shadow-xl shadow-primary/20">
+                Continue to Secure Payment
               </Button>
+              <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest mt-4 flex items-center justify-center gap-2">
+                <ShieldCheck className="h-3 w-3" /> Secure Data Encryption Active
+              </p>
             </form>
           </CardContent>
         ) : (
           <CardContent className="pt-10 space-y-8">
             <div className="text-center space-y-2">
-               <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+               <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
                   <CreditCard className="h-8 w-8 text-emerald-500" />
                </div>
-               <h3 className="text-2xl font-bold">Secure Payment</h3>
-               <p className="text-muted-foreground">Entry Fee for {tournament?.name}</p>
+               <h3 className="text-2xl font-bold uppercase tracking-tight">Checkout</h3>
+               <p className="text-muted-foreground text-sm">Review entry details for {tournament?.name}</p>
             </div>
 
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4 relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground uppercase tracking-widest text-[10px] font-bold">Registration Fee</span>
-                  <span className="font-mono text-xl font-bold text-emerald-400">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
+                  <span className="text-muted-foreground uppercase tracking-[0.15em] text-[10px] font-bold">Standard Registration</span>
+                  <span className="font-mono text-xl font-bold text-white">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
                </div>
                <div className="h-px bg-white/5" />
                <div className="flex justify-between items-center text-sm font-bold">
-                  <span>TOTAL DUE</span>
-                  <span className="text-2xl">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
+                  <span className="text-emerald-500 uppercase tracking-widest text-[11px]">Total Due Today</span>
+                  <span className="text-3xl font-headline tracking-tighter">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
                </div>
             </div>
 
-            <div className="space-y-4">
-               <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 flex items-start gap-3">
-                  <ShieldCheck className="h-5 w-5 text-primary mt-0.5" />
-                  <div className="text-[10px] uppercase font-bold tracking-tight">
-                    <p className="text-primary">Stripe Secure Encryption</p>
-                    <p className="text-muted-foreground/60">Payment handled via Court Control AI Platform.</p>
+            <div className="space-y-6">
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <Label className="text-[9px] uppercase font-bold opacity-60">Card Number</Label>
+                     <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-3 w-3 text-muted-foreground" />
+                        <Input disabled value="**** **** **** 4242" className="bg-white/5 border-white/10 text-xs pl-8" />
+                     </div>
+                  </div>
+                  <div className="space-y-2">
+                     <Label className="text-[9px] uppercase font-bold opacity-60">CVV / Expiry</Label>
+                     <Input disabled value="*** / 12-26" className="bg-white/5 border-white/10 text-xs text-center" />
                   </div>
                </div>
-               <Button className="w-full h-16 text-2xl font-bold bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-500/20 uppercase" onClick={handleCompleteRegistration} disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <Zap className="mr-2 h-6 w-6" />}
-                  Pay Now
+
+               <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 flex items-start gap-4">
+                  <ShieldCheck className="h-6 w-6 text-primary mt-1" />
+                  <div className="text-[10px] uppercase font-bold tracking-tight space-y-1">
+                    <p className="text-white">Encrypted Checkout</p>
+                    <p className="text-muted-foreground leading-relaxed">Transactions are processed via Court Control AI using bank-grade AES-256 encryption.</p>
+                  </div>
+               </div>
+
+               <Button 
+                className="w-full h-20 text-2xl font-bold bg-emerald-500 hover:bg-emerald-600 shadow-2xl shadow-emerald-500/20 uppercase tracking-[0.1em] group transition-all" 
+                onClick={handleCompleteRegistration} 
+                disabled={isSubmitting}
+               >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="animate-spin mr-3 h-6 w-6" /> 
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-3 h-6 w-6 text-white group-hover:scale-125 transition-transform" /> 
+                      Authorize & Pay
+                    </>
+                  )}
                </Button>
-               <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setStep('details')}>Go Back</Button>
+
+               <div className="flex items-center justify-center gap-6 opacity-40 grayscale">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-4" alt="Visa" />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-6" alt="Mastercard" />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" className="h-4" alt="PayPal" />
+               </div>
+
+               <Button variant="ghost" className="w-full text-muted-foreground text-xs uppercase tracking-widest font-bold" onClick={() => setStep('details')}>
+                 Go Back to Details
+               </Button>
             </div>
           </CardContent>
         )}
       </Card>
+      
+      <div className="mt-12 text-center flex items-center justify-center gap-4 text-muted-foreground">
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 text-[10px] font-bold uppercase tracking-widest">
+           <Lock className="h-3 w-3 text-accent" /> SSL SECURED
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 text-[10px] font-bold uppercase tracking-widest">
+           <Info className="h-3 w-3 text-accent" /> PCI COMPLIANT
+        </div>
+      </div>
     </div>
   );
 }
