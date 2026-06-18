@@ -128,7 +128,8 @@ export default function SchedulingPage() {
     if (!rawMatches) return []
     return rawMatches.filter(m => {
       const matchDate = getDateStr(m.startTime)
-      const locationMatch = selectedLocation === "all" || m.location === selectedLocation
+      const locName = typeof m.location === 'object' ? m.location.name : m.location
+      const locationMatch = selectedLocation === "all" || locName === selectedLocation
       return matchDate === selectedDateStr && locationMatch
     }).sort((a, b) => getTimeStr(a.startTime).localeCompare(getTimeStr(b.startTime)))
   }, [rawMatches, selectedDateStr, selectedLocation])
@@ -421,11 +422,9 @@ export default function SchedulingPage() {
                                      <span className="text-primary/60">{match.teamB?.score || 0}</span>
                                    </div>
                                  </div>
-                                 {selectedLocation === "all" && (
-                                   <div className="mt-2 text-[7px] text-muted-foreground flex items-center gap-1 border-t border-primary/10 pt-1">
-                                      <Building className="w-2 h-2" /> {typeof match.location === 'object' ? match.location.name : match.location}
-                                   </div>
-                                 )}
+                                 <div className="mt-2 text-[7px] text-muted-foreground flex items-center gap-1 border-t border-primary/10 pt-1">
+                                    <Building className="w-2 h-2" /> {typeof match.location === 'object' ? match.location.name : match.location}
+                                 </div>
                                </div>
                              ) : (
                                <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

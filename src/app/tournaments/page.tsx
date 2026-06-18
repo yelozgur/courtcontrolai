@@ -91,7 +91,7 @@ export default function PublicTournaments() {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
-                    <span className="truncate">{t.locations?.[0] || 'Main Venue'}</span>
+                    <span className="truncate">{typeof t.locations?.[0] === 'object' ? t.locations[0].name : (t.locations?.[0] || 'Main Venue')}</span>
                   </div>
                 </CardContent>
                 <CardFooter>

@@ -141,8 +141,8 @@ export default function TournamentArena() {
               <SelectContent>
                 <SelectItem value="all">All Locations</SelectItem>
                 {tournament?.locations?.map((loc: any, i: number) => (
-                  <SelectItem key={i} value={typeof loc === 'string' ? loc : loc.name}>
-                    {typeof loc === 'string' ? loc : loc.name}
+                  <SelectItem key={i} value={typeof loc === 'object' ? loc.name : loc}>
+                    {typeof loc === 'object' ? loc.name : loc}
                   </SelectItem>
                 ))}
               </SelectContent>
