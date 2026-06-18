@@ -10,7 +10,7 @@
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
-        "entryFee": { "type": "number", "description": "Price in USD for registration" },
+        "entryFee": { "type": "number", "description": "Price in USD for registration. Min $5.00 for paid events." },
         "isFeatured": { "type": "boolean", "default": false },
         "hasWelcomePack": { "type": "boolean", "default": false },
         "welcomePackDescription": { "type": "string" },
@@ -70,7 +70,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Registered player for a tournament with accounting data.",
+      "description": "Registered player for a tournament with accounting and merchandising data.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
@@ -84,7 +84,7 @@
         "verified": { "type": "boolean" },
         "paymentStatus": { "type": "string", "enum": ["pending", "paid", "waived"] },
         "paidAmount": { "type": "number" },
-        "packSize": { "type": "string" },
+        "packSize": { "type": "string", "description": "Selected size for welcome pack apparel" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -105,38 +105,6 @@
         "telegramBotUsername": { "type": "string" },
         "aiUsageCount": { "type": "number", "default": 0 },
         "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "MarketplaceListing": {
-      "title": "MarketplaceListing",
-      "description": "FUTURE: Used sports gear listings.",
-      "type": "object",
-      "properties": {
-        "sellerId": { "type": "string" },
-        "title": { "type": "string" },
-        "price": { "type": "number" },
-        "status": { "type": "string", "enum": ["active", "sold", "hidden"] }
-      }
-    },
-    "SponsorshipOpportunity": {
-      "title": "SponsorshipOpportunity",
-      "description": "FUTURE: Platform-led sponsorship matching with 5% cut.",
-      "type": "object",
-      "properties": {
-        "tournamentId": { "type": "string" },
-        "requiredAmount": { "type": "number" },
-        "status": { "type": "string", "enum": ["open", "matched"] }
-      }
-    },
-    "PromoCode": {
-      "title": "PromoCode",
-      "description": "Platform-wide marketing discounts.",
-      "type": "object",
-      "properties": {
-        "code": { "type": "string" },
-        "discountPercent": { "type": "number" },
-        "active": { "type": "boolean" },
-        "expiryDate": { "type": "string", "format": "date" }
       }
     },
     "CheckIn": {
@@ -163,6 +131,17 @@
         "logoUrl": { "type": "string" }
       }
     },
+    "PromoCode": {
+      "title": "PromoCode",
+      "description": "Platform-wide marketing discounts for SaaS fees.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "discountPercent": { "type": "number" },
+        "active": { "type": "boolean" },
+        "expiryDate": { "type": "string", "format": "date" }
+      }
+    },
     "User": {
       "title": "User",
       "description": "System user account.",
@@ -180,13 +159,13 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read. Auth Write." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Global Read. Auth Write." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Global Read. Auth Write." },
-    "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Global Read. Public Create." },
-    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Global Read. Public Create." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read. Auth Write." },
-    "/promocodes/{codeId}": { "schema": "PromoCode", "description": "Admin Manage. Club Use." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read. Club Owner / Admin Write." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Global Read. Referee / Club Owner / Admin Write." },
+    "/clubs/{clubId}": { "schema": "Club", "description": "Global Read (Branding). Owner / Admin Write." },
+    "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global read." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Staff Read/Update. Public Create." },
+    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Staff Read. Public Create (Arrival)." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read. Club Owner / Admin Write." },
+    "/promocodes/{codeId}": { "schema": "PromoCode", "description": "Admin Manage Only." }
   }
 }

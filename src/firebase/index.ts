@@ -7,11 +7,11 @@ import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
 /**
- * Initializes Firebase services for project: courtcontrolai-2294b.
+ * Initializes Firebase services for project: Court Control AI.
  * 
- * TRIGGER: Stability and Visibility Update.
- * Logic: Ensure simplified rules allow dashboard visibility.
- * Deployment Nonce: 2024-06-19T16:20:00Z (Visibility Restore)
+ * VERSION: 2.0 (Production Hardened)
+ * Logic: Enforce strict multi-tenant rules and optimized data hooks.
+ * Deployment Nonce: 2024-06-20T09:00:00Z (V2 Launch)
  */
 export function initializeFirebase(): {
   app: FirebaseApp;

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Play, Monitor, Building } from 'lucide-react';
+import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Monitor, Building, Sparkles } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -28,12 +28,7 @@ export default function HomePage() {
       <header className="px-4 lg:px-6 h-16 flex items-center border-b border-border bg-card/50 backdrop-blur-md sticky top-0 z-50">
         <Link className="flex items-center justify-center space-x-2" href="/">
           <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.3)]">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="3" width="18" height="18" rx="4" className="stroke-primary-foreground" strokeWidth="2"/>
-              <path d="M12 3V21M3 12H21" className="stroke-primary-foreground/30" strokeWidth="1"/>
-              <circle cx="12" cy="12" r="3" className="stroke-primary-foreground" strokeWidth="2"/>
-              <path d="M12 9V15M9 12H15" className="stroke-accent" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+            <Zap className="text-white h-5 w-5" />
           </div>
           <span className="font-headline font-bold text-xl tracking-tighter uppercase">Court Control AI</span>
         </Link>
@@ -49,10 +44,10 @@ export default function HomePage() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           ) : user ? (
             <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="sm" className="rounded-xl border-primary/20">
                 <Link href="/dashboard" className="flex items-center gap-2">
                   {isAdmin && <ShieldCheck className="h-4 w-4 text-accent" />}
-                  {isAdmin ? 'Admin Panel' : 'Dashboard'}
+                  {isAdmin ? 'Admin Console' : 'Dashboard'}
                 </Link>
               </Button>
             </div>
@@ -61,8 +56,8 @@ export default function HomePage() {
               <Button asChild variant="ghost" size="sm">
                 <Link href="/login">Sign In</Link>
               </Button>
-              <Button asChild variant="default" size="sm" className="bg-primary text-primary-foreground hidden md:flex">
-                <Link href="/signup">Register</Link>
+              <Button asChild variant="default" size="sm" className="bg-primary text-primary-foreground hidden md:flex rounded-xl">
+                <Link href="/signup">Register Club</Link>
               </Button>
             </div>
           )}
@@ -72,56 +67,59 @@ export default function HomePage() {
       <main className="flex-1">
         <section className="w-full py-20 md:py-32 lg:py-48 relative overflow-hidden">
           {heroImage && (
-            <Image 
-              src={heroImage.imageUrl} 
-              alt="Tournament Hero" 
-              fill 
-              priority 
-              className="object-cover opacity-20 pointer-events-none"
-              data-ai-hint="sports tournament"
-              sizes="100vw"
-            />
+            <div className="absolute inset-0 z-0">
+               <Image 
+                src={heroImage.imageUrl} 
+                alt="Sports Arena" 
+                fill 
+                priority 
+                className="object-cover opacity-20 pointer-events-none scale-105"
+                sizes="100vw"
+                data-ai-hint="sports tournament"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#0F172A]/0 via-[#0F172A]/50 to-[#0F172A]"></div>
+            </div>
           )}
           <div className="container px-4 md:px-6 relative z-10 mx-auto">
             <div className="flex flex-col items-center space-y-6 text-center">
               <div className="space-y-4">
-                <Badge variant="outline" className="text-accent border-accent px-4 py-1 rounded-full text-sm font-bold uppercase tracking-widest">
-                  {isAdmin ? 'Logged in as SaaS Administrator' : 'The Multi-Tenant Sports SaaS'}
+                <Badge variant="outline" className="text-accent border-accent/40 bg-accent/5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.2em] animate-in fade-in slide-in-from-top-4 duration-1000">
+                  {isAdmin ? 'SaaS Network Administrator' : 'The Multi-Tenant Sports Engine'}
                 </Badge>
-                <h1 className="text-4xl font-headline font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl/none">
-                  Control Your <span className="text-primary">Arena</span>
+                <h1 className="text-5xl font-headline font-bold tracking-tighter sm:text-6xl md:text-7xl lg:text-9xl/none uppercase">
+                  Dominate Your <span className="text-primary drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Arena</span>
                 </h1>
-                <p className="mx-auto max-w-[800px] text-muted-foreground md:text-xl lg:text-2xl leading-relaxed">
-                  The elite sports management engine. Host professional tournaments, automate schedules with AI, and broadcast live results for every court.
+                <p className="mx-auto max-w-[800px] text-muted-foreground md:text-xl lg:text-2xl leading-relaxed font-medium">
+                  The elite sports management hub. Automate complex schedules with Genkit AI, broadcast live scores, and grow your player community.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl mt-8">
-                <Button asChild size="lg" className="h-16 text-lg font-bold flex flex-col items-center gap-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                <Button asChild size="lg" className="h-20 text-lg font-bold flex flex-col items-center gap-1 rounded-2xl group transition-all hover:scale-105">
                   <Link href="/tournaments">
-                    <Trophy className="h-5 w-5" />
-                    Find Tournaments
+                    <Trophy className="h-6 w-6 group-hover:animate-bounce" />
+                    <span>Browse Events</span>
                   </Link>
                 </Button>
-                <Button asChild variant="secondary" size="lg" className="h-16 text-lg font-bold flex flex-col items-center gap-1">
+                <Button asChild variant="secondary" size="lg" className="h-20 text-lg font-bold flex flex-col items-center gap-1 rounded-2xl group transition-all hover:scale-105 border border-white/5">
                   <Link href="/arena">
-                    <Monitor className="h-5 w-5" />
-                    Enter Live Arena
+                    <Monitor className="h-6 w-6 text-accent group-hover:scale-110" />
+                    <span>Live Arena Hub</span>
                   </Link>
                 </Button>
                 
                 {isAdmin ? (
-                  <Button asChild variant="outline" size="lg" className="h-16 text-lg font-bold border-accent text-accent hover:bg-accent/10 flex flex-col items-center gap-1">
+                  <Button asChild variant="outline" size="lg" className="h-20 text-lg font-bold border-accent/30 text-accent hover:bg-accent/10 flex flex-col items-center gap-1 rounded-2xl group transition-all hover:scale-105">
                     <Link href="/dashboard/admin/clubs">
-                      <Building className="h-5 w-5" />
-                      Manage All Clubs
+                      <Building className="h-6 w-6 group-hover:rotate-12" />
+                      <span>Manage Network</span>
                     </Link>
                   </Button>
                 ) : (
-                  <Button asChild variant="outline" size="lg" className="h-16 text-lg font-bold border-primary text-primary hover:bg-primary/10 flex flex-col items-center gap-1">
+                  <Button asChild variant="outline" size="lg" className="h-20 text-lg font-bold border-primary/30 text-primary hover:bg-primary/10 flex flex-col items-center gap-1 rounded-2xl group transition-all hover:scale-105">
                     <Link href={user ? "/dashboard" : "/signup"}>
-                      <Zap className="h-5 w-5" />
-                      {user ? "Go to Dashboard" : "Register Your Club"}
+                      <Zap className="h-6 w-6 group-hover:text-amber-400" />
+                      <span>{user ? "Go to Console" : "Launch Your Club"}</span>
                     </Link>
                   </Button>
                 )}
@@ -130,34 +128,34 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="w-full py-16 bg-card border-y border-border">
+        <section className="w-full py-24 bg-card/50 border-y border-white/5">
           <div className="container px-4 md:px-6 mx-auto">
             <div className="grid gap-12 lg:grid-cols-3">
-              <div className="flex flex-col items-center space-y-4 text-center p-6 bg-secondary/20 rounded-3xl border border-white/5">
-                <div className="p-4 bg-primary/10 rounded-2xl">
-                  <Calendar className="h-10 w-10 text-primary" />
+              <div className="flex flex-col items-center space-y-4 text-center p-8 bg-secondary/20 rounded-[2.5rem] border border-white/5 backdrop-blur-sm transition-all hover:border-primary/30 group">
+                <div className="p-5 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Sparkles className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Smart Scheduling</h3>
-                <p className="text-muted-foreground">
-                  Our AI scheduler handles court allocations and match timing automatically using Genkit intelligence.
+                <h3 className="text-2xl font-headline font-bold uppercase tracking-tight">AI Scheduling</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Eliminate manual planning. Our Tournament Director AI handles court allocations and recovery times with Genkit intelligence.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 text-center p-6 bg-secondary/20 rounded-3xl border border-white/5">
-                <div className="p-4 bg-accent/10 rounded-2xl">
+              <div className="flex flex-col items-center space-y-4 text-center p-8 bg-secondary/20 rounded-[2.5rem] border border-white/5 backdrop-blur-sm transition-all hover:border-accent/30 group">
+                <div className="p-5 bg-accent/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Monitor className="h-10 w-10 text-accent" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Live Dashboards</h3>
-                <p className="text-muted-foreground">
-                  Real-time scoring and brackets for waiting areas and digital stadium screens.
+                <h3 className="text-2xl font-headline font-bold uppercase tracking-tight">Arena Broadcast</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Broadcast live scores to stadium screens and guest mobile devices in real-time. Professional results for any club level.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 text-center p-6 bg-secondary/20 rounded-3xl border border-white/5">
-                <div className="p-4 bg-primary/10 rounded-2xl">
+              <div className="flex flex-col items-center space-y-4 text-center p-8 bg-secondary/20 rounded-[2.5rem] border border-white/5 backdrop-blur-sm transition-all hover:border-primary/30 group">
+                <div className="p-5 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Users className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-headline font-bold">Member Portal</h3>
-                <p className="text-muted-foreground">
-                  Unified player profiles and global ranking tracking across the entire network.
+                <h3 className="text-2xl font-headline font-bold uppercase tracking-tight">Player Circuit</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Build a community with global rankings, automated check-ins, and personalized player profiles across the entire network.
                 </p>
               </div>
             </div>
@@ -165,20 +163,22 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-border bg-card py-12 md:px-8">
-        <div className="container flex flex-col items-center justify-between gap-6 md:h-24 md:flex-row mx-auto">
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <Zap className="h-6 w-6 text-primary" />
-            <p className="text-center text-sm leading-loose text-muted-foreground md:text-left font-medium">
-              &copy; 2024 Court Control AI. The elite sports management engine.
+      <footer className="border-t border-white/5 bg-card py-16 md:px-8">
+        <div className="container flex flex-col items-center justify-between gap-10 md:flex-row mx-auto">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+               <Zap className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-center text-sm leading-loose text-muted-foreground md:text-left font-medium opacity-60">
+              &copy; 2024 Court Control AI. The professional sports management infrastructure.
             </p>
           </div>
-          <div className="flex items-center gap-6 text-sm font-bold text-muted-foreground">
+          <div className="flex items-center gap-8 text-xs font-bold text-muted-foreground uppercase tracking-widest">
             <Link href="/sponsors" className="flex items-center gap-2 hover:text-primary transition-colors">
-              <Heart className="h-4 w-4" /> Partners
+              <Heart className="h-4 w-4 text-destructive" /> Partners
             </Link>
-            <Link href="/arena" className="hover:text-primary transition-colors">Live Feed</Link>
-            <Link href="/login" className="hover:text-primary transition-colors">Login</Link>
+            <Link href="/arena" className="hover:text-primary transition-colors">Arena Feed</Link>
+            <Link href="/login" className="hover:text-primary transition-colors">Admin Login</Link>
           </div>
         </div>
       </footer>

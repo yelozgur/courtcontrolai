@@ -24,7 +24,7 @@
     --border: 217 33% 20%;
     --input: 217 33% 20%;
     --ring: 258 90% 66%;
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     --chart-1: 258 90% 66%;
     --chart-2: 187 82% 54%;
@@ -39,25 +39,31 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body selection:bg-primary/30 selection:text-white;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
 }
 
-.bento-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-@keyframes pulse-cyan {
-  0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(34, 211, 238, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(139, 92, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
 }
 
-.pulse-active {
-  animation: pulse-cyan 2s infinite;
+.pulse-primary {
+  animation: pulse-primary 3s infinite;
+}
+
+.bg-blur-card {
+  @apply bg-card/60 backdrop-blur-xl border-white/5;
 }

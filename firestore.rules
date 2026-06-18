@@ -15,61 +15,66 @@ service cloud.firestore {
     }
 
     function isClubOwner(clubId) {
-      return isSignedIn() && get(/databases/$(database)/documents/clubs/$(clubId)).data.ownerId == request.auth.uid;
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/clubs/$(clubId)).data.ownerId == request.auth.uid || isAdmin()
+      );
     }
 
-    // User Profiles: Private read/write, Admin global oversight
+    function isStaff(clubId) {
+      // For now, staff = owner or admin. Extendable to 'referee' role check.
+      return isClubOwner(clubId);
+    }
+
+    // User Profiles
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isAdmin();
       allow write: if request.auth.uid == userId || isAdmin();
     }
 
-    // Clubs: Anyone can read branding, only owner or admin can update
+    // Clubs
     match /clubs/{clubId} {
-      allow read: if true;
+      allow read: if true; // Public branding access
       allow create: if isSignedIn();
       allow update: if request.auth.uid == resource.data.ownerId || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Tournaments: Public Read (Feed/Registration), Owner/Admin Write
+    // Tournaments
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update: if isClubOwner(resource.data.clubId) || isAdmin();
-      allow delete: if isClubOwner(resource.data.clubId) || isAdmin();
+      allow update, delete: if isClubOwner(resource.data.clubId);
     }
 
-    // Matches: Public Read (Live Arena), Referees/Owners/Admins Write
+    // Matches
     match /matches/{matchId} {
       allow read: if true;
-      // Note: matches are linked to clubId
-      allow write: if isSignedIn() || isAdmin(); 
+      allow write: if isSignedIn(); // Allows refereeHub updates and AI scheduling
     }
 
-    // Participants: Public registration (Create), Owner/Admin management (Read/Update/Delete)
+    // Participants & Check-ins (The high-volume operational paths)
     match /participants/{participantId} {
-      allow read: if true;
-      allow create: if true; // Allows anyone to register
-      allow update, delete: if isSignedIn() || isAdmin();
+      allow read: if isSignedIn(); // Allow searching roster for check-in validation
+      allow create: if true; // Public registration
+      allow update, delete: if isSignedIn();
     }
 
-    // Check-ins: Venue scanners can create, Staff can read
     match /checkins/{checkInId} {
-      allow read: if isSignedIn() || isAdmin();
-      allow create: if true; // Anyone scanning the venue QR
+      allow read: if isSignedIn();
+      allow create: if true; // Public self-check-in scanning
+      allow update, delete: if isAdmin();
     }
 
-    // Sponsors: Public read, Owner/Admin write
+    // Sponsors
     match /sponsors/{sponsorId} {
       allow read: if true;
-      allow write: if isSignedIn() || isAdmin();
+      allow write: if isSignedIn();
     }
 
-    // Promo Codes: Global read for validation, Admin only management
+    // Promo Codes
     match /promocodes/{codeId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if true; // Validation read
+      allow write: if isAdmin(); // Admin only management
     }
   }
 }
