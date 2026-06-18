@@ -1,9 +1,8 @@
-
 'use server';
 /**
  * @fileOverview AI Tournament Director Flow
  *
- * - optimizeTournamentSchedule - A function that generates an optimized match schedule based on tournament rules and participants.
+ * - optimizeTournamentSchedule - A function that generates an optimized match schedule based on tournament rules, participants, and specific user goals.
  */
 
 import { ai } from '@/ai/genkit';
@@ -29,11 +28,13 @@ const LocationSchema = z.object({
 const ScheduleInputSchema = z.object({
   tournamentName: z.string(),
   startDate: z.string(),
+  endDate: z.string().optional(),
   matchDuration: z.number(),
   recoveryTime: z.number(),
   locations: z.array(LocationSchema),
   categories: z.array(CategorySchema),
   participants: z.array(ParticipantSchema),
+  userInstructions: z.string().optional().describe('Specific strategic instructions from the club owner.'),
 });
 
 export type ScheduleInput = z.infer<typeof ScheduleInputSchema>;
@@ -64,24 +65,30 @@ Your task is to generate a logical, fair, and efficient match schedule for the t
 
 CONTEXT:
 - Start Date: {{{startDate}}}
+{{#if endDate}}- End Date: {{{endDate}}}{{/if}}
 - Match Duration: {{{matchDuration}}} minutes
 - Recovery Time: {{{recoveryTime}}} minutes (players must have this buffer between matches)
 - Venues: {{#each locations}} {{name}} ({{numCourts}} courts), {{/each}}
 - Categories: {{#each categories}} {{name}} ({{format}}), {{/each}}
 
 PARTICIPANTS:
+- Total count: {{participants.length}}
 {{#each participants}}
 - {{name}} (Category ID: {{categoryId}})
 {{/each}}
+
+{{#if userInstructions}}
+STRATEGIC GOALS (HIGH PRIORITY):
+{{{userInstructions}}}
+{{/if}}
 
 RULES:
 1. FOR ROUND ROBIN: Every player in a category must play every other player in that same category exactly once.
 2. FOR SINGLE ELIMINATION: Create the first round of matches based on the number of participants. If odd, provide one 'Bye' or simply pair as many as possible.
 3. CLASH PREVENTION: A participant cannot be in two places at once. Schedule their matches with at least {{{recoveryTime}}} minutes of buffer.
 4. COURT ASSIGNMENT: Distribute matches across available courts in the specified locations.
-5. START TIME: Begin matches at 09:00 AM on the start date. Proceed sequentially.
-
-Generate a comprehensive list of scheduled matches that maximizes venue usage.`,
+5. START TIME: Begin matches at 09:00 AM on the start date. If multiple days are available, distribute matches across days logically.
+6. OUTPUT: Generate a comprehensive list of scheduled matches that honors the STRATEGIC GOALS if provided.`,
 });
 
 export async function optimizeTournamentSchedule(input: ScheduleInput): Promise<ScheduleOutput> {

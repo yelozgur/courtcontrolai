@@ -1,10 +1,9 @@
-
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database, AlertCircle, Building, Sparkles, Trash2, Info, DollarSign } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database, AlertCircle, Building, Sparkles, Trash2, Info, DollarSign, BrainCircuit, Users2, History } from "lucide-react"
 import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, updateDoc, increment } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
@@ -20,10 +19,11 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { format } from "date-fns"
+import { format, differenceInDays } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
@@ -41,6 +41,9 @@ export default function SchedulingPage() {
   const [isAddingMatch, setIsAddingMatch] = useState(false)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [showAiPricing, setShowAiPricing] = useState(false)
+  const [showOptimizationSettings, setShowOptimizationSettings] = useState(false)
+  const [aiInstructions, setAiInstructions] = useState("")
+  const [participantsCount, setParticipantsCount] = useState(0)
   
   const [newMatch, setNewMatch] = useState({
     teamA: "",
@@ -70,7 +73,6 @@ export default function SchedulingPage() {
 
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery)
   
-  // Auto-select first tournament
   useEffect(() => {
     if (tournaments && tournaments.length > 0 && !selectedTournamentId) {
       setSelectedTournamentId(tournaments[0].id)
@@ -78,6 +80,13 @@ export default function SchedulingPage() {
   }, [tournaments, selectedTournamentId])
 
   const activeTournament = tournaments?.find(t => t.id === selectedTournamentId)
+
+  // Fetch participants count for the selected tournament
+  useEffect(() => {
+    if (!db || !selectedTournamentId) return
+    const pQuery = query(collection(db, "participants"), where("tournamentId", "==", selectedTournamentId))
+    getDocs(pQuery).then(snap => setParticipantsCount(pSnap.size))
+  }, [db, selectedTournamentId])
 
   // Fetch matches for the selected tournament
   const matchesQuery = useMemoFirebase(() => {
@@ -144,6 +153,12 @@ export default function SchedulingPage() {
   }
 
   const handleAutoScheduleTrigger = () => {
+    if (!selectedTournamentId) return
+    setShowOptimizationSettings(true)
+  }
+
+  const proceedToAutoSchedule = () => {
+    setShowOptimizationSettings(false)
     if (aiUsage >= 3 && (aiUsage - 3) % 3 === 0) {
       setShowAiPricing(true)
     } else {
@@ -157,7 +172,6 @@ export default function SchedulingPage() {
     setShowAiPricing(false)
 
     try {
-      // 1. Fetch participants
       const pSnap = await getDocs(query(collection(db, "participants"), where("tournamentId", "==", activeTournament.id)))
       const participants = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
 
@@ -170,11 +184,13 @@ export default function SchedulingPage() {
       const input = {
         tournamentName: activeTournament.name,
         startDate: activeTournament.startDate,
+        endDate: activeTournament.endDate,
         matchDuration: activeTournament.matchDuration || 60,
         recoveryTime: activeTournament.recoveryTime || 15,
         locations: activeTournament.locations || [{ name: "Main Venue", numCourts: 1 }],
         categories: activeTournament.categories || [],
-        participants: participants.map((p: any) => ({ id: p.id, name: p.name, categoryId: p.categoryId || "default" }))
+        participants: participants.map((p: any) => ({ id: p.id, name: p.name, categoryId: p.categoryId || "default" })),
+        userInstructions: aiInstructions
       }
 
       const result = await optimizeTournamentSchedule(input)
@@ -197,7 +213,6 @@ export default function SchedulingPage() {
         })
       })
 
-      // Increment AI usage
       const clubRef = doc(db, "clubs", clubId)
       batch.update(clubRef, { aiUsageCount: increment(1) })
 
@@ -213,7 +228,6 @@ export default function SchedulingPage() {
   }
 
   const isFreeRun = aiUsage < 3
-  const nextBlockCharge = !isFreeRun && (aiUsage - 3) % 3 === 0
 
   return (
     <div className="space-y-6">
@@ -257,6 +271,54 @@ export default function SchedulingPage() {
           <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary"><Plus className="w-4 h-4 mr-2" /> Add Match</Button>
         </div>
       </div>
+
+      {/* Optimization Settings Dialog */}
+      <Dialog open={showOptimizationSettings} onOpenChange={setShowOptimizationSettings}>
+        <DialogContent className="bg-card border-white/10 max-w-lg">
+          <DialogHeader>
+            <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-4">
+              <BrainCircuit className="w-6 h-6 text-primary" />
+            </div>
+            <DialogTitle>AI Optimization Strategy</DialogTitle>
+            <DialogDescription>
+              Provide specific instructions to the Tournament Director AI to refine the schedule.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-6 py-4">
+             <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Participants</p>
+                   <p className="text-xl font-bold flex items-center gap-2"><Users2 className="h-4 w-4 text-primary" /> {participantsCount}</p>
+                </div>
+                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Venues</p>
+                   <p className="text-xl font-bold flex items-center gap-2"><Building className="h-4 w-4 text-accent" /> {activeTournament?.locations?.length || 1}</p>
+                </div>
+             </div>
+
+             <div className="space-y-2">
+                <Label className="text-xs uppercase font-bold text-muted-foreground">Strategic Instructions</Label>
+                <Textarea 
+                  placeholder="e.g. 'Finish Men's Pro by 2pm', 'Allocate court 1 strictly for gold category', 'Prioritize recovery time over compact scheduling'..."
+                  className="min-h-[120px] bg-background/50 border-white/10"
+                  value={aiInstructions}
+                  onChange={(e) => setAiInstructions(e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                   <Info className="h-3 w-3" /> Tip: Explicit constraints help the AI prevent manual re-shuffling later.
+                </p>
+             </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowOptimizationSettings(false)}>Cancel</Button>
+            <Button onClick={proceedToAutoSchedule} className="bg-primary">
+              Generate Optimized Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showAiPricing} onOpenChange={setShowAiPricing}>
         <DialogContent className="bg-card border-white/10 max-w-sm">
@@ -305,7 +367,6 @@ export default function SchedulingPage() {
                <Card className="bg-card/50 border-white/5 overflow-x-auto">
                  <CardContent className="p-0">
                    <div className="grid border-b border-white/5 bg-white/5 min-h-[400px]">
-                      {/* Grid implementation similar to previous versions but cleaner */}
                       <div className="p-20 text-center text-muted-foreground opacity-30 italic">Interactive Grid Displaying {filteredMatches.length} Matches</div>
                    </div>
                  </CardContent>
