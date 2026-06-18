@@ -80,7 +80,7 @@ export default function PublicCheckInPage() {
         participantId,
         tournamentId: id,
         timestamp: serverTimestamp(),
-        location: selectedLocation || tournament.locations?.[0] || "Main Venue"
+        location: selectedLocation || (tournament.locations?.[0]?.name) || "Main Venue"
       }
 
       await addDoc(collection(db, "checkins"), checkInData)
@@ -196,8 +196,8 @@ export default function PublicCheckInPage() {
                     <SelectValue placeholder="Select Venue" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tournament.locations.map((loc: string, i: number) => (
-                      <SelectItem key={i} value={loc}>{loc}</SelectItem>
+                    {tournament.locations.map((loc: any, i: number) => (
+                      <SelectItem key={i} value={loc.name}>{loc.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

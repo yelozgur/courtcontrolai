@@ -71,7 +71,9 @@ export default function RefereeConsole() {
               <SelectValue placeholder="All Venues" />
             </SelectTrigger>
             <SelectContent>
-              {tournament?.locations?.map((loc: string) => <SelectItem key={loc} value={loc}>{loc}</SelectItem>)}
+              {tournament?.locations?.map((loc: any, i: number) => (
+                <SelectItem key={i} value={loc.name}>{loc.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

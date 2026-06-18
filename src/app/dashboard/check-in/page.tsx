@@ -138,9 +138,9 @@ export default function CheckInPage() {
                     <span className="text-xs font-bold uppercase tracking-widest text-accent">Locations</span>
                   </div>
                   <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                    {selectedTournament?.locations?.length > 0 ? selectedTournament.locations.map((loc: string, i: number) => (
+                    {selectedTournament?.locations?.length > 0 ? selectedTournament.locations.map((loc: any, i: number) => (
                       <li key={i} className="flex items-center gap-2">
-                        <div className="w-1 h-1 bg-accent rounded-full"></div> {loc}
+                        <div className="w-1 h-1 bg-accent rounded-full"></div> {loc.name} ({loc.numCourts} Courts)
                       </li>
                     )) : <li className="italic opacity-50 text-xs">Primary Club Location Only</li>}
                   </ul>
