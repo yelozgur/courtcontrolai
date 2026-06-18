@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -28,6 +27,8 @@ import {
 import { collection, addDoc, deleteDoc, doc, query, where, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
 
 export default function SponsorManagement() {
@@ -67,7 +68,7 @@ export default function SponsorManagement() {
 
   const { data: sponsors, loading } = useCollection(sponsorsQuery)
 
-  const handleAddSponsor = async () => {
+  const handleAddSponsor = () => {
     if (!db || !clubId || !formData.name) return
     setIsAdding(true)
     
@@ -80,25 +81,41 @@ export default function SponsorManagement() {
       logoUrl: `https://picsum.photos/seed/${formData.name}/200/100`
     }
 
-    try {
-      await addDoc(collection(db, "sponsors"), sponsorData)
-      setFormData({ name: "", websiteUrl: "", tier: "bronze", tournamentId: "club" })
-      toast({ title: "Partner Registered", description: `${formData.name} is now a partner.` })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Could not add sponsor." })
-    } finally {
-      setIsAdding(false)
-    }
+    // Use non-blocking mutation pattern
+    addDoc(collection(db, "sponsors"), sponsorData)
+      .then(() => {
+        setFormData({ name: "", websiteUrl: "", tier: "bronze", tournamentId: "club" })
+        toast({ title: "Partner Registered", description: `${formData.name} is now a partner.` })
+      })
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: "sponsors",
+          operation: "create",
+          requestResourceData: sponsorData
+        });
+        errorEmitter.emit('permission-error', error);
+      })
+      .finally(() => {
+        setIsAdding(false)
+      })
   }
 
-  const handleDeleteSponsor = async (id: string) => {
+  const handleDeleteSponsor = (id: string) => {
     if (!db) return
-    try {
-      await deleteDoc(doc(db, "sponsors", id))
-      toast({ title: "Partner Removed" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error" })
-    }
+    const sponsorRef = doc(db, "sponsors", id);
+    
+    // Non-blocking delete
+    deleteDoc(sponsorRef)
+      .then(() => {
+        toast({ title: "Partner Removed" })
+      })
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: sponsorRef.path,
+          operation: "delete"
+        });
+        errorEmitter.emit('permission-error', error);
+      });
   }
 
   if (!clubId && !loading) return <div className="p-8">No club found. Please register your club first.</div>

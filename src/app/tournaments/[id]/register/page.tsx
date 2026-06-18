@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -12,6 +11,8 @@ import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCar
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from "@/lib/utils";
 
 export default function TournamentRegistration() {
@@ -48,13 +49,11 @@ export default function TournamentRegistration() {
     setStep('payment');
   };
 
-  const handleCompleteRegistration = async () => {
+  const handleCompleteRegistration = () => {
     if (!db || !tournament) return;
     setIsSubmitting(true);
     
-    // SaaS Accounting Logic: Platform takes a 5% cut of this amount in the admin view.
     const entryFee = Number(tournament.entryFee) || 0;
-
     const registrationData = {
       ...formData,
       clubId: tournament.clubId,
@@ -66,18 +65,23 @@ export default function TournamentRegistration() {
       verified: true
     };
 
-    try {
-      // Simulate network delay for "Payment Processing"
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      await addDoc(collection(db, "participants"), registrationData);
-      setSubmitted(true);
-      toast({ title: "Welcome to the Arena!", description: entryFee > 0 ? "Payment verified." : "Registration confirmed." });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Could not finalize registration." });
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Mutation follows non-blocking guide: use .then() / .catch() instead of await
+    addDoc(collection(db, "participants"), registrationData)
+      .then(() => {
+        setSubmitted(true);
+        toast({ title: "Welcome to the Arena!", description: entryFee > 0 ? "Payment verified." : "Registration confirmed." });
+      })
+      .catch(async (e) => {
+        const error = new FirestorePermissionError({
+          path: "participants",
+          operation: 'create',
+          requestResourceData: registrationData
+        });
+        errorEmitter.emit('permission-error', error);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
   if (tournamentLoading) return <div className="min-h-screen flex items-center justify-center bg-[#0F172A]"><Loader2 className="animate-spin text-primary h-12 w-12" /></div>

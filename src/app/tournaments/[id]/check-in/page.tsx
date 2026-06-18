@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -12,6 +11,8 @@ import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft, AlertC
 import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, limit } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 import Link from 'next/link';
 import { cn } from "@/lib/utils"
 
@@ -81,11 +82,26 @@ export default function PublicCheckInPage() {
         timestamp: serverTimestamp(),
         location: selectedLocation || (tournament.locations?.[0]?.name || "Main Venue")
       }
-      await addDoc(collection(db, "checkins"), checkInData)
-      setSubmitted(true)
+      
+      // Mutation follows non-blocking guide: use .then() / .catch() instead of await
+      addDoc(collection(db, "checkins"), checkInData)
+        .then(() => {
+          setSubmitted(true)
+        })
+        .catch(async (err) => {
+          const error = new FirestorePermissionError({
+            path: "checkins",
+            operation: 'create',
+            requestResourceData: checkInData
+          });
+          errorEmitter.emit('permission-error', error);
+        })
+        .finally(() => {
+          setIsSubmitting(false)
+        })
+
     } catch (e) {
-      toast({ variant: "destructive", title: "Check-In Failed" })
-    } finally {
+      toast({ variant: "destructive", title: "Check-In Error" })
       setIsSubmitting(false)
     }
   }

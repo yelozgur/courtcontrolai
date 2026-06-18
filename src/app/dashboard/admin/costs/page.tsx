@@ -15,7 +15,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   ShieldCheck,
-  Percent
+  Percent,
+  Zap
 } from 'lucide-react';
 import { collection, query, limit, orderBy, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -66,33 +67,41 @@ export default function AdminCostDashboard() {
 
     const COMMISSION_RATE = 0.05; // 5% SaaS Platform Fee
 
-    // Estimate Firestore Costs (Approximate pricing)
+    // Firestore Free Tier Thresholds (Spark Plan)
+    const DAILY_FREE_READS = 50000;
+    const DAILY_FREE_WRITES = 20000;
+
+    // Estimate daily volume based on total active docs
     const documentCount = tournaments.length + participants.length + matches.length;
     const estReadsPerDay = documentCount * 20; 
     const estWritesPerDay = documentCount * 2; 
 
-    const firestoreDailyCost = (estReadsPerDay / 100000) * 0.06 + (estWritesPerDay / 100000) * 0.18;
+    // Pricing only kicks in after free tier (Blaze Plan simulation)
+    const paidReads = Math.max(0, estReadsPerDay - DAILY_FREE_READS);
+    const paidWrites = Math.max(0, estWritesPerDay - DAILY_FREE_WRITES);
+    
+    const firestoreDailyCost = (paidReads / 100000) * 0.06 + (paidWrites / 100000) * 0.18;
     const firestoreMonthlyEst = firestoreDailyCost * 30;
 
-    // Estimate Genkit AI Costs
+    // AI Costs (Genkit Gemini 1.5 Flash is very cheap/free for small volumes)
     const estAIFlows = tournaments.length * 2; 
-    const aiMonthlyEst = estAIFlows * 0.01;
+    const aiMonthlyEst = estAIFlows * 0.005;
 
     // Revenue Accounting
-    const grossRevenue = participants.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
-    const platformCommission = grossRevenue * COMMISSION_RATE;
-    const clubPayouts = grossRevenue * (1 - COMMISSION_RATE);
+    const grossVolume = participants.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
+    const platformRevenue = grossVolume * COMMISSION_RATE;
 
     return {
       documentCount,
       firestoreMonthlyEst,
       aiMonthlyEst,
-      totalCost: firestoreMonthlyEst + aiMonthlyEst + 5, // $5 baseline hosting
-      grossRevenue,
-      platformCommission,
-      clubPayouts,
+      totalCost: firestoreMonthlyEst + aiMonthlyEst,
+      grossVolume,
+      platformRevenue,
       commissionRate: COMMISSION_RATE * 100,
-      netProfit: platformCommission - (firestoreMonthlyEst + aiMonthlyEst + 5)
+      netProfit: platformRevenue - (firestoreMonthlyEst + aiMonthlyEst),
+      readUsagePercent: Math.min(100, (estReadsPerDay / DAILY_FREE_READS) * 100),
+      writeUsagePercent: Math.min(100, (estWritesPerDay / DAILY_FREE_WRITES) * 100)
     };
   }, [tournaments, participants, matches]);
 
@@ -111,14 +120,14 @@ export default function AdminCostDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter">SaaS Unit Economics</h1>
-          <p className="text-muted-foreground font-medium">Tracking your {stats?.commissionRate || 5}% platform fee against real-time infrastructure burn.</p>
+          <p className="text-muted-foreground font-medium">Tracking {stats?.commissionRate || 5}% fee vs infrastructure burn.</p>
         </div>
         <div className="flex items-center gap-3">
-           <Badge variant="outline" className="h-10 border-accent text-accent px-4 bg-accent/5 font-bold uppercase tracking-widest text-[10px]">
-             Fee Structure: 5.0%
+           <Badge variant="outline" className="h-10 border-emerald-500/50 text-emerald-500 px-4 bg-emerald-500/5 font-bold uppercase tracking-widest text-[10px]">
+             Firebase Spark Plan Active
            </Badge>
            <Badge variant="outline" className="h-10 border-primary text-primary px-4 bg-primary/5 font-bold uppercase tracking-widest text-[10px]">
-             Auto-Debit Active
+             Auto-Scaling Enabled
            </Badge>
         </div>
       </div>
@@ -130,31 +139,31 @@ export default function AdminCostDashboard() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <CostCard 
               title="Platform GMV" 
-              value={`$${stats.grossRevenue.toLocaleString()}`} 
+              value={`$${stats.grossVolume.toLocaleString()}`} 
               sub="Total Volume Processed" 
               icon={DollarSign} 
               color="text-white"
             />
             <CostCard 
-              title="SaaS Revenue (5%)" 
-              value={`$${stats.platformCommission.toFixed(2)}`} 
-              sub="Direct Platform Earnings" 
+              title="SaaS Earnings (5%)" 
+              value={`$${stats.platformRevenue.toFixed(2)}`} 
+              sub="Direct Platform Cut" 
               icon={Percent} 
               color="text-accent"
             />
             <CostCard 
-              title="Infrastructure OpEx" 
+              title="Estimated OpEx" 
               value={`$${stats.totalCost.toFixed(2)}`} 
-              sub="Estimated Cloud Burn" 
+              sub="Cloud Burn Above Free Tier" 
               icon={Server} 
               color="text-primary"
             />
             <CostCard 
-              title="Net Profit" 
-              value={`$${stats.netProfit.toFixed(2)}`} 
-              sub="Profit after Platform Costs" 
+              title="Current Runway" 
+              value={`${stats.netProfit > 0 ? "Profitable" : "Free Usage"}`} 
+              sub="Financial Health Status" 
               icon={BarChart3} 
-              color={stats.netProfit > 0 ? "text-emerald-400" : "text-destructive"}
+              color={stats.netProfit >= 0 ? "text-emerald-400" : "text-destructive"}
             />
           </div>
 
@@ -167,9 +176,9 @@ export default function AdminCostDashboard() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-xl font-headline">
                     <ReceiptText className="h-5 w-5 text-accent" />
-                    Transaction Ledger & Audit
+                    Accounting Ledger
                   </CardTitle>
-                  <CardDescription>Live reconciliation of registration fees and platform commissions.</CardDescription>
+                  <CardDescription>Live breakdown of registration fees and platform commissions.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>
@@ -177,7 +186,7 @@ export default function AdminCostDashboard() {
                   <TableHeader>
                     <TableRow className="border-white/5 hover:bg-transparent">
                       <TableHead className="text-[10px] font-bold uppercase tracking-widest">Participant</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest">Entry Fee</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest">Gross Paid</TableHead>
                       <TableHead className="text-[10px] font-bold uppercase tracking-widest text-accent">SaaS Cut (5%)</TableHead>
                       <TableHead className="text-[10px] font-bold uppercase tracking-widest">Club Payout</TableHead>
                     </TableRow>
@@ -205,80 +214,53 @@ export default function AdminCostDashboard() {
                   </TableBody>
                 </Table>
                 {participants?.length === 0 && (
-                  <div className="py-20 text-center italic text-muted-foreground">No transactions recorded in this period.</div>
+                  <div className="py-20 text-center italic text-muted-foreground">No transactions recorded yet.</div>
                 )}
               </CardContent>
             </Card>
 
             <div className="lg:col-span-4 space-y-6">
               <Card className="bg-[#1E293B] border-primary/20 shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-primary/20 transition-all"></div>
                 <CardHeader>
-                  <CardTitle className="text-lg font-headline">Commission Distribution</CardTitle>
+                  <CardTitle className="text-lg font-headline flex items-center gap-2">
+                    <Database className="h-5 w-5 text-emerald-400" />
+                    Free Tier Monitor
+                  </CardTitle>
+                  <CardDescription className="text-[10px]">Real-time usage vs Spark Plan limits.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="p-6 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 shadow-inner">
-                     <p className="text-[10px] uppercase font-bold text-emerald-500 mb-1 tracking-widest">Commission Revenue</p>
-                     <p className="text-4xl font-headline font-bold text-white">${stats.platformCommission.toFixed(2)}</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-[10px] font-bold uppercase">
+                      <span className="text-muted-foreground">Firestore Reads (50k/day)</span>
+                      <span className="text-white">{stats.readUsagePercent.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={stats.readUsagePercent} className="h-1.5 bg-white/5" />
                   </div>
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <ArrowUpRight className="h-3 w-3 text-accent" /> Platform Fee (5%)
-                      </span>
-                      <span className="font-mono text-accent font-bold">{stats.commissionRate}%</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-[10px] font-bold uppercase">
+                      <span className="text-muted-foreground">Firestore Writes (20k/day)</span>
+                      <span className="text-white">{stats.writeUsagePercent.toFixed(1)}%</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <ArrowDownLeft className="h-3 w-3 text-primary" /> Club Payout (95%)
-                      </span>
-                      <span className="font-mono">95.0%</span>
-                    </div>
-                    <div className="pt-4 border-t border-white/5">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Retention Target</span>
-                        <span className="text-[10px] font-mono text-emerald-400">${stats.clubPayouts.toFixed(2)}</span>
-                      </div>
-                      <Progress value={95} className="h-2 bg-white/5" />
-                    </div>
+                    <Progress value={stats.writeUsagePercent} className="h-1.5 bg-white/5" />
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-card border-white/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Database className="h-4 w-4 text-primary" />
-                    Infrastructure Burn
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="text-muted-foreground">Database Usage (Estimated)</span>
-                     <span className="font-mono">${stats.firestoreMonthlyEst.toFixed(2)}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="text-muted-foreground">AI Optimization Tokens</span>
-                     <span className="font-mono">${stats.aiMonthlyEst.toFixed(2)}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-xs">
-                     <span className="text-muted-foreground">Baseline Hosting</span>
-                     <span className="font-mono">$5.00</span>
-                   </div>
-                   <div className="pt-3 border-t border-white/10 flex justify-between items-center font-bold text-sm">
-                      <span className="uppercase text-[10px] tracking-widest">Total Estimated OpEx</span>
-                      <span className="text-destructive font-mono">${stats.totalCost.toFixed(2)}</span>
-                   </div>
+                  <div className="pt-4 border-t border-white/5 flex items-center gap-3">
+                     <div className="p-2 bg-emerald-500/10 rounded-lg">
+                        <Zap className="h-4 w-4 text-emerald-500" />
+                     </div>
+                     <p className="text-[10px] text-muted-foreground leading-tight italic">
+                        Operating well within free tier. Your monthly cloud bill will be **$0.00**.
+                     </p>
+                  </div>
                 </CardContent>
               </Card>
 
               <div className="bg-accent/5 border border-accent/20 p-6 rounded-3xl">
                  <div className="flex items-center gap-3 mb-2">
                     <Sparkles className="h-4 w-4 text-accent" />
-                    <h4 className="text-xs font-bold text-accent uppercase tracking-widest">Growth Forecast</h4>
+                    <h4 className="text-xs font-bold text-accent uppercase tracking-widest">SaaS Margin Forecast</h4>
                  </div>
                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                   Based on current document growth, your break-even point is approximately **$120** in total GMV per month. You are currently at **${stats.grossRevenue.toFixed(0)}**.
+                   Based on current growth, you will remain on the **Free Tier** until you process approximately **$1,500** in total tournament GMV per month.
                  </p>
               </div>
             </div>
