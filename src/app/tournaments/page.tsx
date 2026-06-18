@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Trophy, MapPin, Loader2, Search, AlertCircle } from "lucide-react"
+import { Calendar, Trophy, MapPin, Loader2, Search, AlertCircle, DollarSign } from "lucide-react"
 import { collection, query, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { useState } from "react"
@@ -81,12 +81,17 @@ export default function PublicTournaments() {
                     data-ai-hint="sports tournament"
                   />
                   <Badge className="absolute top-4 right-4 bg-primary uppercase tracking-widest">{t.sport || 'SPORTS'}</Badge>
-                  <Badge className="absolute bottom-4 left-4 bg-accent text-accent-foreground uppercase text-[10px] font-bold">
-                    {t.status === 'registration' ? 'Open for Entry' : 'In Progress'}
+                  <Badge className="absolute bottom-4 left-4 bg-emerald-500 text-white uppercase text-[10px] font-bold flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" /> {t.entryFee > 0 ? `$${t.entryFee.toFixed(2)}` : 'FREE ENTRY'}
                   </Badge>
                 </div>
                 <CardHeader>
-                  <CardTitle className="text-2xl font-headline font-bold">{t.name}</CardTitle>
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-2xl font-headline font-bold">{t.name}</CardTitle>
+                    <Badge variant="outline" className="text-[10px] border-accent/30 text-accent">
+                      {t.status === 'registration' ? 'OPEN' : 'LIVE'}
+                    </Badge>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2 text-muted-foreground">

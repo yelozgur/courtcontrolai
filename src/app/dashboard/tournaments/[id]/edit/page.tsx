@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -10,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor, Gavel, AlertCircle, Clock, Zap, MapPin } from "lucide-react"
+import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor, Gavel, AlertCircle, Clock, Zap, MapPin, DollarSign } from "lucide-react"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -53,6 +52,7 @@ export default function EditTournamentPage() {
     endDate: "",
     sport: "",
     status: "draft",
+    entryFee: 0,
     numCourts: 0,
     matchDuration: 60,
     recoveryTime: 15,
@@ -82,6 +82,7 @@ export default function EditTournamentPage() {
         endDate: tournament.endDate || "",
         sport: tournament.sport || "padel",
         status: tournament.status || "draft",
+        entryFee: tournament.entryFee || 0,
         numCourts: tournament.numCourts || 0,
         matchDuration: tournament.matchDuration || 60,
         recoveryTime: tournament.recoveryTime || 15,
@@ -105,6 +106,7 @@ export default function EditTournamentPage() {
     const docRef = doc(db, "tournaments", id as string)
     const updateData = {
       ...formData,
+      entryFee: Number(formData.entryFee) || 0,
       numCourts: Number(formData.numCourts) || 0,
       matchDuration: Number(formData.matchDuration),
       recoveryTime: Number(formData.recoveryTime)
@@ -117,7 +119,7 @@ export default function EditTournamentPage() {
       .catch(async (e) => {
         const error = new FirestorePermissionError({
           path: docRef.path,
-          operation: "update",
+          operation: 'update',
           requestResourceData: updateData
         })
         errorEmitter.emit("permission-error", error)
@@ -263,6 +265,19 @@ export default function EditTournamentPage() {
                       <SelectItem value="completed">Completed (Archives)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Entry Fee (USD)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-emerald-500" />
+                    <Input 
+                      type="number"
+                      value={formData.entryFee} 
+                      onChange={e => setFormData({...formData, entryFee: parseFloat(e.target.value) || 0})}
+                      className="pl-10 font-bold"
+                      disabled={isCompleted}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Tournament Sport</Label>
