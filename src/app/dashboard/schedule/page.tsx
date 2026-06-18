@@ -113,10 +113,10 @@ export default function SchedulingPage() {
     return ""
   }
 
-  // Matrix Construction Logic
+  // Matrix Construction Logic: Show all courts defined in the tournament
   const timeSlots = Array.from({ length: 14 }, (_, i) => `${(i + 9).toString().padStart(2, '0')}:00`)
-  const courtsCount = activeTournament?.numCourts || 1
-  const courts = Array.from({ length: courtsCount }, (_, i) => i + 1)
+  const totalCourts = activeTournament?.numCourts || 1
+  const courts = Array.from({ length: totalCourts }, (_, i) => i + 1)
 
   const matrixData = useMemo(() => {
     const grid: Record<string, any> = {}
@@ -238,7 +238,7 @@ export default function SchedulingPage() {
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
           <div className="text-muted-foreground flex items-center gap-2">
-            Automated court allocations and bracket management.
+            Interactive Venue Matrix: {courts.length} Courts Allocation
             <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-none">
               AI Runs: {aiUsage}/3 Free
             </Badge>
@@ -279,7 +279,7 @@ export default function SchedulingPage() {
         <DialogContent className="bg-card border-white/10 max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-headline text-2xl uppercase">AI Director Setup</DialogTitle>
-            <DialogDescription>Optimize your bracket logic and court usage.</DialogDescription>
+            <DialogDescription>Optimize your bracket logic across all courts.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
              <div className="grid grid-cols-2 gap-4 text-center">
@@ -288,8 +288,8 @@ export default function SchedulingPage() {
                    <p className="text-xl font-bold">{participantsCount}</p>
                 </div>
                 <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Type</p>
-                   <p className="text-xl font-bold uppercase text-accent">{activeTournament?.sport}</p>
+                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Venue Scope</p>
+                   <p className="text-xl font-bold uppercase text-accent">{courts.length} Courts</p>
                 </div>
              </div>
              <div className="space-y-2">
@@ -326,9 +326,9 @@ export default function SchedulingPage() {
                     <Clock className="w-4 h-4 text-muted-foreground mx-auto" />
                   </th>
                   {courts.map(c => (
-                    <th key={c} className="p-4 bg-black/20 border-b border-white/5 min-w-[200px]">
+                    <th key={c} className="p-4 bg-black/20 border-b border-white/5 min-w-[220px]">
                       <div className="flex items-center justify-center gap-2">
-                        <Badge variant="outline" className="border-accent text-accent">Court {c}</Badge>
+                        <Badge variant="outline" className="border-accent text-accent font-bold px-4">Court {c}</Badge>
                       </div>
                     </th>
                   ))}
@@ -343,9 +343,12 @@ export default function SchedulingPage() {
                     {courts.map(court => {
                       const match = matrixData[`${time}-${court}`]
                       return (
-                        <td key={court} className="p-2 border-r border-white/5 relative h-28 group/cell transition-colors hover:bg-white/[0.02]">
+                        <td key={court} className="p-2 border-r border-white/5 relative h-32 group/cell transition-colors hover:bg-white/[0.02]">
                           {match ? (
-                            <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 h-full flex flex-col justify-between group/card relative">
+                            <div className={cn(
+                              "border rounded-xl p-3 h-full flex flex-col justify-between group/card relative transition-all",
+                              match.status === 'live' ? "bg-accent/10 border-accent/40 shadow-lg shadow-accent/5" : "bg-primary/10 border-primary/20"
+                            )}>
                               <div className="flex justify-between items-start mb-1">
                                 <Badge className="text-[8px] bg-primary/20 text-primary border-none uppercase px-1.5">{match.category}</Badge>
                                 <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover/card:opacity-100 transition-opacity" onClick={() => handleDeleteMatch(match.id)}>
@@ -429,7 +432,7 @@ export default function SchedulingPage() {
             <div className="grid grid-cols-2 gap-4">
                <div className="space-y-2">
                  <Label>Court #</Label>
-                 <Input type="number" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
+                 <Input type="number" min="1" max={courts.length} value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
                </div>
                <div className="space-y-2">
                  <Label>Time Slot</Label>

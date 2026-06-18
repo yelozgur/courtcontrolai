@@ -45,9 +45,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
   // Determine permissions based on role
-  // We treat 'user' as club owner by default since most signups are for club management
+  // We treat 'club_owner', 'user', and undefined roles as club managers for V2
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
-  const isClubOwner = profile?.role === 'club_owner' || profile?.role === 'user' || !profile?.role;
+  const isClubManager = isAdmin || profile?.role === 'club_owner' || profile?.role === 'user' || !profile?.role;
   const isReferee = profile?.role === 'referee';
 
   const handleSignOut = () => signOut(auth).then(() => router.push('/'));
@@ -73,14 +73,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'My Profile', icon: User, href: '/dashboard/profile' },
   ] : [
     { name: 'Club Console', icon: LayoutDashboard, href: '/dashboard', show: true },
-    { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments/new', show: isClubOwner },
-    { name: 'Match Planner', icon: Calendar, href: '/dashboard/schedule', show: isClubOwner },
-    { name: 'Participants', icon: Users, href: '/dashboard/participants', show: isClubOwner },
-    { name: 'Check-In Hub', icon: QrCode, href: '/dashboard/check-in', show: isClubOwner },
-    { name: 'Partners', icon: Heart, href: '/dashboard/sponsors', show: isClubOwner },
-    { name: 'Referee Hub', icon: Gavel, href: '/referee', show: isReferee || isClubOwner },
+    { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments/new', show: isClubManager },
+    { name: 'Match Planner', icon: Calendar, href: '/dashboard/schedule', show: isClubManager },
+    { name: 'Participants', icon: Users, href: '/dashboard/participants', show: isClubManager },
+    { name: 'Check-In Hub', icon: QrCode, href: '/dashboard/check-in', show: isClubManager },
+    { name: 'Partners', icon: Heart, href: '/dashboard/sponsors', show: isClubManager },
+    { name: 'Referee Hub', icon: Gavel, href: '/referee', show: isReferee || isClubManager },
     { name: 'My Profile', icon: User, href: '/dashboard/profile', show: true },
-    { name: 'Club Settings', icon: Building, href: '/dashboard/club', show: isClubOwner },
+    { name: 'Club Settings', icon: Building, href: '/dashboard/club', show: isClubManager },
   ].filter(item => item.show);
 
   return (
