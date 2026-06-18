@@ -67,7 +67,7 @@
     },
     "Participant": {
       "title": "Participant",
-      "description": "Registered player for a tournament.",
+      "description": "Registered player for a tournament with accounting data.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
