@@ -77,13 +77,13 @@ export default function SchedulingPage() {
   // Auto-set location if only one exists or when switching tournaments
   useEffect(() => {
     if (activeTournament?.locations?.length > 0) {
-      if (selectedLocation === "all" && activeTournament.locations.length === 1) {
+      if (selectedLocation === "all" || !activeTournament.locations.some((l: any) => l.name === selectedLocation)) {
         setSelectedLocation(activeTournament.locations[0].name)
       }
     } else {
       setSelectedLocation("all")
     }
-  }, [activeTournament, selectedLocation])
+  }, [activeTournament])
 
   // Fetch matches for the selected tournament
   const matchesQuery = useMemoFirebase(() => {
@@ -164,6 +164,37 @@ export default function SchedulingPage() {
       })
   }
 
+  const handleSeedData = () => {
+    if (!db || !clubId || !selectedTournamentId) return
+    setIsSeeding(true)
+    const matchesColl = collection(db, "matches")
+    const testDate = "2026-06-19"
+    const dummyMatches = [
+      { court: 1, time: "09:00", teamA: "Ace Kings", teamB: "Padel Pros" },
+      { court: 2, time: "10:30", teamA: "Spin Masters", teamB: "Wall Hitters" },
+      { court: 1, time: "12:00", teamA: "Court Crushers", teamB: "Net Ninjas" },
+      { court: 3, time: "13:30", teamA: "Power Servers", teamB: "Lobbyists" },
+    ]
+
+    const promises = dummyMatches.map(m => addDoc(matchesColl, {
+      clubId,
+      tournamentId: selectedTournamentId,
+      status: "scheduled",
+      court: m.court,
+      startTime: `${testDate}T${m.time}:00`,
+      teamA: { name: m.teamA, score: 0, setsWon: 0 },
+      teamB: { name: m.teamB, score: 0, setsWon: 0 },
+      category: activeTournament?.categories?.[0]?.name || "Open",
+      location: selectedLocation !== "all" ? selectedLocation : (activeTournament?.locations?.[0]?.name || "Main Venue")
+    }))
+
+    Promise.all(promises).then(() => {
+      toast({ title: "Seed Success", description: "Matches created for June 19, 2026." })
+      setSelectedDate(new Date("2026-06-19T12:00:00"))
+      setIsSeeding(false)
+    })
+  }
+
   const handleGridSlotClick = (court: number, time: string) => {
     setNewMatch(prev => ({
       ...prev,
@@ -192,6 +223,11 @@ export default function SchedulingPage() {
           <p className="text-muted-foreground">Manage timings and court allocations per venue.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" size="sm" onClick={handleSeedData} disabled={isSeeding || !selectedTournamentId} className="border-accent text-accent">
+            {isSeeding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
+            Seed June 19 Data
+          </Button>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("w-[180px] justify-start text-left font-normal bg-card border-white/5", !selectedDate && "text-muted-foreground")}>
@@ -387,7 +423,7 @@ export default function SchedulingPage() {
                                  </div>
                                  {selectedLocation === "all" && (
                                    <div className="mt-2 text-[7px] text-muted-foreground flex items-center gap-1 border-t border-primary/10 pt-1">
-                                      <Building className="w-2 h-2" /> {match.location}
+                                      <Building className="w-2 h-2" /> {typeof match.location === 'object' ? match.location.name : match.location}
                                    </div>
                                  )}
                                </div>
@@ -440,7 +476,7 @@ export default function SchedulingPage() {
                                <Trophy className="w-3.5 h-3.5" /> {match.category}
                              </div>
                              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                               <Building className="w-3.5 h-3.5" /> {match.location}
+                               <Building className="w-3.5 h-3.5" /> {typeof match.location === 'object' ? match.location.name : (match.location || 'Main Venue')}
                              </div>
                           </div>
                         </div>
@@ -453,7 +489,7 @@ export default function SchedulingPage() {
                 ))
               ) : (
                 <div className="text-center py-24 bg-white/5 rounded-2xl border-dashed border-2 border-white/10">
-                   <p className="text-muted-foreground italic">No matches scheduled for this view yet.</p>
+                   <p className="text-muted-foreground italic">No matches scheduled for {selectedDateStr} yet.</p>
                 </div>
               )}
             </div>

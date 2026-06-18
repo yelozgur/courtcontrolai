@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { format } from "date-fns"
 
 export default function TournamentArena() {
   const { id } = useParams()
@@ -51,7 +52,10 @@ export default function TournamentArena() {
     if (!allMatches) return []
     let filtered = allMatches.filter(m => m.status === "live")
     if (selectedLocation !== "all") {
-      filtered = filtered.filter(m => m.location === selectedLocation)
+      filtered = filtered.filter(m => {
+        const locName = typeof m.location === 'object' ? m.location.name : m.location;
+        return locName === selectedLocation;
+      })
     }
     return filtered.slice(0, 6)
   }, [allMatches, selectedLocation])
@@ -60,7 +64,10 @@ export default function TournamentArena() {
     if (!allMatches) return []
     let filtered = allMatches.filter(m => m.status === "completed")
     if (selectedLocation !== "all") {
-      filtered = filtered.filter(m => m.location === selectedLocation)
+      filtered = filtered.filter(m => {
+        const locName = typeof m.location === 'object' ? m.location.name : m.location;
+        return locName === selectedLocation;
+      })
     }
     return filtered
       .sort((a, b) => {
@@ -75,7 +82,10 @@ export default function TournamentArena() {
     if (!allMatches) return []
     let filtered = allMatches.filter(m => m.status === "scheduled")
     if (selectedLocation !== "all") {
-      filtered = filtered.filter(m => m.location === selectedLocation)
+      filtered = filtered.filter(m => {
+        const locName = typeof m.location === 'object' ? m.location.name : m.location;
+        return locName === selectedLocation;
+      })
     }
     return filtered
       .sort((a, b) => {
