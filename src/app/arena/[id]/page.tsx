@@ -1,10 +1,11 @@
+
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Trophy, Zap, Clock, Users, ArrowLeft, Loader2, CheckCircle, AlertCircle, MapPin, Calendar, Activity, Globe } from "lucide-react"
-import { collection, query, where, limit, doc } from "firebase/firestore"
+import { collection, query, where, limit, doc, orderBy } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import {
@@ -44,17 +45,19 @@ export default function TournamentArena() {
     return () => clearInterval(timer)
   }, [])
 
+  // Optimized query: Only fetch matches for this tournament, limited to a reasonable amount
   const allMatchesQuery = useMemoFirebase(() => {
     if (!db || !id) return null
     return query(
       collection(db, "matches"), 
       where("tournamentId", "==", id),
-      limit(200)
+      limit(150) // Reduced limit for better performance
     )
   }, [db, id])
 
   const { data: allMatches, loading: matchesLoading, error: matchesError } = useCollection(allMatchesQuery)
 
+  // Memoize filtered results to prevent expensive re-renders
   const liveMatches = useMemo(() => {
     if (!allMatches) return []
     let filtered = allMatches.filter(m => m.status === "live")

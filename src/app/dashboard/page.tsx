@@ -22,7 +22,7 @@ import {
   Handshake,
   ArrowRight
 } from "lucide-react"
-import { collection, query, limit, doc, where } from "firebase/firestore"
+import { collection, query, limit, doc, where, orderBy } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
 import { cn } from "@/lib/utils"
 
@@ -38,33 +38,35 @@ export default function DashboardOverview() {
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
 
-  // Admin Queries
+  // Optimized Admin Queries: Only run if strictly verified as admin
   const allClubsQuery = useMemoFirebase(() => {
     if (!db || !isAdmin) return null;
-    return query(collection(db, "clubs"), limit(100));
+    return query(collection(db, "clubs"), orderBy("createdAt", "desc"), limit(10));
   }, [db, isAdmin]);
 
   const allUsersQuery = useMemoFirebase(() => {
     if (!db || !isAdmin) return null;
-    return query(collection(db, "users"), limit(100));
+    return query(collection(db, "users"), orderBy("createdAt", "desc"), limit(10));
   }, [db, isAdmin]);
 
   const { data: allClubs } = useCollection(allClubsQuery);
   const { data: allUsers } = useCollection(allUsersQuery);
 
-  // Club Owner Queries
+  // Optimized Club Owner Queries: Fetch specific data relevant to the dashboard
   const tournamentsQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return query(collection(db, "tournaments"), limit(10));
-  }, [db]);
+    if (!db || !user) return null;
+    // For club owners, we'd ideally filter by clubId if available in profile
+    // For MVP, we show recent global tournaments or filtered by user.uid if role is owner
+    return query(collection(db, "tournaments"), orderBy("createdAt", "desc"), limit(5));
+  }, [db, user]);
 
-  const matchesQuery = useMemoFirebase(() => {
+  const liveMatchesQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(collection(db, "matches"), where("status", "==", "live"), limit(5));
+    return query(collection(db, "matches"), where("status", "==", "live"), limit(3));
   }, [db]);
 
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
-  const { data: matches } = useCollection(matchesQuery);
+  const { data: matches } = useCollection(liveMatchesQuery);
 
   if (profileLoading || toursLoading) {
     return (
@@ -92,8 +94,8 @@ export default function DashboardOverview() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Active Clubs" value={allClubs?.length || 0} icon={Building} sub="Onboarded Orgs" />
-          <StatCard title="Total Users" value={allUsers?.length || 0} icon={Users} sub="Unique Accounts" color="text-accent" />
+          <StatCard title="Recent Clubs" value={allClubs?.length || 0} icon={Building} sub="Onboarded Orgs" />
+          <StatCard title="Recent Users" value={allUsers?.length || 0} icon={Users} sub="Unique Accounts" color="text-accent" />
           <StatCard title="Growth Rate" value="+12%" icon={TrendingUp} sub="Past 30 days" />
           <StatCard title="System" value="Stable" icon={Zap} sub="Node Health" color="text-emerald-400" />
         </div>
@@ -107,13 +109,13 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                  <div className="space-y-4">
-                   {allClubs?.slice(0, 5).map(club => (
+                   {allClubs?.map(club => (
                      <div key={club.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold">{club.name.charAt(0)}</div>
+                          <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold">{club.name?.charAt(0) || 'C'}</div>
                           <div>
                             <p className="font-bold">{club.name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase">{club.location}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{club.location || 'Global'}</p>
                           </div>
                         </div>
                         <Badge variant="outline">{club.primarySport}</Badge>
@@ -126,7 +128,7 @@ export default function DashboardOverview() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <Card className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] border-accent/20 relative overflow-hidden group">
-                  <ShoppingBag className="absolute -right-4 -bottom-4 h-24 w-24 text-accent opacity-5 group-hover:scale-125 transition-transform" />
+                  <ShoppingBag className="absolute -right-4 -top-4 h-24 w-24 text-accent opacity-5 group-hover:scale-125 transition-transform" />
                   <CardHeader>
                     <div className="flex items-center justify-between">
                        <CardTitle className="text-accent flex items-center gap-2">Marketplace</CardTitle>
@@ -141,7 +143,7 @@ export default function DashboardOverview() {
                   </CardContent>
                </Card>
                <Card className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] border-primary/20 relative overflow-hidden group">
-                  <Handshake className="absolute -right-4 -bottom-4 h-24 w-24 text-primary opacity-5 group-hover:scale-125 transition-transform" />
+                  <Handshake className="absolute -right-4 -top-4 h-24 w-24 text-primary opacity-5 group-hover:scale-125 transition-transform" />
                   <CardHeader>
                     <div className="flex items-center justify-between">
                        <CardTitle className="text-primary flex items-center gap-2">Sponsor Hub</CardTitle>
