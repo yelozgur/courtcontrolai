@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -17,7 +18,8 @@ import {
   Zap,
   Cpu,
   ArrowUpRight,
-  TrendingUp
+  TrendingUp,
+  History
 } from 'lucide-react';
 import { collection, query, limit, orderBy, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -170,11 +172,23 @@ export default function AdminCostDashboard() {
                   </TableHeader>
                   <TableBody>
                     {participants?.slice(0, 10).map((p) => (
-                      <TableRow key={p.id} className="border-white/5 hover:bg-white/5">
-                        <TableCell className="font-bold text-white">{p.name}</TableCell>
+                      <TableRow key={p.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                        <TableCell className="font-bold text-white">
+                          <div className="flex flex-col">
+                            <span>{p.name}</span>
+                            <span className="text-[8px] opacity-40 font-mono">{p.id.slice(-8).toUpperCase()}</span>
+                          </div>
+                        </TableCell>
                         <TableCell className="font-mono text-sm">${(p.paidAmount || 0).toFixed(2)}</TableCell>
                         <TableCell className="font-mono text-sm text-accent font-bold">+${((p.paidAmount || 0) * 0.05).toFixed(2)}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[8px] uppercase tracking-widest border-none bg-white/5">Registration</Badge></TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "text-[8px] uppercase tracking-widest border-none px-2",
+                            p.paidAmount > 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-white/5 text-muted-foreground"
+                          )}>
+                            {p.paidAmount > 0 ? 'Registration' : 'Waived'}
+                          </Badge>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {!participants?.length && <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground italic">No transactions processed yet.</TableCell></TableRow>}
@@ -207,7 +221,7 @@ export default function AdminCostDashboard() {
                   <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-accent opacity-5 group-hover:scale-125 transition-transform" />
                   <h3 className="font-headline font-bold text-accent mb-2 flex items-center gap-2 uppercase tracking-tighter">Growth Insight</h3>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Based on your current commission rate and club growth, the platform will become "Cost Neutral" at approximately 250 daily active participants.
+                    Based on your current commission rate and club growth, the platform will become "Cost Neutral" at approximately 250 daily active participants. Enforcing a $5.00 minimum floor ensures viable margins on every booking.
                   </p>
               </div>
             </div>

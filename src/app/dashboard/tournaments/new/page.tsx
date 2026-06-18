@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock, DollarSign } from "lucide-react"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock, DollarSign, AlertCircle } from "lucide-react"
 import { collection, doc, setDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -139,6 +139,18 @@ export default function TournamentWizard() {
 
   const handleLaunch = () => {
     if (!db || !clubId) return
+    
+    // Final check for minimum fee
+    if (formData.entryFee > 0 && formData.entryFee < 5) {
+      toast({ 
+        variant: "destructive", 
+        title: "Invalid Fee", 
+        description: "Entry fee must be at least $5.00 or $0.00 (free)." 
+      })
+      setStep(1)
+      return
+    }
+
     setIsSubmitting(true)
     
     const tournamentsCollection = collection(db, "tournaments")
@@ -208,6 +220,12 @@ export default function TournamentWizard() {
                       onChange={(e) => setFormData({ ...formData, entryFee: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
+                  {formData.entryFee > 0 && formData.entryFee < 5 && (
+                    <p className="text-[10px] text-destructive flex items-center gap-1 font-bold uppercase tracking-widest mt-1">
+                      <AlertCircle className="h-3 w-3" /> Minimum paid entry is $5.00
+                    </p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground italic">Set to $0.00 for free registration.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Sport Category</Label>
@@ -232,7 +250,11 @@ export default function TournamentWizard() {
                 </div>
               </div>
               <div className="pt-4 flex justify-end">
-                <Button onClick={() => setStep(2)} className="h-12 px-10" disabled={!formData.name || !formData.startDate}>
+                <Button 
+                  onClick={() => setStep(2)} 
+                  className="h-12 px-10" 
+                  disabled={!formData.name || !formData.startDate || (formData.entryFee > 0 && formData.entryFee < 5)}
+                >
                   Next: Categories
                 </Button>
               </div>
@@ -307,7 +329,7 @@ export default function TournamentWizard() {
           <div className="p-12 text-center space-y-8">
              <Trophy className="h-20 w-20 text-primary mx-auto" />
              <h2 className="text-4xl font-bold uppercase">Ready to Collect?</h2>
-             <p className="text-muted-foreground">Players will be charged <strong>${formData.entryFee}</strong> to join this tournament.</p>
+             <p className="text-muted-foreground">Players will be charged <strong>${formData.entryFee.toFixed(2)}</strong> to join this tournament.</p>
              <div className="flex justify-center gap-4">
                 <Button variant="ghost" onClick={() => setStep(3)}>Edit</Button>
                 <Button size="lg" className="px-12" onClick={handleLaunch} disabled={isSubmitting}>

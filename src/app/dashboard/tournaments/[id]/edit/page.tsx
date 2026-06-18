@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -101,6 +102,13 @@ export default function EditTournamentPage() {
 
   const handleSave = () => {
     if (!db || !id) return
+
+    // Minimum fee validation
+    if (formData.entryFee > 0 && formData.entryFee < 5) {
+      toast({ variant: "destructive", title: "Minimum Fee Required", description: "Entry fee must be at least $5.00 for accounting viability." })
+      return
+    }
+
     setIsSaving(true)
     
     const docRef = doc(db, "tournaments", id as string)
@@ -278,6 +286,9 @@ export default function EditTournamentPage() {
                       disabled={isCompleted}
                     />
                   </div>
+                  {formData.entryFee > 0 && formData.entryFee < 5 && (
+                    <p className="text-[10px] text-destructive font-bold uppercase mt-1">Minimum $5.00 required</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Tournament Sport</Label>
