@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Shared Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        request.auth.token.email.lower() == 'admin@deneme.com'
+      );
+    }
+
+    function isClubOwner(clubId) {
+      return isSignedIn() && get(/databases/$(database)/documents/clubs/$(clubId)).data.ownerId == request.auth.uid;
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow write: if request.auth.uid == userId || isAdmin();
+    }
+
+    // Clubs
+    match /clubs/{clubId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if request.auth.uid == resource.data.ownerId || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Tournaments
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isClubOwner(resource.data.clubId) || isAdmin();
+      allow delete: if isClubOwner(resource.data.clubId) || isAdmin();
+    }
+
+    // Matches
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if isSignedIn() || isAdmin(); // Simplified for Referee hub access
+    }
+
+    // Participants
+    match /participants/{participantId} {
+      allow read: if true;
+      allow create: if true; // Allows public registration
+      allow update, delete: if isSignedIn() || isAdmin();
+    }
+
+    // Check-ins
+    match /checkins/{checkInId} {
+      allow read: if isSignedIn() || isAdmin();
+      allow create: if true; // Allows venue check-in scans
+    }
+
+    // Sponsors
+    match /sponsors/{sponsorId} {
+      allow read: if true;
+      allow write: if isSignedIn() || isAdmin();
+    }
+
+    // Promo Codes
+    match /promocodes/{codeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

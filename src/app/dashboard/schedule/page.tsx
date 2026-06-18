@@ -85,7 +85,7 @@ export default function SchedulingPage() {
   useEffect(() => {
     if (!db || !selectedTournamentId) return
     const pQuery = query(collection(db, "participants"), where("tournamentId", "==", selectedTournamentId))
-    getDocs(pQuery).then(snap => setParticipantsCount(pSnap.size))
+    getDocs(pQuery).then(snap => setParticipantsCount(snap.size))
   }, [db, selectedTournamentId])
 
   // Fetch matches for the selected tournament
