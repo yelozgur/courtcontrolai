@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCard, ShieldCheck } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, doc, query, where, limit } from 'firebase/firestore';
-import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCard, ShieldCheck, Zap } from 'lucide-react';
+import { collection, addDoc, doc } from 'firebase/firestore';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
 
@@ -52,21 +52,24 @@ export default function TournamentRegistration() {
     if (!db || !tournament) return;
     setIsSubmitting(true);
     
+    // Accounting Logic: Platform takes a 5% cut of this amount in the admin view.
+    const entryFee = Number(tournament.entryFee) || 0;
+
     const registrationData = {
       ...formData,
       clubId: tournament.clubId,
       tournamentId: id,
       createdAt: new Date().toISOString(),
       categoryName: tournament.categories?.find((c: any) => c.id === formData.categoryId)?.name || "Default",
-      paymentStatus: tournament.entryFee > 0 ? "paid" : "waived",
-      paidAmount: tournament.entryFee || 0,
+      paymentStatus: entryFee > 0 ? "paid" : "waived",
+      paidAmount: entryFee,
       verified: true
     };
 
     try {
       await addDoc(collection(db, "participants"), registrationData);
       setSubmitted(true);
-      toast({ title: "Welcome to the Arena!", description: "Payment verified." });
+      toast({ title: "Welcome to the Arena!", description: entryFee > 0 ? "Payment verified." : "Registration confirmed." });
     } catch (e) {
       toast({ variant: "destructive", title: "Error", description: "Could not finalize registration." });
     } finally {
@@ -131,6 +134,17 @@ export default function TournamentRegistration() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label className="uppercase text-[10px] font-bold opacity-60">Skill Level</Label>
+                <Select value={formData.skillLevel} onValueChange={val => setFormData({...formData, skillLevel: val})}>
+                  <SelectTrigger className="bg-white/5 border-white/10 h-12"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button type="submit" className="w-full h-14 text-xl font-bold bg-primary uppercase tracking-widest">
                 Proceed to Checkout
               </Button>
@@ -149,12 +163,12 @@ export default function TournamentRegistration() {
             <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
                <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground uppercase tracking-widest text-[10px] font-bold">Registration Fee</span>
-                  <span className="font-mono text-xl font-bold text-emerald-400">${tournament?.entryFee?.toFixed(2)}</span>
+                  <span className="font-mono text-xl font-bold text-emerald-400">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
                </div>
                <div className="h-px bg-white/5" />
                <div className="flex justify-between items-center text-sm font-bold">
                   <span>TOTAL DUE</span>
-                  <span className="text-2xl">${tournament?.entryFee?.toFixed(2)}</span>
+                  <span className="text-2xl">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
                </div>
             </div>
 
@@ -163,11 +177,11 @@ export default function TournamentRegistration() {
                   <ShieldCheck className="h-5 w-5 text-primary mt-0.5" />
                   <div className="text-[10px] uppercase font-bold tracking-tight">
                     <p className="text-primary">Stripe Secure Encryption</p>
-                    <p className="text-muted-foreground/60">Your data is never stored on our servers.</p>
+                    <p className="text-muted-foreground/60">Payment handled via Court Control AI Platform.</p>
                   </div>
                </div>
                <Button className="w-full h-16 text-2xl font-bold bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-500/20 uppercase" onClick={handleCompleteRegistration} disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <DollarSign className="mr-2 h-6 w-6" />}
+                  {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <Zap className="mr-2 h-6 w-6" />}
                   Pay Now
                </Button>
                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setStep('details')}>Go Back</Button>
