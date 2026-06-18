@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock, DollarSign, AlertCircle } from "lucide-react"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock, DollarSign, AlertCircle, Shirt } from "lucide-react"
 import { collection, doc, setDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -76,6 +77,9 @@ export default function TournamentWizard() {
     recoveryTime: 15,
     numCourts: 0,
     entryFee: 0,
+    hasWelcomePack: false,
+    welcomePackDescription: "",
+    requiresSize: false,
     locations: [] as LocationEntry[],
     categories: [] as Category[]
   })
@@ -139,7 +143,6 @@ export default function TournamentWizard() {
   const handleLaunch = () => {
     if (!db || !clubId) return
     
-    // Final check for minimum fee
     if (formData.entryFee > 0 && formData.entryFee < 5) {
       toast({ 
         variant: "destructive", 
@@ -186,7 +189,7 @@ export default function TournamentWizard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter">Tournament Wizard</h1>
-          <p className="text-muted-foreground">Setup event identity and pricing.</p>
+          <p className="text-muted-foreground">Setup event identity, pricing, and perks.</p>
         </div>
       </div>
 
@@ -224,7 +227,6 @@ export default function TournamentWizard() {
                       <AlertCircle className="h-3 w-3" /> Minimum paid entry is $5.00
                     </p>
                   )}
-                  <p className="text-[10px] text-muted-foreground italic">Set to $0.00 for free registration.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Sport Category</Label>
@@ -248,6 +250,39 @@ export default function TournamentWizard() {
                   <Input type="date" className="bg-secondary/50 h-12" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
                 </div>
               </div>
+
+              <div className="pt-6 border-t border-white/5 space-y-4">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <Shirt className="h-5 w-5 text-accent" />
+                       <Label className="text-lg font-bold">Offer Welcome Pack?</Label>
+                    </div>
+                    <Switch 
+                      checked={formData.hasWelcomePack} 
+                      onCheckedChange={val => setFormData({...formData, hasWelcomePack: val})} 
+                    />
+                 </div>
+                 {formData.hasWelcomePack && (
+                   <div className="space-y-4 animate-in fade-in duration-300">
+                      <Textarea 
+                        placeholder="What's in the pack? (e.g. T-Shirt, Grips, Energy Drink)" 
+                        value={formData.welcomePackDescription}
+                        onChange={e => setFormData({...formData, welcomePackDescription: e.target.value})}
+                      />
+                      <div className="flex items-center justify-between p-4 bg-accent/10 rounded-xl">
+                         <div className="text-sm">
+                            <p className="font-bold">Collect Size Information?</p>
+                            <p className="text-xs text-muted-foreground">Players will select a size during registration.</p>
+                         </div>
+                         <Switch 
+                           checked={formData.requiresSize} 
+                           onCheckedChange={val => setFormData({...formData, requiresSize: val})} 
+                         />
+                      </div>
+                   </div>
+                 )}
+              </div>
+
               <div className="pt-4 flex justify-end">
                 <Button 
                   onClick={() => setStep(2)} 
@@ -327,8 +362,8 @@ export default function TournamentWizard() {
         {step === 4 && (
           <div className="p-12 text-center space-y-8">
              <Trophy className="h-20 w-20 text-primary mx-auto" />
-             <h2 className="text-4xl font-bold uppercase">Ready to Collect?</h2>
-             <p className="text-muted-foreground">Players will be charged <strong>${formData.entryFee.toFixed(2)}</strong> to join this tournament.</p>
+             <h2 className="text-4xl font-bold uppercase">Ready to Launch</h2>
+             <p className="text-muted-foreground">Tournament: <strong>{formData.name}</strong> is configured.</p>
              <div className="flex justify-center gap-4">
                 <Button variant="ghost" onClick={() => setStep(3)}>Edit</Button>
                 <Button size="lg" className="px-12" onClick={handleLaunch} disabled={isSubmitting}>

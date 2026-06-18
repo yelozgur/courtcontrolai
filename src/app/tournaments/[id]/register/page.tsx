@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, DollarSign, CreditCard, ShieldCheck, Zap, Lock, MessageSquare, Send } from 'lucide-react';
+import { Trophy, CheckCircle2, Loader2, User, Mail, DollarSign, CreditCard, ShieldCheck, Zap, Lock, MessageSquare, Send, Shirt } from 'lucide-react';
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -43,13 +44,18 @@ export default function TournamentRegistration() {
     email: "",
     telegramHandle: "",
     skillLevel: "intermediate",
-    categoryId: ""
+    categoryId: "",
+    packSize: ""
   });
 
   const handleNextToPayment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.categoryId && tournament?.categories?.length > 0) {
       toast({ variant: "destructive", title: "Selection Required", description: "Please select a bracket." });
+      return;
+    }
+    if (tournament?.requiresSize && !formData.packSize) {
+      toast({ variant: "destructive", title: "Size Required", description: "Please select your welcome pack size." });
       return;
     }
     setStep('payment');
@@ -100,24 +106,9 @@ export default function TournamentRegistration() {
           </div>
           <h2 className="text-4xl font-headline font-bold mb-4 uppercase tracking-tighter">Verified Entry</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            Welcome to <span className="text-white font-bold">{tournament?.name}</span>. Your registration is confirmed.
+            Welcome to <span className="text-white font-bold">{tournament?.name}</span>.
           </p>
           
-          <div className="bg-primary/10 border border-primary/20 p-6 rounded-3xl mb-8 space-y-4">
-             <div className="flex items-center justify-center gap-3 text-primary">
-                <Send className="h-5 w-5" />
-                <span className="font-bold uppercase tracking-widest text-xs">Live Notifications</span>
-             </div>
-             <p className="text-[11px] text-muted-foreground leading-relaxed">
-               Join our Telegram Bot to receive real-time court assignments and match alerts directly on your phone.
-             </p>
-             <Button className="w-full bg-[#22D3EE] hover:bg-[#22D3EE]/90 text-black font-bold h-12" asChild>
-                <a href={`https://t.me/${club?.telegramBotUsername || 'CourtControlBot'}`} target="_blank">
-                  <MessageSquare className="mr-2 h-4 w-4" /> Start Club Bot
-                </a>
-             </Button>
-          </div>
-
           <Button onClick={() => router.push("/tournaments")} variant="outline" className="w-full h-14 uppercase font-bold tracking-widest">Return to Feed</Button>
         </Card>
       </div>
@@ -137,7 +128,7 @@ export default function TournamentRegistration() {
           </div>
         )}
         <h1 className="text-5xl font-headline font-bold uppercase tracking-tighter leading-none">{tournament?.name}</h1>
-        <p className="text-xl text-muted-foreground uppercase tracking-widest font-medium opacity-60">Official Entry Portal</p>
+        <p className="text-xl text-muted-foreground uppercase tracking-widest font-medium opacity-60">Entry Portal</p>
       </div>
 
       <Card className="max-w-lg w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl relative overflow-hidden">
@@ -160,13 +151,7 @@ export default function TournamentRegistration() {
                   <Input required type="email" className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="uppercase text-[10px] font-bold tracking-[0.2em] opacity-60">Telegram @Handle (Optional)</Label>
-                <div className="relative">
-                  <MessageSquare className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                  <Input className="pl-10 bg-white/5 border-white/10 h-12 text-lg" placeholder="@username" value={formData.telegramHandle} onChange={e => setFormData({...formData, telegramHandle: e.target.value})} />
-                </div>
-              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="uppercase text-[10px] font-bold tracking-[0.2em] opacity-60">Competition Bracket</Label>
@@ -191,8 +176,34 @@ export default function TournamentRegistration() {
                   </Select>
                 </div>
               </div>
+
+              {tournament?.hasWelcomePack && (
+                <div className="p-4 bg-accent/5 rounded-xl border border-accent/10 space-y-4">
+                   <div className="flex items-center gap-2 text-accent">
+                      <Shirt className="h-4 w-4" />
+                      <span className="text-xs font-bold uppercase">Welcome Pack Included</span>
+                   </div>
+                   <p className="text-[10px] text-muted-foreground italic">{tournament.welcomePackDescription}</p>
+                   {tournament.requiresSize && (
+                     <div className="space-y-2">
+                        <Label className="text-[9px] uppercase font-bold opacity-60">Select Pack Size</Label>
+                        <Select value={formData.packSize} onValueChange={val => setFormData({...formData, packSize: val})}>
+                          <SelectTrigger className="bg-white/5 border-white/10 h-10"><SelectValue placeholder="Size..." /></SelectTrigger>
+                          <SelectContent>
+                             <SelectItem value="S">Small (S)</SelectItem>
+                             <SelectItem value="M">Medium (M)</SelectItem>
+                             <SelectItem value="L">Large (L)</SelectItem>
+                             <SelectItem value="XL">Extra Large (XL)</SelectItem>
+                             <SelectItem value="XXL">2XL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                     </div>
+                   )}
+                </div>
+              )}
+
               <Button type="submit" className="w-full h-16 text-xl font-bold bg-primary uppercase tracking-[0.2em] shadow-xl shadow-primary/20">
-                Continue to Secure Payment
+                Continue to Payment
               </Button>
             </form>
           </CardContent>
@@ -203,16 +214,11 @@ export default function TournamentRegistration() {
                   <CreditCard className="h-8 w-8 text-emerald-500" />
                </div>
                <h3 className="text-2xl font-bold uppercase tracking-tight">Checkout</h3>
-               <p className="text-muted-foreground text-sm">Review entry details for {tournament?.name}</p>
+               <p className="text-muted-foreground text-sm">Review registration for {tournament?.name}</p>
             </div>
 
             <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4 relative overflow-hidden">
                <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-               <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground uppercase tracking-[0.15em] text-[10px] font-bold">Standard Registration</span>
-                  <span className="font-mono text-xl font-bold text-white">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
-               </div>
-               <div className="h-px bg-white/5" />
                <div className="flex justify-between items-center text-sm font-bold">
                   <span className="text-emerald-500 uppercase tracking-widest text-[11px]">Total Due Today</span>
                   <span className="text-3xl font-headline tracking-tighter">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
@@ -220,25 +226,11 @@ export default function TournamentRegistration() {
             </div>
 
             <div className="space-y-6">
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                     <Label className="text-[9px] uppercase font-bold opacity-60">Card Number</Label>
-                     <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-3 w-3 text-muted-foreground" />
-                        <Input disabled value="**** **** **** 4242" className="bg-white/5 border-white/10 text-xs pl-8" />
-                     </div>
-                  </div>
-                  <div className="space-y-2">
-                     <Label className="text-[9px] uppercase font-bold opacity-60">CVV / Expiry</Label>
-                     <Input disabled value="*** / 12-26" className="bg-white/5 border-white/10 text-xs text-center" />
-                  </div>
-               </div>
-
                <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 flex items-start gap-4">
                   <ShieldCheck className="h-6 w-6 text-primary mt-1" />
                   <div className="text-[10px] uppercase font-bold tracking-tight space-y-1">
-                    <p className="text-white">Encrypted Checkout</p>
-                    <p className="text-muted-foreground leading-relaxed">Transactions are processed via Court Control AI using bank-grade AES-256 encryption.</p>
+                    <p className="text-white">Secure Transaction</p>
+                    <p className="text-muted-foreground leading-relaxed">Payments are protected by platform-grade encryption.</p>
                   </div>
                </div>
 
@@ -250,18 +242,14 @@ export default function TournamentRegistration() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="animate-spin mr-3 h-6 w-6" /> 
-                      Verifying...
+                      Processing...
                     </>
                   ) : (
                     <>
                       <Zap className="mr-3 h-6 w-6 text-white group-hover:scale-125 transition-transform" /> 
-                      Authorize & Pay
+                      Register & Pay
                     </>
                   )}
-               </Button>
-               
-               <Button variant="ghost" className="w-full text-muted-foreground text-xs uppercase tracking-widest font-bold" onClick={() => setStep('details')}>
-                 Go Back to Details
                </Button>
             </div>
           </CardContent>

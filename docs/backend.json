@@ -12,6 +12,9 @@
         "endDate": { "type": "string", "format": "date" },
         "entryFee": { "type": "number", "description": "Price in USD for registration" },
         "isFeatured": { "type": "boolean", "default": false },
+        "hasWelcomePack": { "type": "boolean", "default": false },
+        "welcomePackDescription": { "type": "string" },
+        "requiresSize": { "type": "boolean", "default": false },
         "locations": { 
           "type": "array", 
           "items": { 
@@ -81,6 +84,7 @@
         "verified": { "type": "boolean" },
         "paymentStatus": { "type": "string", "enum": ["pending", "paid", "waived"] },
         "paidAmount": { "type": "number" },
+        "packSize": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
