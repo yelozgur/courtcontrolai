@@ -12,10 +12,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { MapPin, Mail, ExternalLink, Loader2, Search, Building2, User, Trophy, BarChart3 } from 'lucide-react';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -86,8 +87,12 @@ export default function AdminClubsPage() {
                 {filtered.map((club) => (
                   <TableRow key={club.id} className="border-white/5 hover:bg-white/5 transition-colors">
                     <TableCell className="font-bold flex items-center gap-3">
-                       <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center overflow-hidden">
-                         {club.logoUrl ? <img src={club.logoUrl} className="w-full h-full object-cover" /> : <Building2 className="w-4 h-4 text-primary" />}
+                       <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center overflow-hidden relative">
+                         {club.logoUrl ? (
+                           <Image src={club.logoUrl} alt={club.name} width={32} height={32} className="object-cover" />
+                         ) : (
+                           <Building2 className="w-4 h-4 text-primary" />
+                         )}
                        </div>
                        {club.name}
                     </TableCell>
@@ -113,8 +118,12 @@ export default function AdminClubsPage() {
                         </DialogTrigger>
                         <DialogContent className="max-w-md bg-card border-white/10">
                            <DialogHeader>
-                              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
-                                {club.logoUrl ? <img src={club.logoUrl} className="w-12 h-12 object-contain" /> : <Building2 className="w-8 h-8 text-primary" />}
+                              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 relative overflow-hidden">
+                                {club.logoUrl ? (
+                                  <Image src={club.logoUrl} alt={club.name} width={64} height={64} className="object-contain" />
+                                ) : (
+                                  <Building2 className="w-8 h-8 text-primary" />
+                                )}
                               </div>
                               <DialogTitle className="text-2xl font-headline font-bold uppercase">{club.name}</DialogTitle>
                               <DialogDescription>Detailed organization profile and metrics.</DialogDescription>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -8,13 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, Award, DollarSign, CreditCard, ShieldCheck, Zap, Lock, Info, Send, MessageSquare } from 'lucide-react';
+import { Trophy, CheckCircle2, Loader2, User, Mail, DollarSign, CreditCard, ShieldCheck, Zap, Lock, MessageSquare, Send } from 'lucide-react';
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { cn } from "@/lib/utils";
+import Image from 'next/image';
 
 export default function TournamentRegistration() {
   const { id } = useParams();
@@ -129,7 +128,9 @@ export default function TournamentRegistration() {
     <div className="min-h-screen bg-[#0F172A] flex flex-col items-center py-16 px-6 text-white">
       <div className="max-w-lg w-full mb-12 text-center space-y-4">
         {club?.logoUrl ? (
-          <img src={club.logoUrl} className="h-16 w-16 object-contain mx-auto mb-4" alt="Club Logo" />
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <Image src={club.logoUrl} fill className="object-contain" alt="Club Logo" />
+          </div>
         ) : (
           <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/20 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
              <Trophy className="h-8 w-8 text-primary" />

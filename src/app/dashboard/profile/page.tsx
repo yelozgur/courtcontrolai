@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useState, useEffect } from "react"
@@ -13,8 +12,6 @@ import {
   CheckCircle, 
   Clock, 
   MapPin, 
-  User, 
-  Mail, 
   Award, 
   Loader2, 
   TrendingUp, 
@@ -22,14 +19,12 @@ import {
   Users, 
   Zap,
   ChevronRight,
-  ShieldCheck,
   Building,
-  Image as ImageIcon,
   Save
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
@@ -41,6 +36,11 @@ export default function PlayerProfile() {
 
   const [avatarUrl, setAvatarUrl] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // 1. Get User Profile
   const userProfileRef = useMemoFirebase(() => {
@@ -124,10 +124,7 @@ export default function PlayerProfile() {
     return { points, rank, level, progress }
   }, [registrations, clubParticipants, user?.email])
 
-  if (!user) return null
-
-  const isAdmin = profile?.role === 'admin'
-  const isClubOwner = !!ownedClub
+  if (!user || !mounted) return null
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
@@ -136,9 +133,9 @@ export default function PlayerProfile() {
         
         <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
           <div className="relative">
-            <div className="w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-[2rem] flex items-center justify-center text-5xl font-bold shadow-2xl shadow-primary/20 overflow-hidden border-2 border-white/10">
+            <div className="w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-[2rem] flex items-center justify-center text-5xl font-bold shadow-2xl shadow-primary/20 overflow-hidden border-2 border-white/10 relative">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" />
               ) : (
                 profile?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()
               )}
@@ -160,7 +157,7 @@ export default function PlayerProfile() {
             
             <div className="flex flex-wrap justify-center md:justify-start gap-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Mail className="h-4 w-4" /> {user.email}
+                <Zap className="h-4 w-4" /> {user.email}
               </div>
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Building className="h-4 w-4" /> {ownedClub?.name || registrations?.[0]?.clubName || "Global Circuit"}
@@ -319,7 +316,7 @@ export default function PlayerProfile() {
                 <div className="flex justify-center p-8"><Loader2 className="animate-spin text-accent" /></div>
               ) : checkins && checkins.length > 0 ? (
                 checkins.map((check) => (
-                  <Card key={check.id} className="bg-white/5 border-white/5 group hover:bg-white/10 transition-all">
+                  <Card key={check.id} className="bg-white/5 border-white/10 group hover:bg-white/10 transition-all">
                     <CardContent className="p-4 flex items-start gap-4">
                       <div className="p-2.5 bg-emerald-500/20 rounded-2xl group-hover:scale-110 transition-transform">
                         <CheckCircle className="h-4 w-4 text-emerald-500" />

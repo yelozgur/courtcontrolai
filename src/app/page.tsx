@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -79,6 +78,7 @@ export default function HomePage() {
               priority 
               className="object-cover opacity-20 pointer-events-none"
               data-ai-hint="sports tournament"
+              sizes="100vw"
             />
           )}
           <div className="container px-4 md:px-6 relative z-10 mx-auto">

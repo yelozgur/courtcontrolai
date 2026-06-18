@@ -7,13 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, CheckCircle2, Loader2, MapPin, Search, LogIn, ArrowLeft, AlertCircle, Heart, Building } from "lucide-react"
+import { CheckCircle2, Loader2, MapPin, Building, Heart } from "lucide-react"
 import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, limit } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import Link from 'next/link';
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 export default function PublicCheckInPage() {
@@ -83,7 +83,6 @@ export default function PublicCheckInPage() {
         location: selectedLocation || (tournament.locations?.[0]?.name || "Main Venue")
       }
       
-      // Mutation follows non-blocking guide: use .then() / .catch() instead of await
       addDoc(collection(db, "checkins"), checkInData)
         .then(() => {
           setSubmitted(true)
@@ -117,7 +116,7 @@ export default function PublicCheckInPage() {
           </div>
           <h2 className="text-4xl font-headline font-bold mb-4 uppercase">Verified</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            Welcome to <span className="text-white font-bold">{tournament.name}</span>. Arrival verified.
+            Welcome to <span className="text-white font-bold">{tournament?.name}</span>. Arrival verified.
           </p>
           <Button onClick={() => window.location.reload()} variant="outline" className="w-full">Done</Button>
         </Card>
@@ -129,12 +128,14 @@ export default function PublicCheckInPage() {
     <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white">
       <div className="mb-10 text-center space-y-4">
         {club?.logoUrl ? (
-          <img src={club.logoUrl} alt={club.name} className="h-16 w-16 object-contain mx-auto mb-4" />
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <Image src={club.logoUrl} fill className="object-contain" alt={club.name} />
+          </div>
         ) : (
           <MapPin className="h-12 w-12 text-primary mx-auto mb-4 shadow-2xl shadow-primary/20" />
         )}
         <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter leading-none">Venue Arrival</h1>
-        <p className="text-lg text-muted-foreground font-medium">{tournament.name}</p>
+        <p className="text-lg text-muted-foreground font-medium">{tournament?.name}</p>
       </div>
 
       <Card className="max-w-md w-full bg-card/40 border-white/5 shadow-2xl backdrop-blur-xl overflow-hidden">
@@ -150,7 +151,7 @@ export default function PublicCheckInPage() {
               <Input required type="email" className="bg-white/5 border-white/10 h-12 text-lg" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
 
-            {tournament.locations?.length > 0 && (
+            {tournament?.locations?.length > 0 && (
               <div className="space-y-2">
                 <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Playing At</Label>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
@@ -168,7 +169,7 @@ export default function PublicCheckInPage() {
             )}
             
             <Button type="submit" className="w-full h-14 text-xl font-bold bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 uppercase tracking-widest" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <LogIn className="mr-2 h-6 w-6" />}
+              {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <MapPin className="mr-2 h-6 w-6" />}
               Verify Arrival
             </Button>
           </form>
@@ -182,7 +183,9 @@ export default function PublicCheckInPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-10">
             {tournamentSponsors.map(s => (
-              <img key={s.id} src={s.logoUrl} alt={s.name} className={cn("opacity-30 grayscale hover:grayscale-0 hover:opacity-100 transition-all", s.tier === "gold" ? "h-10" : s.tier === "silver" ? "h-8" : "h-6")} />
+              <div key={s.id} className="relative h-10 w-24 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all">
+                <Image src={s.logoUrl} alt={s.name} fill className="object-contain" />
+              </div>
             ))}
           </div>
         </div>

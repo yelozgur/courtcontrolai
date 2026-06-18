@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -79,6 +78,7 @@ export default function PublicTournaments() {
                     priority={i < 3}
                     className="object-cover opacity-60 group-hover:opacity-80 transition-opacity"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    data-ai-hint="sports tournament"
                   />
                   <Badge className="absolute top-4 right-4 bg-primary uppercase tracking-widest">{t.sport || 'SPORTS'}</Badge>
                   <Badge className="absolute bottom-4 left-4 bg-accent text-accent-foreground uppercase text-[10px] font-bold">
