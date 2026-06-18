@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, Globe, ShieldCheck } from 'lucide-react';
+import { Zap, LogIn, Loader2, Mail, Lock, Globe } from 'lucide-react';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -68,8 +68,6 @@ export default function LoginPage() {
     } catch (error: any) {
       if (error.code === 'auth/unauthorized-domain') {
         setErrorType('domain');
-      } else if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
-        setErrorType('config');
       } else {
         setErrorType('creds');
       }
@@ -117,8 +115,6 @@ export default function LoginPage() {
     } catch (error: any) {
       if (error.code === 'auth/unauthorized-domain') {
         setErrorType('domain');
-      } else if (error.code === 'auth/configuration-not-found' || error.message.includes('auth/api-key-not-valid')) {
-        setErrorType('config');
       }
       toast({
         variant: 'destructive',
@@ -161,11 +157,6 @@ export default function LoginPage() {
               <AlertTitle className="font-bold">Unauthorized Domain</AlertTitle>
               <AlertDescription className="mt-2 space-y-2">
                 <p className="text-xs">Your current domain is not authorized in Firebase Console.</p>
-                <div className="text-[10px] bg-black/20 p-2 rounded border border-white/5 space-y-1">
-                  <p>1. Go to Firebase Console</p>
-                  <p>2. Auth &gt; Settings &gt; Authorized domains</p>
-                  <p>3. Add: <span className="text-primary font-mono">{typeof window !== 'undefined' ? window.location.hostname : 'current domain'}</span></p>
-                </div>
               </AlertDescription>
             </Alert>
           )}

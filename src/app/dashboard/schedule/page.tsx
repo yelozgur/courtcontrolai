@@ -4,8 +4,8 @@
 import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Database, AlertCircle, Building, Sparkles, Trash2, Info, DollarSign, BrainCircuit, Users2, History } from "lucide-react"
-import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, updateDoc, increment, deleteDoc } from "firebase/firestore"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Building, Sparkles, Trash2, BrainCircuit, Users2, Gavel } from "lucide-react"
+import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, deleteDoc, increment } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -24,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { format, differenceInDays } from "date-fns"
+import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
@@ -35,13 +35,12 @@ export default function SchedulingPage() {
   const { user } = useUser()
   const { toast } = useToast()
   
-  const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [view, setView] = useState<'matrix' | 'list'>('matrix')
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isAddingMatch, setIsAddingMatch] = useState(false)
   const [isOptimizing, setIsOptimizing] = useState(false)
-  const [showAiPricing, setShowAiPricing] = useState(false)
   const [showOptimizationSettings, setShowOptimizationSettings] = useState(false)
   const [aiInstructions, setAiInstructions] = useState("")
   const [participantsCount, setParticipantsCount] = useState(0)
@@ -82,14 +81,14 @@ export default function SchedulingPage() {
 
   const activeTournament = tournaments?.find(t => t.id === selectedTournamentId)
 
-  // Fetch participants count for the selected tournament
+  // Fetch participants count
   useEffect(() => {
     if (!db || !selectedTournamentId) return
     const pQuery = query(collection(db, "participants"), where("tournamentId", "==", selectedTournamentId))
     getDocs(pQuery).then(snap => setParticipantsCount(snap.size))
   }, [db, selectedTournamentId])
 
-  // Fetch matches for the selected tournament
+  // Fetch matches
   const matchesQuery = useMemoFirebase(() => {
     if (!db || !selectedTournamentId) return null
     return query(
@@ -106,8 +105,6 @@ export default function SchedulingPage() {
   const getTimeStr = (val: any) => {
     if (!val) return ""
     try {
-      if (val.seconds !== undefined) return format(new Date(val.seconds * 1000), "HH:mm")
-      if (val instanceof Date) return format(val, "HH:mm")
       if (typeof val === 'string') {
         const parts = val.split('T')
         return parts.length > 1 ? parts[1].substring(0, 5) : val.substring(0, 5)
@@ -116,15 +113,26 @@ export default function SchedulingPage() {
     return ""
   }
 
-  const filteredMatches = useMemo(() => {
-    if (!rawMatches) return []
-    return rawMatches.filter(m => {
-      const matchDate = m.startTime?.split('T')[0]
-      const locName = typeof m.location === 'object' ? m.location.name : m.location
-      const locationMatch = selectedLocation === "all" || locName === selectedLocation
-      return matchDate === selectedDateStr && locationMatch
-    }).sort((a, b) => getTimeStr(a.startTime).localeCompare(getTimeStr(b.startTime)))
-  }, [rawMatches, selectedDateStr, selectedLocation])
+  // Matrix Construction Logic
+  const timeSlots = Array.from({ length: 14 }, (_, i) => `${(i + 9).toString().padStart(2, '0')}:00`)
+  const courtsCount = activeTournament?.numCourts || 1
+  const courts = Array.from({ length: courtsCount }, (_, i) => i + 1)
+
+  const matrixData = useMemo(() => {
+    const grid: Record<string, any> = {}
+    if (!rawMatches) return grid
+
+    rawMatches.forEach(m => {
+      const mDate = m.startTime?.split('T')[0]
+      if (mDate !== selectedDateStr) return
+      
+      const mTime = getTimeStr(m.startTime)
+      const mCourt = m.court
+      const key = `${mTime}-${mCourt}`
+      grid[key] = m
+    })
+    return grid
+  }, [rawMatches, selectedDateStr])
 
   const handleCreateMatch = () => {
     if (!db || !clubId || !selectedTournamentId) return
@@ -155,39 +163,25 @@ export default function SchedulingPage() {
 
   const handleDeleteMatch = (matchId: string) => {
     if (!db) return
-    const matchRef = doc(db, "matches", matchId);
+    const matchRef = doc(db, "matches", matchId)
     deleteDoc(matchRef)
-      .then(() => toast({ title: "Match Deleted" }))
+      .then(() => toast({ title: "Match Removed" }))
       .catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: matchRef.path, operation: 'delete' }));
-      });
-  }
-
-  const handleAutoScheduleTrigger = () => {
-    if (!selectedTournamentId) return
-    setShowOptimizationSettings(true)
-  }
-
-  const proceedToAutoSchedule = () => {
-    setShowOptimizationSettings(false)
-    if (aiUsage >= 3 && (aiUsage - 3) % 3 === 0) {
-      setShowAiPricing(true)
-    } else {
-      handleAutoSchedule()
-    }
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: matchRef.path, operation: 'delete' }))
+      })
   }
 
   const handleAutoSchedule = async () => {
     if (!db || !activeTournament || !clubId) return
     setIsOptimizing(true)
-    setShowAiPricing(false)
+    setShowOptimizationSettings(false)
 
     try {
       const pSnap = await getDocs(query(collection(db, "participants"), where("tournamentId", "==", activeTournament.id)))
       const participants = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
 
       if (participants.length < 2) {
-        toast({ variant: "destructive", title: "No Participants", description: "At least 2 registered players needed." })
+        toast({ variant: "destructive", title: "Roster Empty", description: "Register players before optimizing." })
         setIsOptimizing(false)
         return
       }
@@ -228,17 +222,15 @@ export default function SchedulingPage() {
       batch.update(clubRef, { aiUsageCount: increment(1) })
 
       await batch.commit()
-      toast({ title: "AI Optimization Success", description: `Created ${result.scheduledMatches.length} matches.` })
+      toast({ title: "AI Director Success", description: `Optimized ${result.scheduledMatches.length} matches.` })
       if (result.scheduledMatches.length > 0) setSelectedDate(new Date(result.scheduledMatches[0].startTime))
 
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Optimization Failed" })
+      toast({ variant: "destructive", title: "Optimization Error" })
     } finally {
       setIsOptimizing(false)
     }
   }
-
-  const isFreeRun = aiUsage < 3
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -246,8 +238,8 @@ export default function SchedulingPage() {
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
           <div className="text-muted-foreground flex items-center gap-2">
-            Manage timings and court allocations. 
-            <Badge variant="outline" className={cn("text-[10px] border-none font-bold uppercase", isFreeRun ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500")}>
+            Automated court allocations and bracket management.
+            <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-none">
               AI Runs: {aiUsage}/3 Free
             </Badge>
           </div>
@@ -256,9 +248,9 @@ export default function SchedulingPage() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={handleAutoScheduleTrigger} 
+            onClick={() => setShowOptimizationSettings(true)} 
             disabled={isOptimizing || !selectedTournamentId} 
-            className="border-primary text-primary hover:bg-primary/10 shadow-[0_0_15px_rgba(139,92,246,0.2)]"
+            className="border-primary text-primary hover:bg-primary/10 shadow-lg shadow-primary/10"
           >
             {isOptimizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
             AI Auto-Schedule
@@ -266,7 +258,7 @@ export default function SchedulingPage() {
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="bg-card border-white/5">
+              <Button variant="outline" className="bg-card border-white/5 h-10">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(selectedDate, "PPP")}
               </Button>
@@ -279,148 +271,158 @@ export default function SchedulingPage() {
             <SelectContent>{tournaments?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
 
-          <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary"><Plus className="w-4 h-4 mr-2" /> Add Match</Button>
+          <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary"><Plus className="w-4 h-4 mr-2" /> Manual Match</Button>
         </div>
       </div>
 
       <Dialog open={showOptimizationSettings} onOpenChange={setShowOptimizationSettings}>
         <DialogContent className="bg-card border-white/10 max-w-lg">
           <DialogHeader>
-            <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-4">
-              <BrainCircuit className="w-6 h-6 text-primary" />
-            </div>
-            <DialogTitle className="font-headline text-2xl uppercase">AI Optimization Strategy</DialogTitle>
-            <DialogDescription>
-              Provide specific instructions to the Tournament Director AI.
-            </DialogDescription>
+            <DialogTitle className="font-headline text-2xl uppercase">AI Director Setup</DialogTitle>
+            <DialogDescription>Optimize your bracket logic and court usage.</DialogDescription>
           </DialogHeader>
-          
           <div className="grid gap-6 py-4">
-             <div className="grid grid-cols-2 gap-4">
+             <div className="grid grid-cols-2 gap-4 text-center">
                 <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Participants</p>
-                   <p className="text-xl font-bold flex items-center gap-2"><Users2 className="h-4 w-4 text-primary" /> {participantsCount}</p>
+                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Total Players</p>
+                   <p className="text-xl font-bold">{participantsCount}</p>
                 </div>
                 <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Venues</p>
-                   <p className="text-xl font-bold flex items-center gap-2"><Building className="h-4 w-4 text-accent" /> {activeTournament?.locations?.length || 1}</p>
+                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Type</p>
+                   <p className="text-xl font-bold uppercase text-accent">{activeTournament?.sport}</p>
                 </div>
              </div>
-
              <div className="space-y-2">
-                <Label className="text-xs uppercase font-bold text-muted-foreground">Strategic Instructions</Label>
+                <Label className="text-xs uppercase font-bold text-muted-foreground">Strategic Goals</Label>
                 <Textarea 
-                  placeholder="e.g. 'Finish Men's Pro by 2pm', 'Allocate court 1 strictly for gold category'..."
+                  placeholder="e.g. 'Prioritize court 1 for semifinals', 'Finish all junior matches by 12:00'..."
                   className="min-h-[120px] bg-background/50 border-white/10"
                   value={aiInstructions}
                   onChange={(e) => setAiInstructions(e.target.value)}
                 />
              </div>
           </div>
-
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowOptimizationSettings(false)}>Cancel</Button>
-            <Button onClick={proceedToAutoSchedule} className="bg-primary">
-              Generate Schedule
-            </Button>
+            <Button onClick={handleAutoSchedule} className="bg-primary">Launch Optimizer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-6">
-        <Tabs value={view} onValueChange={(v: any) => setView(v)}>
-          <div className="flex justify-between items-center mb-4">
-            <TabsList className="bg-secondary/30">
-              <TabsTrigger value="grid"><LayoutGrid className="w-4 h-4 mr-2" /> Grid</TabsTrigger>
-              <TabsTrigger value="list"><List className="w-4 h-4 mr-2" /> List</TabsTrigger>
-            </TabsList>
-            <div className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-4 py-1.5 rounded-full border border-accent/20 flex items-center gap-2">
-              <Building className="w-3 h-3" /> {selectedLocation === "all" ? "ALL VENUES" : selectedLocation}
-            </div>
-          </div>
+      <Tabs value={view} onValueChange={(v: any) => setView(v)}>
+        <div className="flex justify-between items-center mb-6">
+          <TabsList className="bg-secondary/30">
+            <TabsTrigger value="matrix"><LayoutGrid className="w-4 h-4 mr-2" /> Matrix</TabsTrigger>
+            <TabsTrigger value="list"><List className="w-4 h-4 mr-2" /> List Feed</TabsTrigger>
+          </TabsList>
+        </div>
 
-          <TabsContent value="grid">
-             {!selectedTournamentId ? (
-               <Card className="bg-card/50 border-white/5 border-dashed p-20 text-center">
-                 <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-10" />
-                 <p className="text-muted-foreground italic">Select a tournament to view the planner.</p>
-               </Card>
-             ) : filteredMatches.length > 0 ? (
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {filteredMatches.map(match => (
-                   <Card key={match.id} className="bg-card/50 border-white/5 group hover:border-primary/40 transition-all overflow-hidden">
-                      <div className="h-1.5 bg-primary/20 group-hover:bg-primary transition-all"></div>
-                      <CardHeader className="p-4 pb-2">
-                        <div className="flex justify-between items-center mb-2">
-                           <Badge variant="outline" className="text-[10px] uppercase border-white/10">{match.category}</Badge>
-                           <div className="flex items-center gap-1 text-[10px] font-bold text-accent">
-                              <Clock className="w-3 h-3" /> {getTimeStr(match.startTime)}
-                           </div>
-                        </div>
-                        <CardTitle className="text-lg font-bold flex flex-col">
-                           <span>{match.teamA?.name}</span>
-                           <span className="text-xs text-muted-foreground my-1">vs</span>
-                           <span>{match.teamB?.name}</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0 text-[10px] uppercase font-bold text-muted-foreground flex justify-between items-center">
-                         <div className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" /> {typeof match.location === 'object' ? match.location.name : match.location}
-                         </div>
-                         <div className="bg-secondary/30 px-2 py-0.5 rounded">Court {match.court}</div>
-                      </CardContent>
-                      <div className="p-2 bg-black/20 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteMatch(match.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                         </Button>
+        <TabsContent value="matrix" className="mt-0">
+          <div className="overflow-x-auto rounded-[2rem] border border-white/5 bg-card/40 backdrop-blur-xl">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="p-4 bg-black/20 border-b border-r border-white/5 w-24 sticky left-0 z-10">
+                    <Clock className="w-4 h-4 text-muted-foreground mx-auto" />
+                  </th>
+                  {courts.map(c => (
+                    <th key={c} className="p-4 bg-black/20 border-b border-white/5 min-w-[200px]">
+                      <div className="flex items-center justify-center gap-2">
+                        <Badge variant="outline" className="border-accent text-accent">Court {c}</Badge>
                       </div>
-                   </Card>
-                 ))}
-               </div>
-             ) : (
-                <div className="p-20 text-center italic text-muted-foreground border-dashed border-2 rounded-xl border-white/5">
-                  No matches for this date.
-                </div>
-             )}
-          </TabsContent>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {timeSlots.map(time => (
+                  <tr key={time} className="group">
+                    <td className="p-4 text-center font-mono text-sm font-bold text-muted-foreground bg-black/10 border-r border-white/5 sticky left-0 z-10">
+                      {time}
+                    </td>
+                    {courts.map(court => {
+                      const match = matrixData[`${time}-${court}`]
+                      return (
+                        <td key={court} className="p-2 border-r border-white/5 relative h-28 group/cell transition-colors hover:bg-white/[0.02]">
+                          {match ? (
+                            <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 h-full flex flex-col justify-between group/card relative">
+                              <div className="flex justify-between items-start mb-1">
+                                <Badge className="text-[8px] bg-primary/20 text-primary border-none uppercase px-1.5">{match.category}</Badge>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive opacity-0 group-hover/card:opacity-100 transition-opacity" onClick={() => handleDeleteMatch(match.id)}>
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                              <div className="text-xs font-bold leading-tight flex flex-col gap-1">
+                                <span className="truncate">{match.teamA.name}</span>
+                                <span className="text-[9px] text-muted-foreground opacity-50 font-normal">vs</span>
+                                <span className="truncate">{match.teamB.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1 mt-1">
+                                <div className={cn("w-1.5 h-1.5 rounded-full", match.status === 'live' ? 'bg-accent animate-pulse' : 'bg-muted-foreground/30')} />
+                                <span className="text-[8px] uppercase tracking-widest font-bold opacity-60">{match.status}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              className="w-full h-full border border-dashed border-white/5 opacity-0 group-hover/cell:opacity-100 transition-all rounded-xl flex flex-col gap-2 text-muted-foreground"
+                              onClick={() => {
+                                setNewMatch({...newMatch, time, court})
+                                setIsAddingMatch(true)
+                              }}
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span className="text-[10px] uppercase font-bold tracking-widest">Assign Slot</span>
+                            </Button>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="list">
-             <div className="space-y-4">
-                {filteredMatches.length > 0 ? filteredMatches.map(match => (
-                  <Card key={match.id} className="bg-card/50 border-white/5 p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
-                     <div className="flex items-center gap-6">
-                        <div className="w-20 text-center bg-secondary/30 p-2 rounded-xl">
-                          <p className="text-xs font-bold text-primary">{getTimeStr(match.startTime)}</p>
-                        </div>
-                        <div>
-                          <h4 className="font-bold">{match.teamA?.name} vs {match.teamB?.name}</h4>
-                          <p className="text-[10px] text-muted-foreground uppercase">{match.category} • Court {match.court} • {typeof match.location === 'object' ? match.location.name : match.location}</p>
-                        </div>
-                     </div>
-                     <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="uppercase text-[10px] border-white/10">{match.status}</Badge>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-all" onClick={() => handleDeleteMatch(match.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                     </div>
-                  </Card>
-                )) : <div className="p-20 text-center italic text-muted-foreground border-dashed border-2 rounded-xl border-white/5">No matches for this date.</div>}
-             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+        <TabsContent value="list">
+          <div className="space-y-4">
+            {Object.values(matrixData).length > 0 ? Object.values(matrixData).sort((a,b) => a.startTime.localeCompare(b.startTime)).map(match => (
+              <Card key={match.id} className="bg-card/50 border-white/5 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="bg-secondary/30 p-2 rounded-xl text-center min-w-[80px]">
+                    <p className="text-xs font-bold text-primary">{getTimeStr(match.startTime)}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold">{match.teamA.name} vs {match.teamB.name}</h4>
+                    <p className="text-[10px] text-muted-foreground uppercase">{match.category} • Court {match.court}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Badge variant="outline" className="uppercase text-[9px]">{match.status}</Badge>
+                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteMatch(match.id)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              </Card>
+            )) : (
+              <div className="p-20 text-center italic text-muted-foreground border-dashed border-2 rounded-[2rem] border-white/5">
+                No matches scheduled for this date.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isAddingMatch} onOpenChange={setIsAddingMatch}>
         <DialogContent className="bg-card border-white/10">
-          <DialogHeader><DialogTitle>Manual Match Entry</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Manual Match Allocation</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
                <div className="space-y-2">
-                 <Label>Home Team/Player</Label>
+                 <Label>Home Competitor</Label>
                  <Input value={newMatch.teamA} onChange={e => setNewMatch({...newMatch, teamA: e.target.value})} />
                </div>
                <div className="space-y-2">
-                 <Label>Away Team/Player</Label>
+                 <Label>Away Competitor</Label>
                  <Input value={newMatch.teamB} onChange={e => setNewMatch({...newMatch, teamB: e.target.value})} />
                </div>
             </div>
@@ -430,14 +432,14 @@ export default function SchedulingPage() {
                  <Input type="number" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
                </div>
                <div className="space-y-2">
-                 <Label>Time (HH:MM)</Label>
+                 <Label>Time Slot</Label>
                  <Input type="time" value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} />
                </div>
             </div>
           </div>
           <DialogFooter>
              <Button variant="ghost" onClick={() => setIsAddingMatch(false)}>Cancel</Button>
-             <Button onClick={handleCreateMatch} className="bg-primary">Schedule Match</Button>
+             <Button onClick={handleCreateMatch} className="bg-primary">Lock Match</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -86,12 +86,12 @@ STRATEGIC GOALS (HIGH PRIORITY):
 {{/if}}
 
 RULES:
-1. FOR ROUND ROBIN: Every player in a category must play every other player in that same category exactly once.
-2. FOR SINGLE ELIMINATION: Create the first round of matches based on the number of participants. If odd, provide one 'Bye' or simply pair as many as possible.
-3. CLASH PREVENTION: A participant cannot be in two places at once. Schedule their matches with at least {{{recoveryTime}}} minutes of buffer.
-4. COURT ASSIGNMENT: Distribute matches across available courts in the specified locations.
-5. START TIME: Begin matches at 09:00 AM on the start date. If multiple days are available, distribute matches across days logically. Use the specified {{{timezone}}} for all output timestamps.
-6. OUTPUT: Generate a comprehensive list of scheduled matches that honors the STRATEGIC GOALS if provided.`,
+1. FOR ROUND ROBIN: Every player in a category must play every other player in that same category exactly once. Pair them efficiently across courts.
+2. FOR SINGLE ELIMINATION: Create the first round of matches (Round of 16, Quarter-finals, etc.) based on the number of participants. If odd, provide a 'Bye'.
+3. CLASH PREVENTION: A participant cannot be in two places at once. Ensure a minimum of {{{recoveryTime}}} minutes between their matches.
+4. COURT ASSIGNMENT: Distribute matches evenly across available courts. Use Court 1 for highest category matches if possible.
+5. START TIME: Begin matches at 09:00 AM on the start date. Use 30-min or 60-min increments based on {{{matchDuration}}}.
+6. OUTPUT: Generate a comprehensive list of scheduled matches that honors these constraints.`,
 });
 
 export async function optimizeTournamentSchedule(input: ScheduleInput): Promise<ScheduleOutput> {

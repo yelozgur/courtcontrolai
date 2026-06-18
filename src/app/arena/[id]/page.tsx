@@ -31,7 +31,6 @@ export default function TournamentArena() {
 
   const { data: tournament, loading: tourneyLoading } = useDoc(tournamentRef)
 
-  // Fetch club to get the correct timezone
   const clubRef = useMemoFirebase(() => {
     if (!db || !tournament?.clubId) return null
     return doc(db, "clubs", tournament.clubId)
@@ -41,7 +40,6 @@ export default function TournamentArena() {
   const clubTimezone = club?.timezone || "UTC"
 
   useEffect(() => {
-    // Synchronize Arena clock with venue time
     setTime(new Date())
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
@@ -106,7 +104,6 @@ export default function TournamentArena() {
       .slice(0, 4)
   }, [allMatches, selectedLocation])
 
-  // Helper to format time in club timezone
   const formatVenueTime = (date: Date) => {
     return date.toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -128,9 +125,9 @@ export default function TournamentArena() {
     return (
       <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-white text-center">
         <AlertCircle className="h-16 w-16 text-destructive mb-4 opacity-50" />
-        <h2 className="text-3xl font-headline font-bold uppercase">Arena Restricted</h2>
+        <h2 className="text-3xl font-headline font-bold uppercase">Arena Offline</h2>
         <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-          We encountered an error loading live results. Please check security rules or connection.
+          We encountered an error loading live results. Please check your connection.
         </p>
         <Button onClick={() => window.location.reload()} variant="outline" className="mt-8">Retry Connection</Button>
       </div>
@@ -148,11 +145,11 @@ export default function TournamentArena() {
             <Zap className="h-10 w-10 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-headline font-bold tracking-tighter uppercase">
+            <h1 className="text-4xl font-headline font-bold tracking-tighter uppercase leading-none mb-1">
               {tourneyLoading ? "Connecting..." : (tournament?.name || "Live Arena")}
             </h1>
             <div className="text-xl text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-2">
-              Real-time Scoring Dashboard <Badge variant="outline" className="text-[10px] border-accent/30 text-accent font-mono flex items-center gap-1"><Globe className="h-3 w-3" /> {clubTimezone}</Badge>
+              Arena Dashboard <Badge variant="outline" className="text-[10px] border-accent/30 text-accent font-mono flex items-center gap-1"><Globe className="h-3 w-3" /> {clubTimezone}</Badge>
             </div>
           </div>
         </div>
@@ -160,7 +157,7 @@ export default function TournamentArena() {
         <div className="flex items-center gap-12">
           <div className="w-64">
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
-              <MapPin className="h-3 w-3" /> Venue Selection
+              <MapPin className="h-3 w-3" /> Venue Context
             </div>
             <Select value={selectedLocation} onValueChange={setSelectedLocation}>
               <SelectTrigger className="bg-white/5 border-white/10 text-white h-12">
@@ -197,7 +194,7 @@ export default function TournamentArena() {
         <div className="col-span-2 space-y-8 overflow-y-auto pr-4 scrollbar-hide">
           <h2 className="text-3xl font-headline font-bold flex items-center gap-4">
             <span className="w-4 h-4 rounded-full bg-accent animate-pulse"></span>
-            Live On Courts {selectedLocation !== "all" && <span className="text-muted-foreground text-xl font-normal">at {selectedLocation}</span>}
+            On Courts Now {selectedLocation !== "all" && <span className="text-muted-foreground text-xl font-normal">at {selectedLocation}</span>}
           </h2>
           
           <div className="grid gap-6">
@@ -245,15 +242,15 @@ export default function TournamentArena() {
 
                   <div className="text-right pl-12 border-l border-white/5 min-w-[150px]">
                     <Badge className="bg-primary/20 text-primary border-primary mb-2 text-sm px-4 py-1 uppercase">{match.category}</Badge>
-                    <p className="text-muted-foreground font-mono text-xs mb-1 uppercase tracking-widest">{typeof match.location === 'object' ? match.location.name : (match.location || 'Main Venue')}</p>
-                    <p className="text-accent font-bold font-mono">LIVE</p>
+                    <div className="text-muted-foreground font-mono text-xs mb-1 uppercase tracking-widest">{typeof match.location === 'object' ? match.location.name : (match.location || 'Main Venue')}</div>
+                    <div className="text-accent font-bold font-mono">LIVE</div>
                   </div>
                 </div>
               ))
             ) : upcomingMatches.length > 0 ? (
               <div className="space-y-6">
                  <div className="bg-card/40 border border-white/5 rounded-3xl p-12 text-center">
-                    <p className="text-xl text-muted-foreground mb-8">No matches currently in progress. Showing upcoming scheduled matches.</p>
+                    <p className="text-xl text-muted-foreground mb-8">No live matches. Displaying upcoming queue.</p>
                     <div className="grid gap-4">
                        {upcomingMatches.map(m => (
                          <div key={m.id} className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
@@ -275,7 +272,7 @@ export default function TournamentArena() {
               </div>
             ) : (
               <div className="bg-card/40 border border-white/5 rounded-3xl p-20 text-center">
-                <p className="text-2xl text-muted-foreground">No matches scheduled or live {selectedLocation !== "all" ? `at ${selectedLocation}` : "in this arena"}.</p>
+                <p className="text-2xl text-muted-foreground">No matches scheduled or live.</p>
               </div>
             )}
           </div>
@@ -317,22 +314,8 @@ export default function TournamentArena() {
                   </div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground italic py-10 text-sm">No matches finished yet.</p>
+                <p className="text-center text-muted-foreground italic py-10 text-sm">Waiting for results...</p>
               )}
-            </div>
-          </div>
-          <div className="bg-[#1E293B]/50 rounded-3xl p-8 border border-white/5">
-            <div className="bg-primary/10 rounded-3xl p-6 text-center">
-                <Activity className="h-10 w-10 text-primary mx-auto mb-4" />
-                <h3 className="text-xl font-headline font-bold">Arena Hub</h3>
-                <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                  Real-time court assignments and automated scheduling powered by Court Control AI.
-                </p>
-                <div className="mt-6 flex justify-center opacity-40">
-                  <div className="w-24 h-24 bg-white rounded-xl p-2">
-                     <svg viewBox="0 0 24 24" fill="black"><path d="M3 3h7v7H3zm2 2v3h3V5zm8-2h7v7h-7zm2 2v3h3V5zM3 14h7v7H3zm2 2v3h3v-3zm10 0h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4-2h2v2h-2zm0-4h2v2h-2z"/></svg>
-                  </div>
-                </div>
             </div>
           </div>
         </div>
