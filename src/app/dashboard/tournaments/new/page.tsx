@@ -10,8 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock } from "lucide-react"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock, DollarSign } from "lucide-react"
 import { collection, doc, setDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -77,6 +76,7 @@ export default function TournamentWizard() {
     matchDuration: 60,
     recoveryTime: 15,
     numCourts: 0,
+    entryFee: 0,
     locations: [] as LocationEntry[],
     categories: [] as Category[]
   })
@@ -87,7 +87,6 @@ export default function TournamentWizard() {
     }
   }, [clubSport, formData.sport])
 
-  // Sync total courts whenever locations change
   useEffect(() => {
     const total = formData.locations.reduce((acc, loc) => acc + loc.numCourts, 0);
     setFormData(prev => ({ ...prev, numCourts: total }));
@@ -139,15 +138,7 @@ export default function TournamentWizard() {
   }
 
   const handleLaunch = () => {
-    if (!db || !clubId) {
-      toast({
-        variant: "destructive",
-        title: "Configuration Error",
-        description: "Club context is missing. Please refresh the page."
-      })
-      return
-    }
-    
+    if (!db || !clubId) return
     setIsSubmitting(true)
     
     const tournamentsCollection = collection(db, "tournaments")
@@ -158,17 +149,12 @@ export default function TournamentWizard() {
       clubId,
       status: "active",
       createdAt: serverTimestamp(),
-      numCourts: Number(formData.numCourts) || 0,
-      matchDuration: Number(formData.matchDuration) || 60,
-      recoveryTime: Number(formData.recoveryTime) || 15
+      entryFee: Number(formData.entryFee) || 0
     }
 
     setDoc(tournamentRef, tournamentData)
       .then(() => {
-         toast({
-          title: "Tournament Launched!",
-          description: `${formData.name} is now live.`
-        })
+         toast({ title: "Tournament Launched!" })
         router.push("/dashboard")
       })
       .catch(async (e) => {
@@ -182,34 +168,14 @@ export default function TournamentWizard() {
       })
   }
 
-  if (!clubId) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 gap-4">
-        <Loader2 className="animate-spin h-10 w-10 text-primary" />
-        <p className="text-muted-foreground animate-pulse">Syncing club context...</p>
-      </div>
-    )
-  }
+  if (!clubId) return <div className="p-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></div>
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 py-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Tournament Wizard</h1>
-          <p className="text-muted-foreground">Configure an event for <span className="text-primary font-bold">{userClubs?.[0]?.name}</span>.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {[1, 2, 3, 4].map((s) => (
-            <div 
-              key={s} 
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 ${
-                step === s ? "bg-primary text-primary-foreground scale-110 shadow-lg" : 
-                step > s ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground"
-              }`}
-            >
-              {step > s ? <CheckCircle2 className="w-6 h-6" /> : s}
-            </div>
-          ))}
+          <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter">Tournament Wizard</h1>
+          <p className="text-muted-foreground">Setup event identity and pricing.</p>
         </div>
       </div>
 
@@ -217,332 +183,138 @@ export default function TournamentWizard() {
         {step === 1 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
             <CardHeader className="bg-primary/10 py-8">
-              <Trophy className="w-12 h-12 text-primary mb-4" />
-              <CardTitle className="text-2xl font-headline">Step 1: Core Identity</CardTitle>
-              <CardDescription>Tell us the basics and match timing rules.</CardDescription>
+              <CardTitle className="text-2xl font-headline">Core Identity & Pricing</CardTitle>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 col-span-1 md:col-span-2">
-                  <Label htmlFor="t-name">Tournament Name</Label>
+                  <Label>Tournament Name</Label>
                   <Input 
-                    id="t-name" 
-                    placeholder="e.g. Summer Championship 2024" 
-                    className="bg-secondary/50 h-12 text-lg"
+                    placeholder="e.g. Winter Open 2026" 
+                    className="bg-secondary/50 h-12"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="t-sport">Tournament Type (Sport)</Label>
+                  <Label>Entry Fee (USD)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 h-5 w-5 text-emerald-500" />
+                    <Input 
+                      type="number"
+                      placeholder="0.00" 
+                      className="bg-secondary/50 h-12 pl-10 text-xl font-bold"
+                      value={formData.entryFee}
+                      onChange={(e) => setFormData({ ...formData, entryFee: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Sport Category</Label>
                   <Select value={formData.sport} onValueChange={(val) => setFormData({ ...formData, sport: val })}>
                     <SelectTrigger className="bg-secondary/50 h-12">
-                      <SelectValue placeholder="Select Sport" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="padel">Padel</SelectItem>
-                      <SelectItem value="badminton">Badminton</SelectItem>
                       <SelectItem value="tennis">Tennis</SelectItem>
-                      <SelectItem value="pickleball">Pickleball</SelectItem>
-                      <SelectItem value="table-tennis">Table Tennis</SelectItem>
-                      <SelectItem value="squash">Squash</SelectItem>
-                      <SelectItem value="basketball">Basketball</SelectItem>
+                      <SelectItem value="badminton">Badminton</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="t-date">Start Date</Label>
-                    <Input 
-                      id="t-date" 
-                      type="date" 
-                      className="bg-secondary/50 h-12" 
-                      value={formData.startDate}
-                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="t-date-end">End Date</Label>
-                    <Input 
-                      id="t-date-end" 
-                      type="date" 
-                      className="bg-secondary/50 h-12" 
-                      value={formData.endDate}
-                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    />
-                  </div>
-                </div>
-                
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><Clock className="h-4 w-4" /> Match Duration (mins)</Label>
-                  <Input 
-                    type="number"
-                    className="bg-secondary/50 h-12" 
-                    value={formData.matchDuration}
-                    onChange={(e) => setFormData({ ...formData, matchDuration: parseInt(e.target.value) || 60 })}
-                  />
+                  <Label>Start Date</Label>
+                  <Input type="date" className="bg-secondary/50 h-12" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Recovery / Buffer (mins)</Label>
-                  <Input 
-                    type="number"
-                    className="bg-secondary/50 h-12" 
-                    value={formData.recoveryTime}
-                    onChange={(e) => setFormData({ ...formData, recoveryTime: parseInt(e.target.value) || 0 })}
-                  />
+                  <Label>End Date</Label>
+                  <Input type="date" className="bg-secondary/50 h-12" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="t-desc">Event Description</Label>
-                <Textarea 
-                  id="t-desc" 
-                  placeholder="Event details, rules, and entry fees..." 
-                  className="bg-secondary/50 min-h-[100px]"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
               </div>
               <div className="pt-4 flex justify-end">
-                <Button onClick={() => setStep(2)} className="h-12 px-10" disabled={!formData.name || !formData.startDate || !formData.sport}>
-                  Next: Categories & Rules
+                <Button onClick={() => setStep(2)} className="h-12 px-10" disabled={!formData.name || !formData.startDate}>
+                  Next: Categories
                 </Button>
               </div>
             </CardContent>
           </div>
         )}
+        
         {step === 2 && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <CardHeader className="bg-accent/10 py-8">
-              <Layout className="w-12 h-12 text-accent mb-4" />
-              <CardTitle className="text-2xl font-headline text-accent">Step 2: Format & Categories</CardTitle>
-              <CardDescription>Define competition brackets and age groups.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <div className="space-y-4">
-                {formData.categories.length > 0 ? (
-                  <div className="grid gap-4">
-                    {formData.categories.map((category) => (
-                      <div key={category.id} className="flex items-center justify-between p-5 bg-secondary/30 border border-border rounded-2xl group transition-all hover:border-accent/40">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-3 rounded-xl ${category.isTeamBased ? 'bg-primary/20 text-primary' : 'bg-accent/20 text-accent'}`}>
-                            {category.isTeamBased ? <Users className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-lg">{category.name}</h4>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span className="font-medium text-accent">{category.ageGroup}</span>
-                              <span>•</span>
-                              <span>{category.format}</span>
-                              <span>•</span>
-                              <span>Best of {category.sets} Sets</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeCategory(category.id)} className="text-destructive opacity-0 group-hover:opacity-100 transition-all">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-16 text-center border-2 border-dashed rounded-2xl bg-secondary/10 flex flex-col items-center gap-4">
-                    <Layout className="h-12 w-12 text-muted-foreground/30" />
-                    <p className="text-muted-foreground max-w-xs">No categories added yet.</p>
-                  </div>
-                )}
-                <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full border-dashed border-2 py-8 h-auto hover:bg-accent/5 hover:border-accent/40">
-                      <Plus className="mr-2 h-5 w-5" /> Add Category
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Competition Configuration</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-5 py-4">
-                      <div className="space-y-2">
-                        <Label>Category Name</Label>
-                        <Input 
-                          placeholder="e.g. Men's Doubles Pro" 
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Age Group</Label>
-                          <Select value={newCategoryAge} onValueChange={setNewCategoryAge}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Open">Open</SelectItem>
-                              <SelectItem value="U12">Junior (U12)</SelectItem>
-                              <SelectItem value="U18">Junior (U18)</SelectItem>
-                              <SelectItem value="35+">Senior (35+)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Format</Label>
-                          <Select value={newCategoryFormat} onValueChange={setNewCategoryFormat}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Single Elimination">Single Elimination</SelectItem>
-                              <SelectItem value="Round Robin">Round Robin</SelectItem>
-                              <SelectItem value="Groups + Brackets">Groups + Brackets</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <Users className="h-5 w-5 text-primary" />
-                          <div className="flex flex-col">
-                            <span className="font-bold text-sm">Team-Based Entry</span>
-                            <span className="text-xs text-muted-foreground">Doubles or Team events</span>
-                          </div>
-                        </div>
-                        <Switch 
-                          checked={newCategoryIsTeam} 
-                          onCheckedChange={setNewCategoryIsTeam} 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Sets per Match (Best of)</Label>
-                        <div className="flex gap-2">
-                          {[1, 3, 5].map((s) => (
-                            <Button 
-                              key={s}
-                              type="button"
-                              variant={newCategorySets === s ? "default" : "outline"}
-                              className="flex-1"
-                              onClick={() => setNewCategorySets(s)}
-                            >
-                              {s} Sets
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
+          <div className="p-8 space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+             <h2 className="text-2xl font-bold">Categories</h2>
+             <div className="grid gap-4">
+                {formData.categories.map(c => (
+                  <div key={c.id} className="p-4 bg-secondary/30 rounded-xl flex justify-between items-center">
+                    <div>
+                       <p className="font-bold">{c.name}</p>
+                       <p className="text-xs text-muted-foreground">{c.format} • {c.ageGroup}</p>
                     </div>
-                    <DialogFooter>
-                      <Button variant="ghost" onClick={() => setIsAddingCategory(false)}>Cancel</Button>
-                      <Button onClick={handleAddCategory} disabled={!newCategoryName}>Add Category</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              <div className="pt-4 flex justify-between">
-                <Button variant="ghost" onClick={() => setStep(1)} className="h-12 px-8">Back</Button>
-                <Button onClick={() => setStep(3)} className="h-12 px-10" disabled={formData.categories.length === 0}>
-                  Next: Venue Logistics
-                </Button>
-              </div>
-            </CardContent>
+                    <Button variant="ghost" size="icon" onClick={() => removeCategory(c.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+                <Button variant="outline" className="w-full border-dashed" onClick={() => setIsAddingCategory(true)}>Add Category</Button>
+             </div>
+             <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+                <DialogContent>
+                   <DialogHeader><DialogTitle>New Category</DialogTitle></DialogHeader>
+                   <div className="space-y-4 py-4">
+                      <Input placeholder="Category Name" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
+                      <Select value={newCategoryFormat} onValueChange={setNewCategoryFormat}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Single Elimination">Single Elimination</SelectItem>
+                          <SelectItem value="Round Robin">Round Robin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                   </div>
+                   <DialogFooter>
+                      <Button onClick={handleAddCategory}>Add</Button>
+                   </DialogFooter>
+                </DialogContent>
+             </Dialog>
+             <div className="pt-4 flex justify-between">
+                <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
+                <Button onClick={() => setStep(3)} disabled={formData.categories.length === 0}>Next: Venue</Button>
+             </div>
           </div>
         )}
+
         {step === 3 && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <CardHeader className="bg-primary/10 py-8">
-              <Building2 className="w-12 h-12 text-primary mb-4" />
-              <CardTitle className="text-2xl font-headline">Step 3: Venue Logistics</CardTitle>
-              <CardDescription>Enter locations and their respective court counts.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8">
-              <div className="space-y-4">
-                <Label>Add Tournament Location</Label>
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <div className="md:col-span-8">
-                    <Input 
-                      placeholder="e.g. Center Court, North Hall" 
-                      className="bg-secondary/50 h-12"
-                      value={newLocationName}
-                      onChange={e => setNewLocationName(e.target.value)}
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <Input 
-                      type="number"
-                      min="1"
-                      placeholder="Courts"
-                      className="bg-secondary/50 h-12"
-                      value={newLocationCourts}
-                      onChange={e => setNewLocationCourts(parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div className="md:col-span-1">
-                    <Button variant="secondary" className="h-12 w-full" onClick={handleAddLocation}>
-                      <Plus className="h-5 w-5" />
-                    </Button>
-                  </div>
+          <div className="p-8 space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+             <h2 className="text-2xl font-bold">Venue Logistics</h2>
+             <div className="grid gap-4">
+                <div className="flex gap-2">
+                   <Input placeholder="Venue Name" value={newLocationName} onChange={e => setNewLocationName(e.target.value)} />
+                   <Input type="number" className="w-24" value={newLocationCourts} onChange={e => setNewLocCourts(parseInt(e.target.value) || 1)} />
+                   <Button onClick={handleAddLocation}><Plus className="h-4 w-4" /></Button>
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                <Label className="flex items-center justify-between">
-                  <span>Registered Locations</span>
-                  <Badge variant="outline" className="text-primary border-primary/20">
-                    Total Courts: {formData.numCourts}
-                  </Badge>
-                </Label>
-                <div className="grid gap-3">
-                  {formData.locations.map((loc, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <MapPin className="h-5 w-5 text-accent" />
-                        <div>
-                          <p className="font-bold text-white">{loc.name}</p>
-                          <p className="text-xs text-muted-foreground">{loc.numCourts} Courts assigned</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeLocation(i)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {formData.locations.length === 0 && (
-                    <div className="p-12 text-center border-2 border-dashed rounded-xl bg-white/5 opacity-40">
-                      <MapPin className="h-10 w-10 mx-auto mb-2" />
-                      <p>No locations added yet.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-4 flex justify-between">
-                <Button variant="ghost" onClick={() => setStep(2)} className="h-12 px-8">Back</Button>
-                <Button onClick={() => setStep(4)} className="h-12 px-10" disabled={formData.locations.length === 0}>
-                  Next: Preview & Launch
-                </Button>
-              </div>
-            </CardContent>
+                {formData.locations.map((l, i) => (
+                  <div key={i} className="p-4 bg-secondary/30 rounded-xl flex justify-between items-center">
+                    <p className="font-bold">{l.name} • {l.numCourts} Courts</p>
+                    <Button variant="ghost" size="icon" onClick={() => removeLocation(i)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+             </div>
+             <div className="pt-4 flex justify-between">
+                <Button variant="ghost" onClick={() => setStep(2)}>Back</Button>
+                <Button onClick={() => setStep(4)} disabled={formData.locations.length === 0}>Finish</Button>
+             </div>
           </div>
         )}
+
         {step === 4 && (
-          <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-24 px-8">
-            <div className="w-28 h-28 bg-accent/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-              <Trophy className="w-14 h-14 text-accent drop-shadow-lg" />
-            </div>
-            <h2 className="text-5xl font-headline font-bold mb-4 tracking-tighter">Ready for Launch!</h2>
-            <p className="text-muted-foreground max-w-md mx-auto mb-12 text-lg">
-              Your <strong>{formData.name}</strong> is configured with <strong>{formData.numCourts} total courts</strong> across {formData.locations.length} locations.
-            </p>
-            <div className="flex justify-center gap-4">
-              <Button variant="ghost" onClick={() => setStep(3)} className="h-12" disabled={isSubmitting}>
-                Back
-              </Button>
-              <Button 
-                className="h-12 px-12 bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 text-lg font-bold"
-                onClick={handleLaunch}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                Launch Tournament Live
-              </Button>
-            </div>
+          <div className="p-12 text-center space-y-8">
+             <Trophy className="h-20 w-20 text-primary mx-auto" />
+             <h2 className="text-4xl font-bold uppercase">Ready to Collect?</h2>
+             <p className="text-muted-foreground">Players will be charged <strong>${formData.entryFee}</strong> to join this tournament.</p>
+             <div className="flex justify-center gap-4">
+                <Button variant="ghost" onClick={() => setStep(3)}>Edit</Button>
+                <Button size="lg" className="px-12" onClick={handleLaunch} disabled={isSubmitting}>
+                   {isSubmitting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
+                   Launch Tournament
+                </Button>
+             </div>
           </div>
         )}
       </Card>

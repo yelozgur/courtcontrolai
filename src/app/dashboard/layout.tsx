@@ -8,27 +8,25 @@ import {
   Trophy,
   Calendar,
   Users,
-  Settings,
   LayoutDashboard,
   QrCode,
-  Monitor,
   Zap,
   LogOut,
   Loader2,
   Heart,
-  PlusCircle,
   ShieldCheck,
   Building,
   Gavel,
-  User
+  User,
+  Calculator
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useUser, useAuth, useDoc, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { doc, collection, query, where, limit } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -71,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Referee Hub', icon: Gavel, href: '/referee', show: isReferee || isClubOwner },
     { name: 'My Profile', icon: User, href: '/dashboard/profile', show: true },
     { name: 'Club Settings', icon: Building, href: '/dashboard/club', show: isClubOwner },
+    { name: 'Cost Analytics', icon: Calculator, href: '/dashboard/admin/costs', show: isAdmin },
     { name: 'Admin Users', icon: ShieldCheck, href: '/dashboard/admin/users', show: isAdmin },
   ].filter(item => item.show);
 

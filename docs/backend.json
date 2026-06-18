@@ -10,6 +10,7 @@
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
+        "entryFee": { "type": "number", "description": "Price in USD for registration" },
         "locations": { 
           "type": "array", 
           "items": { 
@@ -24,9 +25,9 @@
         "status": { "type": "string", "enum": ["draft", "registration", "active", "completed"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "description": { "type": "string" },
-        "numCourts": { "type": "number", "description": "Total summed courts across all locations" },
-        "matchDuration": { "type": "number", "description": "Duration in minutes" },
-        "recoveryTime": { "type": "number", "description": "Buffer between matches in minutes" },
+        "numCourts": { "type": "number" },
+        "matchDuration": { "type": "number" },
+        "recoveryTime": { "type": "number" },
         "referees": { "type": "array", "items": { "type": "string" } },
         "categories": {
           "type": "array",
@@ -77,6 +78,8 @@
         "skillLevel": { "type": "string" },
         "telegramHandle": { "type": "string" },
         "verified": { "type": "boolean" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "waived"] },
+        "paidAmount": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -111,7 +114,7 @@
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
-        "tournamentId": { "type": "string", "description": "Optional: link sponsor to a specific event" },
+        "tournamentId": { "type": "string" },
         "name": { "type": "string" },
         "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] },
         "websiteUrl": { "type": "string" },
