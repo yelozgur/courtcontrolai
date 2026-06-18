@@ -37,7 +37,6 @@ service cloud.firestore {
     // Tournaments
     match /tournaments/{tournamentId} {
       allow read: if true;
-      // Allow create only if they are setting themselves as the owner or using their clubId
       allow create: if isSignedIn(); 
       allow update, delete: if isClubOwner(resource.data.clubId);
     }
@@ -45,7 +44,6 @@ service cloud.firestore {
     // Matches
     match /matches/{matchId} {
       allow read: if true;
-      // Strict write: must own the club for both updates and new creations
       allow write: if isSignedIn() && (
         (resource != null && isClubOwner(resource.data.clubId)) ||
         (resource == null && isClubOwner(request.resource.data.clubId))

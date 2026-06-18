@@ -102,16 +102,12 @@ export default function SchedulingPage() {
     try {
       if (typeof val === 'string') {
         const parts = val.split('T')
-        const timePart = parts.length > 1 ? parts[1].substring(0, 5) : val.substring(0, 5)
-        // Normalize time to 30-min slots for matrix indexing if needed, 
-        // but here we just return the exact string to match the slots array
-        return timePart;
+        return parts.length > 1 ? parts[1].substring(0, 5) : val.substring(0, 5)
       }
     } catch (e) { return "" }
     return ""
   }
 
-  // Matrix Construction Logic: 30-minute intervals from 08:00 to 22:30
   const timeSlots = useMemo(() => {
     const slots = [];
     for (let hour = 8; hour <= 22; hour++) {
@@ -122,10 +118,19 @@ export default function SchedulingPage() {
     return slots;
   }, []);
 
-  const courts = useMemo(() => {
-    const count = activeTournament?.numCourts || 1;
-    return Array.from({ length: count }, (_, i) => i + 1);
-  }, [activeTournament?.numCourts]);
+  const allCourts = useMemo(() => {
+    const result: { location: string; num: number }[] = [];
+    if (!activeTournament?.locations) return result;
+    
+    activeTournament.locations.forEach((loc: any) => {
+      const locName = typeof loc === 'object' ? loc.name : loc;
+      const count = typeof loc === 'object' ? (loc.numCourts || 1) : 1;
+      for (let i = 1; i <= count; i++) {
+        result.push({ location: locName, num: i });
+      }
+    });
+    return result;
+  }, [activeTournament?.locations]);
 
   const matrixData = useMemo(() => {
     const grid: Record<string, any> = {}
@@ -136,8 +141,9 @@ export default function SchedulingPage() {
       if (mDate !== selectedDateStr) return
       
       const mTime = getTimeKey(m.startTime)
+      const mLoc = typeof m.location === 'object' ? m.location.name : m.location;
       const mCourt = m.court
-      const key = `${mTime}-${mCourt}`
+      const key = `${mTime}-${mLoc}-${mCourt}`
       grid[key] = m
     })
     return grid
@@ -247,7 +253,7 @@ export default function SchedulingPage() {
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
           <div className="text-muted-foreground flex items-center gap-2">
-            Interactive Venue Matrix: {courts.length} Courts Allocation
+            Interactive Venue Matrix: {allCourts.length} Total Courts Allocation
             <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-none">
               AI Runs: {aiUsage}/3 Free
             </Badge>
@@ -288,7 +294,7 @@ export default function SchedulingPage() {
         <DialogContent className="bg-card border-white/10 max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-headline text-2xl uppercase">AI Director Setup</DialogTitle>
-            <DialogDescription>Optimize your bracket logic across all courts.</DialogDescription>
+            <DialogDescription>Optimize your bracket logic across all venues.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
              <div className="grid grid-cols-2 gap-4 text-center">
@@ -298,13 +304,13 @@ export default function SchedulingPage() {
                 </div>
                 <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Venue Scope</p>
-                   <p className="text-xl font-bold uppercase text-accent">{courts.length} Courts</p>
+                   <p className="text-xl font-bold uppercase text-accent">{allCourts.length} Courts</p>
                 </div>
              </div>
              <div className="space-y-2">
                 <Label className="text-xs uppercase font-bold text-muted-foreground">Strategic Goals</Label>
                 <Textarea 
-                  placeholder="e.g. 'Prioritize court 1 for semifinals', 'Finish all junior matches by 12:00'..."
+                  placeholder="e.g. 'Prioritize Location A for finals', 'Finish all junior matches by 12:00'..."
                   className="min-h-[120px] bg-background/50 border-white/10"
                   value={aiInstructions}
                   onChange={(e) => setAiInstructions(e.target.value)}
@@ -327,17 +333,18 @@ export default function SchedulingPage() {
         </div>
 
         <TabsContent value="matrix" className="mt-0">
-          <div className="overflow-x-auto rounded-[2rem] border border-white/5 bg-card/40 backdrop-blur-xl">
+          <div className="overflow-x-auto rounded-[2rem] border border-white/5 bg-card/40 backdrop-blur-xl scrollbar-hide">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
                   <th className="p-4 bg-black/20 border-b border-r border-white/5 w-24 sticky left-0 z-20">
                     <Clock className="w-4 h-4 text-muted-foreground mx-auto" />
                   </th>
-                  {courts.map(c => (
-                    <th key={c} className="p-4 bg-black/20 border-b border-white/5 min-w-[220px]">
-                      <div className="flex items-center justify-center gap-2">
-                        <Badge variant="outline" className="border-accent text-accent font-bold px-4">Court {c}</Badge>
+                  {allCourts.map((c, idx) => (
+                    <th key={`${c.location}-${c.num}`} className="p-4 bg-black/20 border-b border-white/5 min-w-[220px]">
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{c.location}</span>
+                        <Badge variant="outline" className="border-accent text-accent font-bold px-4">Court {c.num}</Badge>
                       </div>
                     </th>
                   ))}
@@ -349,10 +356,10 @@ export default function SchedulingPage() {
                     <td className="p-4 text-center font-mono text-sm font-bold text-muted-foreground bg-black/10 border-r border-white/5 sticky left-0 z-20">
                       {time}
                     </td>
-                    {courts.map(court => {
-                      const match = matrixData[`${time}-${court}`]
+                    {allCourts.map((court, cIdx) => {
+                      const match = matrixData[`${time}-${court.location}-${court.num}`]
                       return (
-                        <td key={court} className="p-2 border-r border-white/5 relative h-32 group/cell transition-colors hover:bg-white/[0.02]">
+                        <td key={cIdx} className="p-2 border-r border-white/5 relative h-32 group/cell transition-colors hover:bg-white/[0.02]">
                           {match ? (
                             <div className={cn(
                               "border rounded-xl p-3 h-full flex flex-col justify-between group/card relative transition-all",
@@ -379,7 +386,7 @@ export default function SchedulingPage() {
                               variant="ghost" 
                               className="w-full h-full border border-dashed border-white/5 opacity-0 group-hover/cell:opacity-100 transition-all rounded-xl flex flex-col gap-2 text-muted-foreground"
                               onClick={() => {
-                                setNewMatch({...newMatch, time, court})
+                                setNewMatch({...newMatch, time, court: court.num, location: court.location})
                                 setIsAddingMatch(true)
                               }}
                             >
@@ -407,7 +414,7 @@ export default function SchedulingPage() {
                   </div>
                   <div>
                     <h4 className="font-bold">{match.teamA.name} vs {match.teamB.name}</h4>
-                    <p className="text-[10px] text-muted-foreground uppercase">{match.category} • Court {match.court}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">{match.category} • {match.location} • Court {match.court}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -440,13 +447,24 @@ export default function SchedulingPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
                <div className="space-y-2">
-                 <Label>Court #</Label>
-                 <Input type="number" min="1" max={courts.length} value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
+                 <Label>Venue Location</Label>
+                 <Select value={newMatch.location} onValueChange={val => setNewMatch({...newMatch, location: val})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {activeTournament?.locations?.map((loc: any, i: number) => (
+                        <SelectItem key={i} value={typeof loc === 'object' ? loc.name : loc}>{typeof loc === 'object' ? loc.name : loc}</SelectItem>
+                      ))}
+                    </SelectContent>
+                 </Select>
                </div>
                <div className="space-y-2">
-                 <Label>Time Slot</Label>
-                 <Input type="time" value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} />
+                 <Label>Court #</Label>
+                 <Input type="number" min="1" value={newMatch.court} onChange={e => setNewMatch({...newMatch, court: parseInt(e.target.value) || 1})} />
                </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Time Slot</Label>
+              <Input type="time" value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} />
             </div>
           </div>
           <DialogFooter>
