@@ -160,7 +160,7 @@ export default function ClubSettings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="club-name">Club Name</Label>
-                <Input id="club-name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Ace Club" />
+                <input id="club-name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Ace Club" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
               </div>
               <div className="space-y-2">
                 <Label>Club Timezone (UTC Offset)</Label>
@@ -195,13 +195,13 @@ export default function ClubSettings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-white">API Token</Label>
-                <Input type="password" value={formData.telegramBotToken} onChange={(e) => setFormData({...formData, telegramBotToken: e.target.value})} className="bg-background/50" />
+                <input type="password" value={formData.telegramBotToken} onChange={(e) => setFormData({...formData, telegramBotToken: e.target.value})} className="flex h-10 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
               </div>
               <div className="space-y-2">
                 <Label className="text-white">Bot Username</Label>
                 <div className="relative">
                   <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="MyClubBot" className="pl-10 bg-background/50" value={formData.telegramBotUsername} onChange={(e) => setFormData({...formData, telegramBotUsername: e.target.value.replace('@', '')})} />
+                  <input placeholder="MyClubBot" className="flex h-10 w-full rounded-md border border-input bg-background/50 pl-10 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={formData.telegramBotUsername} onChange={(e) => setFormData({...formData, telegramBotUsername: e.target.value.replace('@', '')})} />
                 </div>
               </div>
             </CardContent>
@@ -219,7 +219,7 @@ export default function ClubSettings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Global Court Count</Label>
-                <Input type="number" min="1" value={formData.numCourts} onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})} />
+                <input type="number" min="1" value={formData.numCourts} onChange={(e) => setFormData({...formData, numCourts: parseInt(e.target.value) || 1})} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
               </div>
               <Button onClick={handleSave} className="w-full bg-primary h-12 text-lg font-bold" disabled={isSaving || !formData.name}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (clubId ? <Save className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />)}

@@ -103,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
       <ScrollArea className="flex-1 px-4">
         <div className="space-y-1 py-2">
-          <p className="px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-40">{isAdmin ? 'Platform Admin' : 'Management'}</p>
+          <p className="px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-40">{isAdmin ? 'Platform Admin' : 'MANAGEMENT'}</p>
           {navItems.map((item) => (
             <Link
               key={item.href}
