@@ -109,7 +109,7 @@ export default function LoginPage() {
             <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
               <CheckCircle2 className="h-10 w-10 text-emerald-500" />
             </div>
-            <CardTitle className="text-3xl font-headline font-bold uppercase tracking-tighter">Identity Verified</CardTitle>
+            <CardTitle className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">Identity Verified</CardTitle>
             <CardDescription className="text-lg">Select your destination to proceed.</CardDescription>
           </div>
 
@@ -119,11 +119,11 @@ export default function LoginPage() {
               <span>TOURNAMENT COMMAND</span>
             </Button>
             <div className="grid grid-cols-2 gap-4">
-              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10" variant="outline" onClick={() => router.push('/tournaments')}>
+              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-white" variant="outline" onClick={() => router.push('/tournaments')}>
                 <Trophy className="h-5 w-5 text-amber-400" />
                 <span>BROWSE EVENTS</span>
               </Button>
-              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10" variant="outline" onClick={() => router.push('/arena')}>
+              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-white" variant="outline" onClick={() => router.push('/arena')}>
                 <Monitor className="h-5 w-5 text-accent" />
                 <span>WATCH ARENA</span>
               </Button>
@@ -151,7 +151,7 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
         <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-headline font-bold">Sign In</CardTitle>
+          <CardTitle className="text-2xl font-headline font-bold text-white">Sign In</CardTitle>
           <CardDescription>
             Enter your credentials to access your club console.
           </CardDescription>
@@ -169,7 +169,7 @@ export default function LoginPage() {
 
           <Button 
             variant="outline" 
-            className="w-full bg-white/5 border-white/10 hover:bg-white/10"
+            className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-white"
             onClick={handleGoogleLogin}
             disabled={isSubmitting}
           >
@@ -193,13 +193,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-white">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   placeholder="name@example.com"
-                  className="pl-10 bg-white/5 border-white/10"
+                  className="pl-10 bg-white/5 border-white/10 text-white"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -207,14 +207,14 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-white">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  className="pl-10 bg-white/5 border-white/10"
+                  className="pl-10 bg-white/5 border-white/10 text-white"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

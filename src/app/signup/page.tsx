@@ -105,7 +105,7 @@ export default function SignupPage() {
             <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
               <CheckCircle2 className="h-10 w-10 text-emerald-500" />
             </div>
-            <CardTitle className="text-3xl font-headline font-bold uppercase tracking-tighter">Registration Complete</CardTitle>
+            <CardTitle className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">Registration Complete</CardTitle>
             <CardDescription className="text-lg">Welcome to the network. Choose your starting point.</CardDescription>
           </div>
 
@@ -115,11 +115,11 @@ export default function SignupPage() {
               <span>TOURNAMENT COMMAND</span>
             </Button>
             <div className="grid grid-cols-2 gap-4">
-              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10" variant="outline" onClick={() => router.push('/tournaments')}>
+              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-white" variant="outline" onClick={() => router.push('/tournaments')}>
                 <Trophy className="h-5 w-5 text-amber-400" />
                 <span>BROWSE EVENTS</span>
               </Button>
-              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10" variant="outline" onClick={() => router.push('/arena')}>
+              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-white" variant="outline" onClick={() => router.push('/arena')}>
                 <Monitor className="h-5 w-5 text-accent" />
                 <span>WATCH ARENA</span>
               </Button>
@@ -147,13 +147,13 @@ export default function SignupPage() {
 
       <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
         <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-headline font-bold">Register Club</CardTitle>
+          <CardTitle className="text-2xl font-headline font-bold text-white">Register Club</CardTitle>
           <CardDescription>
             Create an account to manage your tournaments.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full bg-white/5 border-white/10 hover:bg-white/10" onClick={handleGoogleSignup} disabled={isSubmitting}>
+          <Button variant="outline" className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-white" onClick={handleGoogleSignup} disabled={isSubmitting}>
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -164,9 +164,9 @@ export default function SignupPage() {
           </Button>
           <div className="relative"><div className="absolute inset-0 flex items-center"><Separator className="w-full" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-[#0F172A] px-2 text-muted-foreground">Or with email</span></div></div>
           <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-2"><Label htmlFor="name">Full Name</Label><div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="name" placeholder="John Doe" className="pl-10 bg-white/5 border-white/10" value={name} onChange={(e) => setName(e.target.value)} required /></div></div>
-            <div className="space-y-2"><Label htmlFor="email">Email</Label><div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="email" type="email" placeholder="name@example.com" className="pl-10 bg-white/5 border-white/10" value={email} onChange={(e) => setEmail(e.target.value)} required /></div></div>
-            <div className="space-y-2"><Label htmlFor="password">Password</Label><div className="relative"><Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="password" type="password" placeholder="••••••••" className="pl-10 bg-white/5 border-white/10" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div></div>
+            <div className="space-y-2"><Label htmlFor="name" className="text-white">Full Name</Label><div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="name" placeholder="John Doe" className="pl-10 bg-white/5 border-white/10 text-white" value={name} onChange={(e) => setName(e.target.value)} required /></div></div>
+            <div className="space-y-2"><Label htmlFor="email" className="text-white">Email</Label><div className="relative"><Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="email" type="email" placeholder="name@example.com" className="pl-10 bg-white/5 border-white/10 text-white" value={email} onChange={(e) => setEmail(e.target.value)} required /></div></div>
+            <div className="space-y-2"><Label htmlFor="password" className="text-white">Password</Label><div className="relative"><Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="password" type="password" placeholder="••••••••" className="pl-10 bg-white/5 border-white/10 text-white" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div></div>
             <Button type="submit" className="w-full h-11" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}Create Account</Button>
           </form>
         </CardContent>
