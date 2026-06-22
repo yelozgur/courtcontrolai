@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -8,18 +9,13 @@ import {
   AlertCircle, 
   Loader2, 
   DollarSign, 
-  BarChart3,
-  Server,
-  Sparkles,
-  ReceiptText,
-  ShieldCheck,
-  Percent,
-  Zap,
-  Cpu,
-  ArrowUpRight,
-  TrendingUp,
-  History,
-  Activity
+  Server, 
+  Sparkles, 
+  ReceiptText, 
+  ShieldCheck, 
+  Zap, 
+  TrendingUp, 
+  Activity 
 } from 'lucide-react';
 import { collection, query, limit, orderBy, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -53,7 +49,7 @@ export default function AdminCostDashboard() {
 
   const participantsQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(collection(db, 'participants'), orderBy('createdAt', 'desc'), limit(100));
+    return query(collection(db, 'participants'), orderBy('createdAt', 'desc'), limit(1000));
   }, [db]);
 
   const clubsQuery = useMemoFirebase(() => {
@@ -71,27 +67,25 @@ export default function AdminCostDashboard() {
     const COMMISSION_RATE = 0.05; // 5% SaaS Platform Fee
     const AI_FEE_PER_BLOCK = 5.00;
 
-    // Estimate daily cloud usage volume
+    // SaaS Global Analytics
     const documentCount = tournaments.length + participants.length;
     const estReadsPerDay = documentCount * 25; 
     const estWritesPerDay = documentCount * 3; 
 
-    // Pricing only kicks in after free tier (Blaze Plan simulation)
     const firestoreDailyCost = Math.max(0, (estReadsPerDay - 50000) / 100000 * 0.06 + (estWritesPerDay - 20000) / 100000 * 0.18);
     const firestoreMonthlyEst = firestoreDailyCost * 30;
 
-    // AI Revenue Accounting
+    // Platform-wide AI Revenue Accounting
     const aiServiceRevenue = clubs.reduce((acc, c) => {
       const usage = c.aiUsageCount || 0;
       if (usage <= 3) return acc;
-      // Clubs pay $5 per block of 3 additional runs
       return acc + Math.floor((usage - 1) / 3) * AI_FEE_PER_BLOCK;
     }, 0);
 
     const estAICallsPerDay = tournaments.length * 0.5;
-    const aiMonthlyEst = estAICallsPerDay * 30 * 0.002; // Tiny infrastructure cost per Genkit call
+    const aiMonthlyEst = estAICallsPerDay * 30 * 0.002;
 
-    // Revenue Accounting
+    // Platform SaaS Profit vs Global Volume
     const grossVolume = participants.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
     const platformRevenue = (grossVolume * COMMISSION_RATE) + aiServiceRevenue;
 
@@ -126,12 +120,12 @@ export default function AdminCostDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter text-white">Platform Economics</h1>
-          <p className="text-muted-foreground font-medium">Tracking 5% commissions + AI credits against operational burn.</p>
+          <p className="text-muted-foreground font-medium">Tracking global commissions + AI credits vs burn.</p>
         </div>
         <div className="flex items-center gap-3">
            <Badge variant="outline" className="h-10 border-emerald-500/30 text-emerald-500 px-4 bg-emerald-500/5 font-bold uppercase tracking-widest text-[10px] flex items-center gap-2">
              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-             Real-time Sync Active
+             Global SaaS Sync
            </Badge>
         </div>
       </div>
@@ -141,10 +135,10 @@ export default function AdminCostDashboard() {
       ) : stats && (
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <CostCard title="Total Platform GMV" value={`$${stats.grossVolume.toLocaleString()}`} sub="Gross registration volume" icon={DollarSign} color="text-white" />
-            <CostCard title="Net Platform Revenue" value={`$${stats.platformRevenue.toFixed(2)}`} sub="Commissions + AI Fees" icon={TrendingUp} color="text-accent" />
-            <CostCard title="Estimated OpEx" value={`$${stats.totalCost.toFixed(2)}`} sub="Infrastructure burn estimate" icon={Server} color="text-primary" />
-            <CostCard title="Profit Status" value={stats.netProfit >= 0 ? "Profitable" : "Cloud Efficient"} sub="System health indicator" icon={ShieldCheck} color={stats.netProfit >= 0 ? "text-emerald-400" : "text-destructive"} />
+            <CostCard title="Global Network GMV" value={`$${stats.grossVolume.toLocaleString()}`} sub="Total Platform Volume" icon={DollarSign} color="text-white" />
+            <CostCard title="SaaS Commission (5%)" value={`$${(stats.grossVolume * 0.05).toFixed(2)}`} sub="Platform Net Revenue" icon={TrendingUp} color="text-accent" />
+            <CostCard title="Global Infrastructure" value={`$${stats.totalCost.toFixed(2)}`} sub="Monthly burn estimate" icon={Server} color="text-primary" />
+            <CostCard title="AI Service Profit" value={`$${stats.aiServiceRevenue.toFixed(2)}`} sub="Credit block revenue" icon={ShieldCheck} color="text-emerald-400" />
           </div>
 
           <div className="grid gap-8 lg:grid-cols-12">
@@ -153,46 +147,37 @@ export default function AdminCostDashboard() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-xl font-headline uppercase tracking-tight">
                     <ReceiptText className="h-5 w-5 text-accent" />
-                    Transaction Ledger
+                    Global Transaction Log
                   </CardTitle>
-                  <CardDescription>Live revenue breakdown including 5% SaaS commission.</CardDescription>
-                </div>
-                <div className="bg-primary/20 p-2 px-4 rounded-full border border-primary/20">
-                  <p className="text-[10px] font-bold text-primary uppercase">AI Revenue: ${stats.aiServiceRevenue.toFixed(2)}</p>
+                  <CardDescription>Consolidated platform revenue stream tracking.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/5 hover:bg-transparent">
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Participant</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Club / Player</TableHead>
                       <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gross Fee</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-accent">5% SaaS Cut</TableHead>
-                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-accent">SaaS Cut (5%)</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {participants?.slice(0, 10).map((p) => (
+                    {participants?.slice(0, 15).map((p) => (
                       <TableRow key={p.id} className="border-white/5 hover:bg-white/5 transition-colors">
                         <TableCell className="font-bold text-white">
                           <div className="flex flex-col">
+                            <span className="text-[9px] uppercase text-muted-foreground opacity-60">ID: {p.id.slice(-8)}</span>
                             <span>{p.name}</span>
-                            <span className="text-[8px] opacity-40 font-mono">{p.id.slice(-8).toUpperCase()}</span>
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-sm">${(p.paidAmount || 0).toFixed(2)}</TableCell>
                         <TableCell className="font-mono text-sm text-accent font-bold">+${((p.paidAmount || 0) * 0.05).toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={cn(
-                            "text-[8px] uppercase tracking-widest border-none px-2",
-                            p.paidAmount > 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-white/5 text-muted-foreground"
-                          )}>
-                            {p.paidAmount > 0 ? 'Registration' : 'Waived'}
-                          </Badge>
+                          <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-none bg-emerald-500/10 text-emerald-500">PROCESSED</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
-                    {!participants?.length && <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground italic">No transactions processed yet.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -204,30 +189,27 @@ export default function AdminCostDashboard() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-headline uppercase tracking-tighter flex items-center gap-2">
                       <Database className="h-5 w-5 text-emerald-400" /> 
-                      Free Tier Monitor
+                      Network Utilization
                     </CardTitle>
-                    <span className="flex items-center gap-1.5 text-[8px] font-bold text-emerald-500 uppercase tracking-widest">
-                       <Activity className="h-3 w-3 animate-pulse" /> Live
-                    </span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                  <UsageProgress label="Firestore Reads" current={stats.readUsagePercent} sub="50,000 / Day Free" />
-                  <UsageProgress label="Firestore Writes" current={stats.writeUsagePercent} sub="20,000 / Day Free" />
-                  <UsageProgress label="AI Operations" current={stats.aiUsagePercent} sub="1,500 / Day Free" color="text-accent" />
+                  <UsageProgress label="Total Storage Reads" current={stats.readUsagePercent} sub="Across all tenants" />
+                  <UsageProgress label="Total Storage Writes" current={stats.writeUsagePercent} sub="Across all tenants" />
+                  <UsageProgress label="AI Genkit Load" current={stats.aiUsagePercent} sub="Capacity used" color="text-accent" />
                   
                   <div className="pt-4 border-t border-white/5 flex items-center gap-3">
                      <Zap className="h-4 w-4 text-emerald-500" />
-                     <p className="text-[10px] text-muted-foreground leading-tight italic">Platform is currently running at 100% cloud efficiency (No infrastructure cost incurred).</p>
+                     <p className="text-[10px] text-muted-foreground leading-tight italic">Platform is currently 100% cloud efficient (Tier 1 Status).</p>
                   </div>
                 </CardContent>
               </Card>
 
               <div className="bg-accent/5 border border-accent/20 p-6 rounded-3xl relative overflow-hidden group">
                   <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-accent opacity-5 group-hover:scale-125 transition-transform" />
-                  <h3 className="font-headline font-bold text-accent mb-2 flex items-center gap-2 uppercase tracking-tighter">Growth Insight</h3>
+                  <h3 className="font-headline font-bold text-accent mb-2 flex items-center gap-2 uppercase tracking-tighter">SaaS Insight</h3>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Based on your current commission rate and club growth, the platform will become "Cost Neutral" at approximately 250 daily active participants. Enforcing a $5.00 minimum floor ensures viable margins on every booking.
+                    You are viewing GLOBAL network health. These metrics are the aggregate of all sports organizations. Individual club performance is strictly isolated to the organization owners.
                   </p>
               </div>
             </div>

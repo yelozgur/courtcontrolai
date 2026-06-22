@@ -1,31 +1,28 @@
+
 "use client"
 
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useMemo } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
   Trophy, 
   Activity, 
-  ArrowUpRight,
-  Zap,
-  Loader2,
-  Calendar,
-  Star,
-  PlusCircle,
-  Building,
-  Users,
-  DollarSign,
-  TrendingUp,
-  ArrowRight,
-  Clock,
-  QrCode,
-  MapPin,
-  ChevronRight
+  Zap, 
+  Loader2, 
+  Calendar, 
+  PlusCircle, 
+  Building, 
+  Users, 
+  DollarSign, 
+  TrendingUp, 
+  ArrowRight, 
+  QrCode, 
+  ChevronRight 
 } from "lucide-react"
 import { collection, query, limit, doc, where, orderBy } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
-import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -43,15 +40,15 @@ export default function DashboardOverview() {
 
   // 1. Resolve User's Club
   const userClubsQuery = useMemoFirebase(() => {
-    if (!db || !user || isAdmin) return null;
+    if (!db || !user) return null;
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1));
-  }, [db, user, isAdmin]);
+  }, [db, user]);
 
   const { data: userClubs, loading: clubsLoading } = useCollection(userClubsQuery);
   const clubData = userClubs?.[0];
   const clubId = clubData?.id;
 
-  // 2. Scoped Queries for Club Owners
+  // 2. Scoped Queries for Club Metrics
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null;
     return query(
@@ -72,10 +69,27 @@ export default function DashboardOverview() {
     );
   }, [db, clubId]);
 
+  const participantsQuery = useMemoFirebase(() => {
+    if (!db || !clubId) return null;
+    return query(
+      collection(db, "participants"),
+      where("clubId", "==", clubId)
+    );
+  }, [db, clubId]);
+
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
   const { data: matches, loading: matchesLoading } = useCollection(liveMatchesQuery);
+  const { data: participants, loading: partsLoading } = useCollection(participantsQuery);
 
-  if (profileLoading || (isAdmin ? false : clubsLoading)) {
+  // 3. Computed Metrics for THIS Club only
+  const metrics = useMemo(() => {
+    if (!participants) return { count: 0, revenue: 0 };
+    const count = participants.length;
+    const revenue = participants.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
+    return { count, revenue };
+  }, [participants]);
+
+  if (profileLoading || clubsLoading) {
     return <DashboardSkeleton />;
   }
 
@@ -123,10 +137,10 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Active Events" />
-        <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="Currently Officiating" />
-        <StatCard title="Participants" value="2.4k" icon={Users} sub="Total Members" />
-        <StatCard title="Revenue" value="$12.5k" icon={DollarSign} sub="Gross Volume" />
+        <StatCard title="Club Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Active Events" />
+        <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="Currently Scoring" />
+        <StatCard title="Total Roster" value={partsLoading ? "..." : metrics.count} icon={Users} sub="Club Members" />
+        <StatCard title="Gross Revenue" value={partsLoading ? "..." : `$${metrics.revenue.toLocaleString()}`} icon={DollarSign} sub="Total Earnings" />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
@@ -248,16 +262,6 @@ function DashboardSkeleton() {
       </div>
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
-      </div>
-      <div className="grid gap-8 lg:grid-cols-12">
-        <div className="lg:col-span-8 space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-64 w-full rounded-3xl" />
-        </div>
-        <div className="lg:col-span-4 space-y-4">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-64 w-full rounded-3xl" />
-        </div>
       </div>
     </div>
   )
