@@ -51,7 +51,7 @@ RULES:
 
 const generateBracketFlow = ai.defineFlow(
   {
-    name: 'generateBracket',
+    name: 'generateBracketFlow',
     inputSchema: BracketInputSchema,
     outputSchema: BracketOutputSchema,
   },

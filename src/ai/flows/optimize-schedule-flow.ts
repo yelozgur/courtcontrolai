@@ -57,7 +57,7 @@ const ScheduleOutputSchema = z.object({
 
 export type ScheduleOutput = z.infer<typeof ScheduleOutputSchema>;
 
-const prompt = ai.definePrompt({
+const optimizeSchedulePrompt = ai.definePrompt({
   name: 'optimizeSchedulePrompt',
   input: { schema: ScheduleInputSchema },
   output: { schema: ScheduleOutputSchema },
@@ -96,12 +96,12 @@ RULES:
 
 const optimizeTournamentScheduleFlow = ai.defineFlow(
   {
-    name: 'optimizeTournamentSchedule',
+    name: 'optimizeTournamentScheduleFlow',
     inputSchema: ScheduleInputSchema,
     outputSchema: ScheduleOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
+    const { output } = await optimizeSchedulePrompt(input);
     return output!;
   }
 );

@@ -62,13 +62,12 @@ export default function RefereeConsole() {
     const matchRef = doc(db, "matches", activeMatch.id)
     
     updateDoc(matchRef, { [`${team}.score`]: newScore })
-      .catch(async (e) => {
-        const error = new FirestorePermissionError({
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: matchRef.path,
           operation: 'update',
           requestResourceData: { [`${team}.score`]: newScore }
-        })
-        errorEmitter.emit('permission-error', error)
+        }))
       })
   }
 
@@ -111,13 +110,12 @@ export default function RefereeConsole() {
         toast({ title: "Finalized", description: "Match results verified and locked." })
         setIsSubmitting(false)
       })
-      .catch(async (e) => {
-        const error = new FirestorePermissionError({
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: matchRef.path,
           operation: 'update',
           requestResourceData: updateData
-        })
-        errorEmitter.emit('permission-error', error)
+        }))
         setIsSubmitting(false)
       })
   }

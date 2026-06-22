@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -15,11 +14,9 @@ import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import Image from "next/image"
-import { cn } from "@/lib/utils"
 
 export default function PublicCheckInPage() {
   const { id } = useParams()
-  const router = useRouter()
   const db = useFirestore()
   const { toast } = useToast()
   
@@ -35,18 +32,16 @@ export default function PublicCheckInPage() {
 
   const { data: tournament, loading: tournamentLoading } = useDoc(tournamentRef)
 
-  // Fetch club details
   const clubRef = useMemoFirebase(() => {
     if (!db || !tournament?.clubId) return null;
     return doc(db, "clubs", tournament.clubId);
-  }, [db, tournament]);
+  }, [db, tournament?.clubId]);
   const { data: club } = useDoc(clubRef);
 
-  // Fetch sponsors
   const sponsorsQuery = useMemoFirebase(() => {
     if (!db || !tournament?.clubId) return null;
     return query(collection(db, "sponsors"), where("clubId", "==", tournament.clubId));
-  }, [db, tournament]);
+  }, [db, tournament?.clubId]);
   const { data: allSponsors } = useCollection(sponsorsQuery);
 
   const tournamentSponsors = allSponsors?.filter(s => 
@@ -55,8 +50,9 @@ export default function PublicCheckInPage() {
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!db || !tournament) return
-    if (tournament.locations?.length > 1 && !selectedLocation) {
+    if (!db || !tournament || !id) return
+    
+    if (tournament.locations && tournament.locations.length > 1 && !selectedLocation) {
       toast({ variant: "destructive", title: "Location Required" })
       return
     }
@@ -88,13 +84,12 @@ export default function PublicCheckInPage() {
         .then(() => {
           setSubmitted(true)
         })
-        .catch(async (err) => {
-          const error = new FirestorePermissionError({
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: "checkins",
             operation: 'create',
             requestResourceData: checkInData
-          });
-          errorEmitter.emit('permission-error', error);
+          }));
         })
         .finally(() => {
           setIsSubmitting(false)
@@ -130,7 +125,7 @@ export default function PublicCheckInPage() {
       <div className="mb-10 text-center space-y-4">
         {club?.logoUrl ? (
           <div className="relative w-16 h-16 mx-auto mb-4">
-            <Image src={club.logoUrl} fill className="object-contain" alt={club.name} />
+            <Image src={club.logoUrl} fill className="object-contain" alt={club.name || "Club Logo"} />
           </div>
         ) : (
           <MapPin className="h-12 w-12 text-primary mx-auto mb-4 shadow-2xl shadow-primary/20" />
@@ -152,7 +147,7 @@ export default function PublicCheckInPage() {
               <Input required type="email" className="bg-white/5 border-white/10 h-12 text-lg" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
 
-            {tournament?.locations?.length > 0 && (
+            {tournament && tournament.locations && tournament.locations.length > 0 && (
               <div className="space-y-2">
                 <Label className="uppercase tracking-widest text-[10px] font-bold opacity-60">Playing At</Label>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
