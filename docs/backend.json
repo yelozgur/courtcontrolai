@@ -3,155 +3,98 @@
   "entities": {
     "Tournament": {
       "title": "Tournament",
-      "description": "Global tournament registry. STAGES: Draft, Registration, Live, Completed. ISOLATION: Scoped by clubId.",
-      "type": "object",
-      "properties": {
-        "clubId": { "type": "string", "description": "The unique ID of the hosting club. Core isolation key." },
-        "name": { "type": "string" },
-        "startDate": { "type": "string", "format": "date" },
-        "endDate": { "type": "string", "format": "date" },
-        "entryFee": { "type": "number", "description": "Price in USD for registration. Min $5.00 for paid events." },
-        "isFeatured": { "type": "boolean", "default": false },
-        "hasWelcomePack": { "type": "boolean", "default": false },
-        "welcomePackDescription": { "type": "string" },
-        "requiresSize": { "type": "boolean", "default": false },
-        "locations": { 
-          "type": "array", 
-          "items": { 
-            "type": "object",
-            "properties": {
-              "name": { "type": "string" },
-              "numCourts": { "type": "number" }
-            }
-          } 
-        },
-        "sport": { "type": "string" },
-        "status": { "type": "string", "enum": ["draft", "registration", "active", "completed"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "description": { "type": "string" },
-        "numCourts": { "type": "number" },
-        "matchDuration": { "type": "number" },
-        "recoveryTime": { "type": "number" },
-        "referees": { "type": "array", "items": { "type": "string" } },
-        "categories": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" },
-              "format": { "type": "string" },
-              "sets": { "type": "number" },
-              "ageGroup": { "type": "string" },
-              "isTeamBased": { "type": "boolean" }
-            }
-          }
-        }
-      },
-      "required": ["clubId", "name", "startDate", "sport", "status"]
-    },
-    "Match": {
-      "title": "Match",
-      "description": "Operational match records. ISOLATION: Scoped by clubId.",
+      "description": "Global tournament registry with lifecycle management.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "registration_open", "registration_closed", "in_progress", "completed", "archived"] },
+        "statusHistory": { "type": "array", "items": { "type": "object" } },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "minParticipants": { "type": "number" },
+        "maxParticipants": { "type": "number" },
+        "bracketConfirmed": { "type": "boolean", "default": false },
+        "entryFee": { "type": "number" },
+        "sport": { "type": "string" },
+        "locations": { "type": "array", "items": { "type": "object" } },
+        "categories": { "type": "array", "items": { "type": "object" } },
+        "version": { "type": "number", "default": 1 },
+        "deletedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clubId", "name", "status"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Structured match records for bracket progression.",
+      "type": "object",
+      "properties": {
         "tournamentId": { "type": "string" },
+        "clubId": { "type": "string" },
+        "round": { "type": "number" },
+        "bracketPosition": { "type": "number" },
+        "nextMatchId": { "type": "string" },
+        "isBye": { "type": "boolean", "default": false },
+        "byePlayerId": { "type": "string" },
+        "courtId": { "type": "string" },
         "court": { "type": "number" },
-        "location": { "type": "string" },
-        "categoryId": { "type": "string" },
-        "category": { "type": "string" },
         "teamA": { "type": "object" },
         "teamB": { "type": "object" },
+        "score": {
+          "type": "object",
+          "properties": {
+            "sets": { "type": "array", "items": { "type": "object" } },
+            "winner": { "type": "string", "enum": ["teamA", "teamB"] },
+            "walkover": { "type": "boolean", "default": false }
+          }
+        },
         "status": { "type": "string", "enum": ["scheduled", "live", "completed"] },
-        "startTime": { "type": "string", "format": "date-time" },
-        "completedAt": { "type": "string", "format": "date-time" }
+        "scheduledTime": { "type": "string", "format": "date-time" },
+        "actualStartTime": { "type": "string", "format": "date-time" },
+        "actualEndTime": { "type": "string", "format": "date-time" },
+        "durationMinutes": { "type": "number" },
+        "version": { "type": "number", "default": 1 }
       }
     },
     "Participant": {
       "title": "Participant",
-      "description": "Registered player data. ISOLATION: Scoped by clubId.",
+      "description": "Tournament attendee with ranking data.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "clubId": { "type": "string" },
+        "registrationStatus": { "type": "string", "enum": ["registered", "waitlisted", "withdrawn"] },
+        "rating": { "type": "number", "default": 1000 },
+        "ratingDelta": { "type": "number", "default": 0 },
+        "name": { "type": "string" },
+        "email": { "type": "string" }
+      }
+    },
+    "Court": {
+      "title": "Court",
+      "description": "Physical facility resources.",
       "type": "object",
       "properties": {
         "clubId": { "type": "string" },
-        "tournamentId": { "type": "string" },
-        "categoryId": { "type": "string" },
-        "categoryName": { "type": "string" },
         "name": { "type": "string" },
-        "email": { "type": "string" },
-        "skillLevel": { "type": "string" },
-        "telegramHandle": { "type": "string" },
-        "verified": { "type": "boolean" },
-        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "waived"] },
-        "paidAmount": { "type": "number" },
-        "packSize": { "type": "string", "description": "Selected size for welcome pack apparel" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "surface": { "type": "string", "enum": ["hard", "clay", "grass", "indoor"] },
+        "status": { "type": "string", "enum": ["available", "occupied", "maintenance"] },
+        "currentMatchId": { "type": "string" }
       }
     },
-    "Club": {
-      "title": "Club",
-      "description": "Organization hosting tournaments. ISOLATION: Scoped by ownerId.",
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app delivery record.",
       "type": "object",
       "properties": {
-        "ownerId": { "type": "string", "description": "Firebase Auth UID of the owner." },
-        "name": { "type": "string" },
-        "location": { "type": "string" },
-        "timezone": { "type": "string", "default": "UTC" },
-        "contactEmail": { "type": "string" },
-        "numCourts": { "type": "number" },
-        "primarySport": { "type": "string" },
-        "logoUrl": { "type": "string" },
-        "telegramBotToken": { "type": "string" },
-        "telegramBotUsername": { "type": "string" },
-        "aiUsageCount": { "type": "number", "default": 0 },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "CheckIn": {
-      "title": "CheckIn",
-      "description": "Day-of arrival verification.",
-      "type": "object",
-      "properties": {
-        "participantId": { "type": "string" },
-        "tournamentId": { "type": "string" },
-        "location": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Sponsor": {
-      "title": "Sponsor",
-      "description": "Brand partners. ISOLATION: Scoped by clubId.",
-      "type": "object",
-      "properties": {
-        "clubId": { "type": "string" },
-        "tournamentId": { "type": "string" },
-        "name": { "type": "string" },
-        "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] },
-        "websiteUrl": { "type": "string" },
-        "logoUrl": { "type": "string" }
-      }
-    },
-    "PromoCode": {
-      "title": "PromoCode",
-      "description": "Platform-wide marketing discounts for SaaS fees.",
-      "type": "object",
-      "properties": {
-        "code": { "type": "string" },
-        "discountPercent": { "type": "number" },
-        "active": { "type": "boolean" },
-        "expiryDate": { "type": "string", "format": "date" }
-      }
-    },
-    "User": {
-      "title": "User",
-      "description": "System user account.",
-      "type": "object",
-      "properties": {
-        "email": { "type": "string" },
-        "displayName": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "club_owner", "referee", "player"] },
-        "photoURL": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean", "default": false },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "relatedId": { "type": "string" },
+        "relatedType": { "type": "string" }
       }
     }
   },
@@ -159,13 +102,10 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
-    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read. Club Owner / Admin Write." },
-    "/matches/{matchId}": { "schema": "Match", "description": "Global Read. Club Owner / Admin Write." },
-    "/clubs/{clubId}": { "schema": "Club", "description": "Global Read (Branding). Owner / Admin Write." },
-    "/users/{userId}": { "schema": "User", "description": "Private Read/Write. Admin global read." },
-    "/participants/{participantId}": { "schema": "Participant", "description": "Staff Read/Update. Public Create." },
-    "/checkins/{checkInId}": { "schema": "CheckIn", "description": "Staff Read. Public Create (Arrival)." },
-    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Global Read. Club Owner / Admin Write." },
-    "/promocodes/{codeId}": { "schema": "PromoCode", "description": "Admin Manage Only." }
+    "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read. Club Admin Write." },
+    "/matches/{matchId}": { "schema": "Match", "description": "Structured bracket records." },
+    "/participants/{participantId}": { "schema": "Participant", "description": "Scoped by UID/Admin." },
+    "/courts/{courtId}": { "schema": "Court", "description": "Facility registry." },
+    "/users/{userId}/notifications/{notifId}": { "schema": "Notification", "description": "Private audit trail." }
   }
 }

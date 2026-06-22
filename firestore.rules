@@ -1,110 +1,86 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- Helper Functions ---
+    // --- Authentication ---
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isAdmin() {
       return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isClubOwner(clubId) {
+    function isClubAdmin(clubId) {
+      let club = get(/databases/$(database)/documents/clubs/$(clubId)).data;
       return isSignedIn() && (
-        (exists(/databases/$(database)/documents/clubs/$(clubId)) && 
-         get(/databases/$(database)/documents/clubs/$(clubId)).data.ownerId == request.auth.uid) || 
+        club.ownerId == request.auth.uid || 
+        request.auth.uid in club.adminIds ||
         isAdmin()
       );
     }
 
-    // --- Validation Functions ---
+    // --- Validation ---
     function isValidTournament(data) {
-      return data.keys().hasOnly(['clubId', 'name', 'startDate', 'endDate', 'sport', 'status', 'createdAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees', 'categories', 'entryFee', 'hasWelcomePack', 'welcomePackDescription', 'requiresSize', 'isFeatured', 'imageUrl']) &&
-             data.clubId is string && data.name is string && data.status in ['draft', 'registration', 'active', 'completed'];
+      return data.keys().hasOnly(['clubId', 'name', 'status', 'statusHistory', 'startDate', 'endDate', 'minParticipants', 'maxParticipants', 'bracketConfirmed', 'entryFee', 'sport', 'locations', 'categories', 'version', 'createdAt', 'deletedAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees']) &&
+             data.status in ['draft', 'registration_open', 'registration_closed', 'in_progress', 'completed', 'archived'];
     }
 
     function isValidMatch(data) {
-      return data.keys().hasOnly(['clubId', 'tournamentId', 'court', 'location', 'categoryId', 'category', 'teamA', 'teamB', 'status', 'startTime', 'completedAt']) &&
-             data.clubId is string && data.tournamentId is string && data.status in ['scheduled', 'live', 'completed'];
-    }
-
-    function isValidParticipant(data) {
-      return data.keys().hasOnly(['clubId', 'tournamentId', 'categoryId', 'categoryName', 'name', 'email', 'skillLevel', 'telegramHandle', 'verified', 'paymentStatus', 'paidAmount', 'packSize', 'createdAt', 'userId']) &&
-             data.clubId is string && data.tournamentId is string && data.email is string;
-    }
-
-    function isValidUser(data) {
-      return data.keys().hasOnly(['email', 'displayName', 'role', 'photoURL', 'createdAt', 'updatedAt']) &&
-             data.email is string && data.role in ['admin', 'club_owner', 'referee', 'player'];
+      return data.keys().hasOnly(['tournamentId', 'clubId', 'round', 'bracketPosition', 'nextMatchId', 'isBye', 'byePlayerId', 'courtId', 'court', 'teamA', 'teamB', 'score', 'status', 'scheduledTime', 'actualStartTime', 'actualEndTime', 'durationMinutes', 'version', 'location', 'category', 'categoryId', 'startTime']) &&
+             data.status in ['scheduled', 'live', 'completed'];
     }
 
     // --- Collection Rules ---
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && isValidUser(request.resource.data);
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      
+      match /notifications/{notifId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+      match /stats/main {
+        allow read: if true;
+        allow write: if isAdmin(); // Server actions handle stats
+      }
     }
 
     match /clubs/{clubId} {
-      allow read: if true; 
+      allow read: if true;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow delete: if isAdmin();
+      allow update: if isClubAdmin(clubId);
     }
 
     match /tournaments/{tournamentId} {
-      allow read: if true; 
-      allow create: if isSignedIn() && isClubOwner(request.resource.data.clubId) && isValidTournament(request.resource.data);
-      allow update, delete: if isSignedIn() && (isClubOwner(resource.data.clubId) || isAdmin());
+      allow read: if true;
+      allow create: if isSignedIn() && isClubAdmin(request.resource.data.clubId) && isValidTournament(request.resource.data);
+      allow update: if isClubAdmin(resource.data.clubId) && isValidTournament(request.resource.data);
+      allow delete: if false; // Use soft deletes
     }
 
     match /matches/{matchId} {
-      allow read: if true; 
-      allow write: if isSignedIn() && (
-        (resource == null && isClubOwner(request.resource.data.clubId) && isValidMatch(request.resource.data)) ||
-        (resource != null && isClubOwner(resource.data.clubId)) ||
-        isAdmin()
-      );
+      allow read: if true;
+      allow write: if isSignedIn() && isClubAdmin(request.resource.data.clubId) && isValidMatch(request.resource.data);
     }
 
     match /participants/{participantId} {
-      allow read: if true; 
+      allow read: if true;
       allow create: if (request.resource.data.tournamentId != null) && 
                       exists(/databases/$(database)/documents/tournaments/$(request.resource.data.tournamentId)) &&
-                      isValidParticipant(request.resource.data); 
-      allow update, delete: if isSignedIn() && (
-        isClubOwner(resource.data.clubId) || 
-        (resource.data.userId == request.auth.uid) ||
-        isAdmin()
-      );
-    }
-
-    match /checkins/{checkInId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn(); 
-      allow update, delete: if isAdmin();
+                      (request.resource.data.userId == request.auth.uid || isClubAdmin(request.resource.data.clubId));
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isClubAdmin(resource.data.clubId));
     }
 
     match /courts/{courtId} {
       allow read: if true;
-      allow write: if isSignedIn() && isClubOwner(request.resource.data.clubId);
-    }
-
-    match /sponsors/{sponsorId} {
-      allow read: if true;
-      allow write: if isSignedIn() && (
-        (resource == null && isClubOwner(request.resource.data.clubId)) ||
-        (resource != null && isClubOwner(resource.data.clubId)) ||
-        isAdmin()
-      );
-    }
-
-    match /promocodes/{codeId} {
-      allow read: if true; 
-      allow write: if isAdmin(); 
+      allow write: if isSignedIn() && isClubAdmin(request.resource.data.clubId);
+      
+      match /slots/{slotId} {
+        allow read: if true;
+        allow write: if isSignedIn() && isClubAdmin(get(/databases/$(database)/documents/courts/$(courtId)).data.clubId);
+      }
     }
   }
 }
