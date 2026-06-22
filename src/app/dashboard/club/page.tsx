@@ -42,6 +42,32 @@ const COMMON_TIMEZONES = [
   { label: "UTC +12:00", value: "Etc/GMT-12" },
 ]
 
+export const COMPREHENSIVE_SPORTS = [
+  { label: "Padel", value: "padel" },
+  { label: "Tennis", value: "tennis" },
+  { label: "Badminton", value: "badminton" },
+  { label: "Pickleball", value: "pickleball" },
+  { label: "Squash", value: "squash" },
+  { label: "Table Tennis", value: "table-tennis" },
+  { label: "Basketball", value: "basketball" },
+  { label: "Volleyball", value: "volleyball" },
+  { label: "Football (Soccer)", value: "football" },
+  { label: "American Football", value: "american-football" },
+  { label: "Baseball", value: "baseball" },
+  { label: "Golf", value: "golf" },
+  { label: "Cricket", value: "cricket" },
+  { label: "Rugby", value: "rugby" },
+  { label: "Handball", value: "handball" },
+  { label: "Hockey", value: "hockey" },
+  { label: "Ice Hockey", value: "ice-hockey" },
+  { label: "Swimming", value: "swimming" },
+  { label: "Athletics", value: "athletics" },
+  { label: "MMA", value: "mma" },
+  { label: "Boxing", value: "boxing" },
+  { label: "Chess", value: "chess" },
+  { label: "E-Sports", value: "e-sports" },
+]
+
 export default function ClubSettings() {
   const db = useFirestore()
   const { user } = useUser()
@@ -177,9 +203,9 @@ export default function ClubSettings() {
                 <Select value={formData.primarySport} onValueChange={(val) => setFormData({...formData, primarySport: val})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="padel">Padel</SelectItem>
-                    <SelectItem value="tennis">Tennis</SelectItem>
-                    <SelectItem value="badminton">Badminton</SelectItem>
+                    {COMPREHENSIVE_SPORTS.map(sport => (
+                      <SelectItem key={sport.value} value={sport.value}>{sport.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

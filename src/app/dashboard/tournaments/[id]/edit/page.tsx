@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -18,6 +17,7 @@ import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
+import { COMPREHENSIVE_SPORTS } from "../../club/page"
 
 interface Category {
   id: string;
@@ -241,6 +241,17 @@ export default function EditTournamentPage() {
                 <div className="space-y-2 md:col-span-2">
                   <Label>Tournament Name</Label>
                   <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} disabled={isCompleted} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sport Category</Label>
+                  <Select value={formData.sport} onValueChange={val => setFormData({...formData, sport: val})} disabled={isCompleted}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {COMPREHENSIVE_SPORTS.map(sport => (
+                        <SelectItem key={sport.value} value={sport.value}>{sport.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Current Stage</Label>

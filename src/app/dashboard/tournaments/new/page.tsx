@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -25,6 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { COMPREHENSIVE_SPORTS } from "../../club/page"
 
 interface Category {
   id: string;
@@ -235,9 +235,9 @@ export default function TournamentWizard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="padel">Padel</SelectItem>
-                      <SelectItem value="tennis">Tennis</SelectItem>
-                      <SelectItem value="badminton">Badminton</SelectItem>
+                      {COMPREHENSIVE_SPORTS.map(sport => (
+                        <SelectItem key={sport.value} value={sport.value}>{sport.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
