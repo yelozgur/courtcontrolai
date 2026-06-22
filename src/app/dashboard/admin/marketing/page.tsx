@@ -259,7 +259,7 @@ export default function MarketingCenter() {
              </div>
           </Card>
         </TabsContent>
-      </tabs>
+      </Tabs>
     </div>
   );
 }
