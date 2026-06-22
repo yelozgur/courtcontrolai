@@ -18,7 +18,7 @@ import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { COMPREHENSIVE_SPORTS } from "../../club/page"
+import { COMPREHENSIVE_SPORTS } from "@/app/dashboard/club/page"
 
 interface Category {
   id: string;
