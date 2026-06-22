@@ -38,6 +38,15 @@ export default function DashboardOverview() {
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
   const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
 
+  // 1. Resolve the User's Club first to ensure strict isolation
+  const userClubsQuery = useMemoFirebase(() => {
+    if (!db || !user || isAdmin) return null;
+    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1));
+  }, [db, user, isAdmin]);
+
+  const { data: userClubs, loading: clubsLoading } = useCollection(userClubsQuery);
+  const clubId = userClubs?.[0]?.id;
+
   // Optimized Admin Queries: Only run if strictly verified as admin
   const allClubsQuery = useMemoFirebase(() => {
     if (!db || !isAdmin) return null;
@@ -52,26 +61,35 @@ export default function DashboardOverview() {
   const { data: allClubs } = useCollection(allClubsQuery);
   const { data: allUsers } = useCollection(allUsersQuery);
 
-  // Optimized Club Owner Queries: Fetch specific data relevant to the dashboard
+  // Optimized Club Owner Queries: Fetch specific data strictly scoped to THEIR club
   const tournamentsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    // For club owners, we'd ideally filter by clubId if available in profile
-    // For MVP, we show recent global tournaments or filtered by user.uid if role is owner
-    return query(collection(db, "tournaments"), orderBy("createdAt", "desc"), limit(5));
-  }, [db, user]);
+    if (!db || !clubId) return null;
+    return query(
+      collection(db, "tournaments"), 
+      where("clubId", "==", clubId),
+      orderBy("createdAt", "desc"), 
+      limit(5)
+    );
+  }, [db, clubId]);
 
   const liveMatchesQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return query(collection(db, "matches"), where("status", "==", "live"), limit(3));
-  }, [db]);
+    if (!db || !clubId) return null;
+    return query(
+      collection(db, "matches"), 
+      where("clubId", "==", clubId),
+      where("status", "==", "live"), 
+      limit(3)
+    );
+  }, [db, clubId]);
 
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
   const { data: matches } = useCollection(liveMatchesQuery);
 
-  if (profileLoading || toursLoading) {
+  if (profileLoading || (isAdmin ? false : clubsLoading) || (clubId && toursLoading)) {
     return (
-      <div className="flex items-center justify-center p-20">
+      <div className="flex flex-col items-center justify-center p-20 gap-4">
         <Loader2 className="animate-spin text-primary h-12 w-12" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Environment...</p>
       </div>
     );
   }
@@ -177,6 +195,24 @@ export default function DashboardOverview() {
     );
   }
 
+  // Handle case where user has signed up but not created a club yet
+  if (!clubId && !clubsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-in fade-in duration-700">
+        <div className="w-20 h-20 bg-secondary rounded-[2rem] flex items-center justify-center">
+          <Building className="h-10 w-10 text-muted-foreground opacity-50" />
+        </div>
+        <div>
+          <h2 className="text-3xl font-headline font-bold uppercase tracking-tighter">Initialize Your Hub</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto mt-2">To start managing tournaments, you must first register your club profile.</p>
+        </div>
+        <Button asChild size="lg" className="bg-primary font-bold px-10 rounded-2xl">
+          <Link href="/dashboard/club">Configure Club Identity</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -185,7 +221,7 @@ export default function DashboardOverview() {
             Tournament Command
           </h1>
           <p className="text-muted-foreground mt-1 font-medium">
-            Welcome back, {profile?.displayName || 'Organizer'}.
+            Managing: <span className="text-primary font-bold">{userClubs?.[0]?.name}</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -198,9 +234,9 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Active Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Current Season" />
-        <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="On Courts" color="text-accent" />
-        <StatCard title="Club Rank" value="Elite" icon={Star} sub="System status" />
+        <StatCard title="Club Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Owned Events" />
+        <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="At Your Venues" color="text-accent" />
+        <StatCard title="Club Rank" value="Verified" icon={Star} sub="System status" />
         <StatCard title="System Performance" value="Optimal" icon={Zap} sub="AI Scheduler Active" color="text-accent" />
       </div>
 
@@ -232,8 +268,8 @@ export default function DashboardOverview() {
                 </Card>
               ))
             ) : (
-              <div className="text-center py-10 bg-white/5 rounded-2xl border-dashed border-2 border-white/10">
-                <p className="text-muted-foreground">No tournaments created yet.</p>
+              <div className="text-center py-20 bg-white/5 rounded-2xl border-dashed border-2 border-white/10">
+                <p className="text-muted-foreground">No tournaments created for this club yet.</p>
               </div>
             )}
           </div>
@@ -264,7 +300,7 @@ export default function DashboardOverview() {
                 </Card>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-10 italic">No matches live right now.</p>
+              <p className="text-center text-muted-foreground py-10 italic">No matches live in your venues.</p>
             )}
           </div>
         </div>
