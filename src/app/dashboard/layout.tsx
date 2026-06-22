@@ -22,7 +22,6 @@ import {
   Users2,
   Megaphone,
   Menu,
-  X,
   ChevronLeft
 } from 'lucide-react';
 
@@ -36,8 +35,6 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -95,43 +92,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ].filter(item => item.show);
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-[#0F172A]">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-          <Zap className="text-white h-5 w-5" />
+    <div className="flex flex-col h-full bg-[#0F172A] border-r border-white/5">
+      <div className="p-8 flex items-center gap-4">
+        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+          <Zap className="text-white h-6 w-6" />
         </div>
-        <span className="font-headline font-bold text-lg text-white uppercase tracking-tighter">Court Control AI</span>
+        <span className="font-headline font-bold text-xl text-white uppercase tracking-tighter">Console</span>
       </div>
-      <ScrollArea className="flex-1 px-3">
+      <ScrollArea className="flex-1 px-4">
         <div className="space-y-1 py-2">
-          <p className="px-4 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">{isAdmin ? 'Platform Admin' : 'Management'}</p>
+          <p className="px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-40">{isAdmin ? 'Platform Admin' : 'Management'}</p>
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setIsMobileMenuOpen(false)}
               className={cn(
-                'group flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary',
-                pathname === item.href ? 'bg-primary/20 text-primary border border-primary/20' : 'text-muted-foreground'
+                'group flex items-center rounded-2xl px-4 py-4 text-sm font-bold transition-all duration-300',
+                pathname === item.href 
+                  ? 'bg-primary/20 text-primary border border-primary/20 shadow-inner' 
+                  : 'text-muted-foreground hover:bg-white/5 hover:text-white'
               )}
             >
-              <item.icon className="mr-3 h-5 w-5" />
+              <item.icon className={cn("mr-3 h-5 w-5 transition-transform group-hover:scale-110", pathname === item.href ? "text-primary" : "opacity-50")} />
               {item.name}
             </Link>
           ))}
         </div>
       </ScrollArea>
-      <div className="p-4 border-t border-white/5 bg-black/10">
-        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl mb-2 border border-white/5">
-          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary border border-primary/20">
+      <div className="p-6 border-t border-white/5 bg-black/10">
+        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-3xl mb-4 border border-white/5 backdrop-blur-sm">
+          <div className="w-11 h-11 rounded-2xl bg-primary/20 flex items-center justify-center text-sm font-bold text-primary border border-primary/20">
             {profile?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold truncate text-white">{profile?.displayName || 'User'}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-semibold">{profile?.role?.replace('_', ' ') || 'Member'}</p>
+            <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">{profile?.role?.replace('_', ' ') || 'Member'}</p>
           </div>
         </div>
-        <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-10" onClick={handleSignOut}>
+        <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-12 rounded-2xl font-bold text-xs uppercase tracking-widest" onClick={handleSignOut}>
           <LogOut className="mr-3 h-4 w-4" /> Sign Out
         </Button>
       </div>
@@ -141,39 +140,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen overflow-hidden bg-[#0F172A]">
       {/* Desktop Sidebar */}
-      <aside className="w-64 border-r border-white/5 bg-[#0F172A] hidden md:flex flex-col">
+      <aside className="w-72 hidden lg:flex flex-col">
         <SidebarContent />
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-background/50 relative">
-        {/* Mobile Header */}
-        <header className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-card/50 sticky top-0 z-50">
-          <div className="flex items-center gap-3">
+        {/* Mobile & Tablet Header */}
+        <header className="lg:hidden flex items-center justify-between p-5 border-b border-white/5 bg-card/50 sticky top-0 z-50 backdrop-blur-xl">
+          <div className="flex items-center gap-4">
              {pathname !== '/dashboard' && (
-               <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
+               <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 rounded-xl bg-white/5">
                  <ChevronLeft className="h-5 w-5" />
                </Button>
              )}
-             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-               <Zap className="text-white h-4 w-4" />
+             <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
+               <Zap className="text-white h-5 w-5" />
              </div>
-             <span className="font-headline font-bold text-xs uppercase tracking-tighter text-white">Console</span>
+             <span className="font-headline font-bold text-xs uppercase tracking-tighter text-white">Tournament Hub</span>
           </div>
           
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white">
+              <Button variant="ghost" size="icon" className="text-white h-10 w-10 rounded-xl bg-white/5">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 bg-[#0F172A] border-r border-white/10 w-64">
+            <SheetContent side="left" className="p-0 bg-[#0F172A] border-r border-white/10 w-72">
                <SidebarContent />
             </SheetContent>
           </Sheet>
         </header>
 
-        <div className="container max-w-7xl mx-auto p-6 md:p-8">
+        <div className="container max-w-7xl mx-auto p-6 md:p-12 lg:p-16">
           {children}
         </div>
       </main>

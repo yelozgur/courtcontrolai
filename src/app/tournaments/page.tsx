@@ -30,84 +30,88 @@ export default function PublicTournaments() {
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white">
-      <header className="p-6 border-b border-white/5 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <Trophy className="text-primary h-6 w-6" />
-          <span className="font-headline font-bold text-xl uppercase">Tournaments</span>
+      <header className="p-6 border-b border-white/5 flex items-center justify-between sticky top-0 z-50 bg-card/80 backdrop-blur-md">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
+            <Trophy className="text-white h-5 w-5" />
+          </div>
+          <span className="font-headline font-bold text-xl uppercase tracking-tighter">Tournaments</span>
         </Link>
-        <div className="relative w-64 hidden md:block">
+        <div className="relative w-72 hidden md:block">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Search events..." 
-            className="pl-10 bg-white/5 border-white/10" 
+            placeholder="Search active events..." 
+            className="pl-10 bg-white/5 border-white/10 rounded-xl" 
             value={search}
-            onChange={e => setSearch(search)}
+            onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <Button asChild variant="outline" className="border-primary text-primary">
-          <Link href="/login">Club Login</Link>
+        <Button asChild variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 rounded-xl px-6 font-bold">
+          <Link href="/login">Club Console</Link>
         </Button>
       </header>
 
-      <main className="container max-w-6xl mx-auto py-12 px-6">
-        <div className="mb-12 text-center md:text-left">
-          <h1 className="text-4xl md:text-6xl font-headline font-bold mb-4 tracking-tighter">Live Competitions</h1>
-          <p className="text-xl text-muted-foreground">Find and register for the next epic tournament in your area.</p>
+      <main className="container max-w-6xl mx-auto py-16 px-6">
+        <div className="mb-16 text-center md:text-left space-y-4">
+          <h1 className="text-5xl md:text-7xl font-headline font-bold tracking-tighter uppercase leading-none">
+            Live <span className="text-primary">Competitions</span>
+          </h1>
+          <p className="text-xl text-muted-foreground font-medium max-w-2xl">Find and register for the next elite series in your area.</p>
         </div>
 
         {loading ? (
-          <div className="flex justify-center p-20"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>
+          <div className="flex justify-center p-32"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>
         ) : error ? (
-          <div className="p-20 text-center text-destructive bg-destructive/5 rounded-3xl border border-destructive/20 flex flex-col items-center gap-4">
+          <div className="p-20 text-center text-destructive bg-destructive/5 rounded-[2.5rem] border border-destructive/20 flex flex-col items-center gap-4">
             <AlertCircle className="h-12 w-12" />
             <div>
-              <p className="text-xl font-bold">Access Denied or Connection Error</p>
+              <p className="text-xl font-bold uppercase tracking-widest">Network Interrupted</p>
               <p className="text-sm opacity-80 mt-2 max-w-md mx-auto">
-                Could not load tournaments. Please ensure your Firestore Security Rules allow public read access to the tournaments collection.
+                We encountered an error loading the circuit. Please ensure public read access is permitted.
               </p>
             </div>
           </div>
         ) : filtered && filtered.length > 0 ? (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((t, i) => (
-              <Card key={t.id} className="bg-card/50 border-white/5 overflow-hidden group hover:border-primary/50 transition-all">
-                <div className="h-48 bg-slate-800 relative">
+              <Card key={t.id} className="bg-card/50 border-white/5 overflow-hidden group hover:border-primary/50 transition-all rounded-[2rem] shadow-2xl">
+                <div className="h-56 bg-slate-800 relative overflow-hidden">
                   <Image 
                     src={t.imageUrl || `https://picsum.photos/seed/${t.id}/800/400`} 
                     alt={t.name}
                     fill
-                    priority={i < 3} // Optimize LCP for above-the-fold cards
-                    className="object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                    priority={i < 3}
+                    className="object-cover opacity-60 group-hover:scale-110 transition-transform duration-700"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     data-ai-hint="sports tournament"
                   />
-                  <Badge className="absolute top-4 right-4 bg-primary uppercase tracking-widest">{t.sport || 'SPORTS'}</Badge>
-                  <Badge className="absolute bottom-4 left-4 bg-emerald-500 text-white uppercase text-[10px] font-bold flex items-center gap-1">
-                    <DollarSign className="h-3 w-3" /> {t.entryFee > 0 ? `$${t.entryFee.toFixed(2)}` : 'FREE ENTRY'}
-                  </Badge>
-                </div>
-                <CardHeader>
-                  <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-2xl font-headline font-bold">{t.name}</CardTitle>
-                    <Badge variant="outline" className="text-[10px] border-accent/30 text-accent">
-                      {t.status === 'registration' ? 'OPEN' : 'LIVE'}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] to-transparent"></div>
+                  <Badge className="absolute top-5 right-5 bg-primary uppercase tracking-[0.2em] font-black text-[10px] px-4 py-1">{t.sport || 'SPORTS'}</Badge>
+                  <div className="absolute bottom-5 left-5 flex items-center gap-2">
+                    <Badge className="bg-emerald-500 text-white uppercase text-[10px] font-black tracking-widest px-3 py-1 shadow-lg shadow-emerald-500/20">
+                      {t.entryFee > 0 ? `$${t.entryFee.toFixed(2)}` : 'FREE ENTRY'}
                     </Badge>
                   </div>
+                </div>
+                <CardHeader className="pt-6">
+                  <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-3xl font-headline font-bold leading-tight group-hover:text-primary transition-colors">{t.name}</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
+                <CardContent className="space-y-5 pb-8">
+                  <div className="flex items-center gap-3 text-muted-foreground text-sm font-medium">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Calendar className="h-4 w-4" /></div>
                     <span>Starts {t.startDate}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
+                  <div className="flex items-center gap-3 text-muted-foreground text-sm font-medium">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><MapPin className="h-4 w-4" /></div>
                     <span className="truncate">{typeof t.locations?.[0] === 'object' ? t.locations[0].name : (t.locations?.[0] || 'Main Venue')}</span>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button asChild className="w-full bg-primary hover:bg-primary/90">
+                <CardFooter className="pt-0">
+                  <Button asChild className="w-full h-14 bg-primary hover:bg-primary/90 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-xl shadow-primary/10">
                     <Link href={`/tournaments/${t.id}/register`}>
-                      {t.status === 'registration' ? 'Register Now' : 'View Tournament'}
+                      {t.status === 'registration' ? 'Register Now' : 'Enter Arena'}
                     </Link>
                   </Button>
                 </CardFooter>
@@ -115,10 +119,13 @@ export default function PublicTournaments() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white/5 rounded-3xl border-dashed border-2 border-white/10">
-            <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-20" />
-            <h3 className="text-2xl font-bold">No active tournaments</h3>
-            <p className="text-muted-foreground mt-2">Check back later or register your club to host an event.</p>
+          <div className="text-center py-32 bg-white/5 rounded-[3rem] border-dashed border-2 border-white/10 flex flex-col items-center gap-6">
+            <Trophy className="h-20 w-20 text-muted-foreground opacity-10" />
+            <div className="space-y-2">
+               <h3 className="text-3xl font-headline font-bold uppercase tracking-tighter">Quiet on the Courts</h3>
+               <p className="text-muted-foreground text-lg max-w-sm mx-auto">No active tournaments found. Check back soon for the next series.</p>
+            </div>
+            <Button variant="outline" onClick={() => setSearch('')} className="rounded-xl border-primary/30 text-primary">Clear Search</Button>
           </div>
         )}
       </main>

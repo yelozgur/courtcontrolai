@@ -30,35 +30,37 @@ service cloud.firestore {
 
     // Clubs
     match /clubs/{clubId} {
-      allow read: if true; 
+      allow read: if true; // Required for public branding and internal checks
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Tournaments
+    // Tournaments - Fixed: Always allow read (list/get) for public access
     match /tournaments/{tournamentId} {
-      allow read: if true; // Public read access for players/guests
+      allow read: if true; 
       allow create: if isSignedIn(); 
-      allow update, delete: if isClubOwner(resource.data.clubId);
+      allow update, delete: if isSignedIn() && (isClubOwner(resource.data.clubId) || isAdmin());
     }
 
-    // Matches
+    // Matches - Fixed: Always allow read for public results
     match /matches/{matchId} {
-      allow read: if true; // Public results
+      allow read: if true; 
       allow write: if isSignedIn() && (
         (resource == null && isClubOwner(request.resource.data.clubId)) ||
-        (resource != null && isClubOwner(resource.data.clubId))
+        (resource != null && isClubOwner(resource.data.clubId)) ||
+        isAdmin()
       );
     }
 
     // Participants & Check-ins
     match /participants/{participantId} {
-      allow read: if true; // Required for verification flows
+      allow read: if true; 
       allow create: if true; 
       allow update, delete: if isSignedIn() && (
         isClubOwner(resource.data.clubId) || 
-        request.auth.token.email.lower() == resource.data.email.lower()
+        request.auth.token.email.lower() == resource.data.email.lower() ||
+        isAdmin()
       );
     }
 
@@ -73,7 +75,8 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSignedIn() && (
         (resource == null && isClubOwner(request.resource.data.clubId)) ||
-        (resource != null && isClubOwner(resource.data.clubId))
+        (resource != null && isClubOwner(resource.data.clubId)) ||
+        isAdmin()
       );
     }
 
