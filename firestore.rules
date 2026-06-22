@@ -34,14 +34,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Tournaments
+    // Tournaments - Strict List/Read
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if isSignedIn(); 
       allow update, delete: if isClubOwner(resource.data.clubId);
     }
 
-    // Matches
+    // Matches - Strict List/Write
     match /matches/{matchId} {
       allow read: if true;
       allow write: if isSignedIn() && (
@@ -50,9 +50,13 @@ service cloud.firestore {
       );
     }
 
-    // Participants & Check-ins
+    // Participants & Check-ins - Isolated
     match /participants/{participantId} {
-      allow read: if isSignedIn(); 
+      allow read: if isSignedIn() && (
+        (resource != null && isClubOwner(resource.data.clubId)) ||
+        (resource == null && isClubOwner(request.resource.data.clubId)) ||
+        request.auth.token.email.lower() == resource.data.email.lower()
+      );
       allow create: if true; // Public registration
       allow update, delete: if isSignedIn() && (
         isClubOwner(resource.data.clubId) || 
@@ -62,11 +66,11 @@ service cloud.firestore {
 
     match /checkins/{checkInId} {
       allow read: if isSignedIn();
-      allow create: if true; // Public self-check-in scanning
+      allow create: if true; 
       allow update, delete: if isAdmin();
     }
 
-    // Sponsors
+    // Sponsors - Isolated
     match /sponsors/{sponsorId} {
       allow read: if true;
       allow write: if isSignedIn() && (
