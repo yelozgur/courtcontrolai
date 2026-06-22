@@ -109,7 +109,7 @@ export default function DashboardOverview() {
           <Building className="h-10 w-10 text-primary" />
         </div>
         <div className="space-y-2">
-          h2 className="text-3xl font-headline font-bold">Initialize Your Hub</h2>
+          <h2 className="text-3xl font-headline font-bold">Initialize Your Hub</h2>
           <p className="text-muted-foreground max-w-sm mx-auto">To start managing tournaments and matches, you must first configure your club identity.</p>
         </div>
         <Button asChild size="lg" className="rounded-2xl font-bold h-14 px-10 shadow-xl shadow-primary/20">
