@@ -53,7 +53,6 @@ export default function MarketingCenter() {
   const handleBroadcast = () => {
     if (!broadcastMsg) return;
     setIsBroadcasting(true);
-    // Simulate global broadcast delay
     setTimeout(() => {
       toast({ title: "Broadcast Sent", description: "Message delivered to all Club Owners via dashboard and email." });
       setBroadcastMsg('');
@@ -143,7 +142,7 @@ export default function MarketingCenter() {
                               <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center text-primary group-hover:scale-110 transition-transform"><Trophy className="h-5 w-5" /></div>
                               <div>
                                 <p className="font-bold text-sm">{t.name}</p>
-                                <p className="text-[10px] text-muted-foreground uppercase">{t.sport} • {t.startDate}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase">{t.sport} &bull; {t.startDate}</p>
                               </div>
                            </div>
                            <Button 

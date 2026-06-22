@@ -16,7 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
 export default function LoginPage() {
-  const { user: existingUser, loading } = useUser();
+  const { loading } = useUser();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();

@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function SignupPage() {
-  const { user: existingUser, loading } = useUser();
+  const { loading } = useUser();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
@@ -145,7 +145,7 @@ export default function SignupPage() {
         <span className="text-2xl font-headline font-bold text-white tracking-tighter uppercase">Court Control AI</span>
       </Link>
 
-      <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
+      <Card className="w-full max-md border-white/5 bg-card/50 backdrop-blur-xl">
         <CardHeader className="text-center space-y-1">
           <CardTitle className="text-2xl font-headline font-bold text-white">Register Club</CardTitle>
           <CardDescription>

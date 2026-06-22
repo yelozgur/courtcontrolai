@@ -1,18 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Building2, Mail, MapPin, Hash, Save, Loader2, Trophy, Image as ImageIcon, Send, MessageSquare, Globe, PlusCircle } from "lucide-react"
+import { Building2, Save, Loader2, Send, MessageSquare, Globe, PlusCircle } from "lucide-react"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit, addDoc, serverTimestamp } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { COMPREHENSIVE_SPORTS } from "@/lib/sports"
 
 const COMMON_TIMEZONES = [
   { label: "UTC -12:00", value: "Etc/GMT+12" },
@@ -40,32 +40,6 @@ const COMMON_TIMEZONES = [
   { label: "UTC +10:00", value: "Etc/GMT-10" },
   { label: "UTC +11:00", value: "Etc/GMT-11" },
   { label: "UTC +12:00", value: "Etc/GMT-12" },
-]
-
-export const COMPREHENSIVE_SPORTS = [
-  { label: "Padel", value: "padel" },
-  { label: "Tennis", value: "tennis" },
-  { label: "Badminton", value: "badminton" },
-  { label: "Pickleball", value: "pickleball" },
-  { label: "Squash", value: "squash" },
-  { label: "Table Tennis", value: "table-tennis" },
-  { label: "Basketball", value: "basketball" },
-  { label: "Volleyball", value: "volleyball" },
-  { label: "Football (Soccer)", value: "football" },
-  { label: "American Football", value: "american-football" },
-  { label: "Baseball", value: "baseball" },
-  { label: "Golf", value: "golf" },
-  { label: "Cricket", value: "cricket" },
-  { label: "Rugby", value: "ruby" },
-  { label: "Handball", value: "handball" },
-  { label: "Hockey", value: "hockey" },
-  { label: "Ice Hockey", value: "ice-hockey" },
-  { label: "Swimming", value: "swimming" },
-  { label: "Athletics", value: "athletics" },
-  { label: "MMA", value: "mma" },
-  { label: "Boxing", value: "boxing" },
-  { label: "Chess", value: "chess" },
-  { label: "E-Sports", value: "e-sports" },
 ]
 
 export default function ClubSettings() {
@@ -130,7 +104,7 @@ export default function ClubSettings() {
         .then(() => {
           toast({ title: "Profile Updated" })
         })
-        .catch(async (e) => {
+        .catch(async () => {
           errorEmitter.emit("permission-error", new FirestorePermissionError({
             path: clubRef.path,
             operation: "update",
@@ -143,7 +117,7 @@ export default function ClubSettings() {
         .then(() => {
           toast({ title: "Club Initialized" })
         })
-        .catch(async (e) => {
+        .catch(async () => {
           errorEmitter.emit("permission-error", new FirestorePermissionError({
             path: "clubs",
             operation: "create",
@@ -238,7 +212,7 @@ export default function ClubSettings() {
           <Card className="bg-card/50 border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Hash className="h-5 w-5 text-accent" />
+                <Building2 className="h-5 w-5 text-accent" />
                 Capacity
               </CardTitle>
             </CardHeader>

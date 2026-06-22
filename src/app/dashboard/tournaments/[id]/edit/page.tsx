@@ -3,21 +3,19 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Save, Loader2, ArrowLeft, Trash2, Plus, Layout, Lock, Unlock, Users, Monitor, Gavel, AlertCircle, Clock, Zap, MapPin, DollarSign, Shirt } from "lucide-react"
-import { doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { Save, Loader2, ArrowLeft, Plus, MapPin } from "lucide-react"
+import { doc, updateDoc } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
-import { COMPREHENSIVE_SPORTS } from "@/app/dashboard/club/page"
+import { COMPREHENSIVE_SPORTS } from "@/lib/sports"
 
 interface Category {
   id: string;
@@ -66,7 +64,6 @@ export default function EditTournamentPage() {
   })
   
   const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const isDraft = formData.status === "draft"
   const isCompleted = formData.status === "completed"
@@ -110,7 +107,7 @@ export default function EditTournamentPage() {
       .then(() => {
         toast({ title: "Tournament Updated" })
       })
-      .catch(async (e) => {
+      .catch(async () => {
         errorEmitter.emit("permission-error", new FirestorePermissionError({
           path: docRef.path,
           operation: 'update',

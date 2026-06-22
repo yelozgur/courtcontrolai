@@ -1,16 +1,14 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, Clock, DollarSign, AlertCircle, Shirt } from "lucide-react"
+import { Trophy, Loader2, Plus, Trash2, MapPin, DollarSign } from "lucide-react"
 import { collection, doc, setDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -23,9 +21,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { COMPREHENSIVE_SPORTS } from "../../club/page"
+import { COMPREHENSIVE_SPORTS } from "@/lib/sports"
 
 interface Category {
   id: string;
@@ -155,14 +152,13 @@ export default function TournamentWizard() {
     }
 
     setIsSubmitting(true)
-    
     const tournamentsCollection = collection(db, "tournaments")
     const tournamentRef = doc(tournamentsCollection)
     
     const tournamentData = {
       ...formData,
       clubId,
-      status: "registration_open", // Launch into registration state
+      status: "registration_open",
       createdAt: serverTimestamp(),
       entryFee: Number(formData.entryFee) || 0,
       version: 1
@@ -173,7 +169,7 @@ export default function TournamentWizard() {
          toast({ title: "Tournament Launched!" })
         router.push("/dashboard")
       })
-      .catch(async (e) => {
+      .catch(async () => {
         const error = new FirestorePermissionError({
           path: tournamentRef.path,
           operation: "create",
@@ -264,7 +260,7 @@ export default function TournamentWizard() {
                   <div key={c.id} className="p-4 bg-secondary/30 rounded-xl flex justify-between items-center">
                     <div>
                        <p className="font-bold">{c.name}</p>
-                       <p className="text-xs text-muted-foreground">{c.format} • {c.ageGroup}</p>
+                       <p className="text-xs text-muted-foreground">{c.format} &bull; {c.ageGroup}</p>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => removeCategory(c.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
                   </div>
@@ -300,7 +296,7 @@ export default function TournamentWizard() {
                 </div>
                 {formData.locations.map((l, i) => (
                   <div key={i} className="p-4 bg-secondary/30 rounded-xl flex justify-between items-center">
-                    <p className="font-bold">{l.name} • {l.numCourts} Courts</p>
+                    <p className="font-bold">{l.name} &bull; {l.numCourts} Courts</p>
                     <Button variant="ghost" size="icon" onClick={() => removeLocation(i)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
