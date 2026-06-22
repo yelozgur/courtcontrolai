@@ -8,36 +8,22 @@ Court Control AI is an elite, multi-tenant sports management platform designed t
 - **Multi-Venue Management**: Coordinate multiple physical locations and dozens of courts from a single console.
 - **Player Circuit**: Integrated player profiles, club rankings, and automated QR check-ins.
 
-## Tech Stack
-- **Framework**: Next.js 15 (App Router)
-- **Database/Auth**: Firebase (Firestore, Auth, App Hosting)
-- **AI**: Google Genkit + Gemini 2.5
-- **UI**: Shadcn/UI, Tailwind CSS, Lucide Icons
+## CLI Commands
 
-## Getting Started
+### Development
+- `npm run dev`: Start Next.js development server on port 9002.
+- `npm run genkit:dev`: Start Genkit Developer UI for flow testing.
+- `npm run genkit:watch`: Start Genkit with hot-reload for flow logic changes.
 
-### Prerequisites
-- Node.js 20+
-- Firebase CLI (`npm install -g firebase-tools`)
+### Quality Assurance
+- `npm run lint`: Run ESLint static analysis.
+- `npm run typecheck`: Run TypeScript compiler validation.
+- `npm test`: Run logic and component unit tests via Vitest.
 
-### Setup
-1. Clone the repository.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Copy `.env.example` to `.env` and fill in your Firebase credentials and AI API keys.
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-## Development Commands
-- `npm run dev`: Start Next.js development server.
-- `npm run lint`: Run ESLint checks.
-- `npm run typecheck`: Run TypeScript compiler check.
-- `npm test`: Run unit tests with Vitest.
-- `npm run format`: Format code with Prettier.
+### Production
+- `npm run build`: Create an optimized production build for Firebase App Hosting.
+- `npm start`: Start the production server.
+- `npm run analyze`: Build and open the Next.js bundle analyzer.
 
 ## Deployment
 This project is optimized for **Firebase App Hosting**. 

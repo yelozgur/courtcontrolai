@@ -124,7 +124,7 @@ export default function AdminCostDashboard() {
         <div className="flex items-center gap-3">
            <Badge variant="outline" className="h-10 border-emerald-500/30 text-emerald-500 px-4 bg-emerald-500/5 font-bold uppercase tracking-widest text-[10px] flex items-center gap-2">
              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-             Global SaaS Sync
+             Global SaaS Live
            </Badge>
         </div>
       </div>

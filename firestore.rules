@@ -79,7 +79,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && 
                       exists(/databases/$(database)/documents/tournaments/$(request.resource.data.tournamentId)) &&
                       (request.resource.data.userId == request.auth.uid || isClubAdmin(request.resource.data.clubId));
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isClubAdmin(resource.data.clubId));
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isClubAdmin(request.resource.data.clubId));
     }
 
     match /courts/{courtId} {
