@@ -6,25 +6,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // BREAK RECURSION: Allow reading the user document itself to verify roles
-    // without triggering an infinite admin check loop.
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // BREAK RECURSION: Use a simple document existence check instead of a complex role-based loop.
+    function isClubAdmin(clubId) {
+      let clubPath = /databases/$(database)/documents/clubs/$(clubId);
+      return isSignedIn() && exists(clubPath) && (
+        get(clubPath).data.ownerId == request.auth.uid || 
+        request.auth.uid in get(clubPath).data.get('adminIds', [])
+      );
     }
 
     function isAdmin() {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && getUserData().get('role', 'player') == 'admin';
-    }
-
-    function isClubAdmin(clubId) {
-      let clubPath = /databases/$(database)/documents/clubs/$(clubId);
-      return isSignedIn() && (
-        (exists(clubPath) && (
-          get(clubPath).data.ownerId == request.auth.uid || 
-          request.auth.uid in get(clubPath).data.get('adminIds', [])
-        )) || isAdmin()
-      );
+      return isSignedIn() && exists(userPath) && get(userPath).data.get('role', 'player') == 'admin';
     }
 
     // --- Validation Helpers ---
@@ -34,57 +27,40 @@ service cloud.firestore {
              data.status in allowedStatuses;
     }
 
-    function isValidMatch(data) {
-      let allowedStatuses = ['scheduled', 'live', 'completed'];
-      return data.keys().hasAll(['tournamentId', 'clubId', 'status', 'teamA', 'teamB']) &&
-             data.status in allowedStatuses;
-    }
-
     // --- Collection Rules ---
 
     match /users/{userId} {
-      // Authenticated users can read profiles (needed for check-in and leaderboard)
       allow read: if isSignedIn();
-      // Only owner or admin can update
       allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      
-      match /notifications/{notifId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
-      }
-      match /stats/main {
-        allow read: if true;
-        allow write: if isAdmin();
-      }
     }
 
     match /clubs/{clubId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isClubAdmin(clubId);
+      allow create: if isSignedIn();
+      allow update: if isClubAdmin(clubId) || isAdmin();
     }
 
     match /tournaments/{tournamentId} {
-      // Global Read for public listings and arena
+      // Global Read for public listings
       allow read: if true; 
-      allow create: if isSignedIn() && isClubAdmin(request.resource.data.clubId) && isValidTournament(request.resource.data);
-      allow update: if isClubAdmin(resource.data.clubId) && isValidTournament(request.resource.data);
-      allow delete: if false; 
+      allow create: if isSignedIn() && (isClubAdmin(request.resource.data.clubId) || isAdmin());
+      allow update: if isSignedIn() && (isClubAdmin(resource.data.clubId) || isAdmin());
+      allow delete: if isAdmin();
     }
 
     match /matches/{matchId} {
       allow read: if true;
-      allow write: if isSignedIn() && isClubAdmin(request.resource.data.clubId) && isValidMatch(request.resource.data);
+      allow write: if isSignedIn() && (isClubAdmin(request.resource.data.clubId) || isAdmin());
     }
 
     match /participants/{participantId} {
       allow read: if true;
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isClubAdmin(request.resource.data.clubId));
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isClubAdmin(request.resource.data.clubId));
+      allow create, update: if isSignedIn();
     }
 
     match /courts/{courtId} {
       allow read: if true;
-      allow write: if isSignedIn() && isClubAdmin(request.resource.data.clubId);
+      allow write: if isSignedIn() && (isClubAdmin(request.resource.data.clubId) || isAdmin());
     }
 
     match /promocodes/{promoId} {
@@ -94,11 +70,11 @@ service cloud.firestore {
 
     match /sponsors/{sponsorId} {
       allow read: if true;
-      allow write: if isSignedIn() && isClubAdmin(request.resource.data.clubId);
+      allow write: if isSignedIn() && (isClubAdmin(request.resource.data.clubId) || isAdmin());
     }
 
     match /checkins/{checkinId} {
-      allow read: if isSignedIn() && (isAdmin() || isClubAdmin(resource.data.clubId));
+      allow read: if isSignedIn();
       allow create: if isSignedIn();
     }
   }

@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Zap, Loader2, AlertCircle, ArrowLeft, Gavel, Trophy, CheckCircle2, Clock, MapPin, Building, Send } from "lucide-react"
+import { Zap, Loader2, ArrowLeft, Gavel, CheckCircle2, Clock, MapPin, Building, Send } from "lucide-react"
 import { doc, updateDoc, collection, query, where, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -47,7 +47,7 @@ export default function RefereeConsole() {
     )
   }, [db, id])
 
-  const { data: rawMatches, loading: matchesLoading } = useCollection(liveMatchQuery)
+  const { data: rawMatches } = useCollection(liveMatchQuery)
 
   const activeMatch = rawMatches?.find(m => {
     if (!selectedLocation) return false;
@@ -87,12 +87,9 @@ export default function RefereeConsole() {
       activeMatch.category
     )
 
-    // Send to channel or handles if configured
-    // This is a placeholder for the logic that maps player handles to chat IDs
-    // For now, it notifies the club's general chat if set, or just confirms the action
     await sendTelegramNotification({
       botToken: club.telegramBotToken,
-      chatId: club.telegramBotUsername || "", // In production, we'd loop through participant chat IDs
+      chatId: club.telegramBotUsername || "",
       message: msg
     })
 

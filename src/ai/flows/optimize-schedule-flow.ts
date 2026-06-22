@@ -94,18 +94,18 @@ RULES:
 7. OUTPUT: Generate a comprehensive list of scheduled matches that honors these constraints.`,
 });
 
-export async function optimizeTournamentSchedule(input: ScheduleInput): Promise<ScheduleOutput> {
-  const flow = ai.defineFlow(
-    {
-      name: 'optimizeTournamentSchedule',
-      inputSchema: ScheduleInputSchema,
-      outputSchema: ScheduleOutputSchema,
-    },
-    async (input) => {
-      const { output } = await prompt(input);
-      return output!;
-    }
-  );
+const optimizeTournamentScheduleFlow = ai.defineFlow(
+  {
+    name: 'optimizeTournamentSchedule',
+    inputSchema: ScheduleInputSchema,
+    outputSchema: ScheduleOutputSchema,
+  },
+  async (input) => {
+    const { output } = await prompt(input);
+    return output!;
+  }
+);
 
-  return flow(input);
+export async function optimizeTournamentSchedule(input: ScheduleInput): Promise<ScheduleOutput> {
+  return optimizeTournamentScheduleFlow(input);
 }

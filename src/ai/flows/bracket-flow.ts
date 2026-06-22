@@ -34,19 +34,11 @@ const BracketOutputSchema = z.object({
   summary: z.string()
 });
 
-export async function generateTournamentBracket(input: z.infer<typeof BracketInputSchema>): Promise<z.infer<typeof BracketOutputSchema>> {
-  const flow = ai.defineFlow(
-    {
-      name: 'generateBracket',
-      inputSchema: BracketInputSchema,
-      outputSchema: BracketOutputSchema,
-    },
-    async (input) => {
-      const prompt = ai.definePrompt({
-        name: 'bracketPrompt',
-        input: { schema: BracketInputSchema },
-        output: { schema: BracketOutputSchema },
-        prompt: `You are a Tournament Logic Expert.
+const bracketPrompt = ai.definePrompt({
+  name: 'bracketPrompt',
+  input: { schema: BracketInputSchema },
+  output: { schema: BracketOutputSchema },
+  prompt: `You are a Tournament Logic Expert.
 Generate a Round 1 bracket for "{{{categoryName}}}".
 Participants: {{#each participants}} {{name}} (Rating: {{rating}}), {{/each}}
 
@@ -55,12 +47,20 @@ RULES:
 2. If the number of participants is not a power of 2, assign BYEs to the highest-seeded players.
 3. Every match must have a round (1) and a unique bracketPosition.
 4. Output a list of match drafts.`
-      });
+});
 
-      const { output } = await prompt(input);
-      return output!;
-    }
-  );
+const generateBracketFlow = ai.defineFlow(
+  {
+    name: 'generateBracket',
+    inputSchema: BracketInputSchema,
+    outputSchema: BracketOutputSchema,
+  },
+  async (input) => {
+    const { output } = await bracketPrompt(input);
+    return output!;
+  }
+);
 
-  return flow(input);
+export async function generateTournamentBracket(input: z.infer<typeof BracketInputSchema>): Promise<z.infer<typeof BracketOutputSchema>> {
+  return generateBracketFlow(input);
 }

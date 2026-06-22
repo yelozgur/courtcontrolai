@@ -47,7 +47,7 @@ export default function MarketingCenter() {
     return query(collection(db, "tournaments"), limit(50));
   }, [db]);
 
-  const { data: promos, loading: promosLoading } = useCollection(promosQuery);
+  const { data: promos } = useCollection(promosQuery);
   const { data: tournaments } = useCollection(tournamentsQuery);
 
   const handleBroadcast = () => {
