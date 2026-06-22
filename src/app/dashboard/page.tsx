@@ -51,10 +51,10 @@ export default function DashboardOverview() {
   // 2. Scoped Queries for Club Metrics
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null;
+    // Removing orderBy temporarily to handle legacy documents without createdAt and prevent index-related permission confusion
     return query(
       collection(db, "tournaments"), 
       where("clubId", "==", clubId),
-      orderBy("createdAt", "desc"),
       limit(5)
     );
   }, [db, clubId]);
@@ -88,6 +88,16 @@ export default function DashboardOverview() {
     const revenue = participants.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
     return { count, revenue };
   }, [participants]);
+
+  // Sort tournaments client-side to ensure stability regardless of missing fields
+  const sortedTournaments = useMemo(() => {
+    if (!tournaments) return [];
+    return [...tournaments].sort((a, b) => {
+      const dateA = a.createdAt?.seconds || 0;
+      const dateB = b.createdAt?.seconds || 0;
+      return dateB - dateA;
+    });
+  }, [tournaments]);
 
   if (profileLoading || clubsLoading) {
     return <DashboardSkeleton />;
@@ -157,8 +167,8 @@ export default function DashboardOverview() {
           <div className="grid gap-4">
             {toursLoading ? (
               [1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
-            ) : tournaments && tournaments.length > 0 ? (
-              tournaments.map(t => (
+            ) : sortedTournaments.length > 0 ? (
+              sortedTournaments.map(t => (
                 <Card key={t.id} className="group hover:border-primary/50 transition-all rounded-2xl overflow-hidden border-border bg-card">
                   <Link href={`/dashboard/tournaments/${t.id}/edit`}>
                     <CardContent className="p-6 flex items-center justify-between">

@@ -7,28 +7,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // BREAK RECURSION: We allow authenticated read on users collection 
-    // to allow the isAdmin check to proceed without calling itself.
+    // Robust Admin Check: Safe against missing user documents
     function isAdmin() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             exists(userPath) && 
+             get(userPath).data.get('role', 'player') == 'admin';
     }
 
+    // Robust Club Admin Check: Safe against missing club documents
     function isClubAdmin(clubId) {
-      // Use get() safely. Clubs have public read access, so this evaluation won't recurse.
-      let club = get(/databases/$(database)/documents/clubs/$(clubId)).data;
+      let clubPath = /databases/$(database)/documents/clubs/$(clubId);
       return isSignedIn() && (
-        club.ownerId == request.auth.uid || 
-        request.auth.uid in club.get('adminIds', []) ||
-        // Check admin role directly to avoid nested helper calls
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        (exists(clubPath) && (
+          get(clubPath).data.ownerId == request.auth.uid || 
+          request.auth.uid in get(clubPath).data.get('adminIds', [])
+        )) || isAdmin()
       );
     }
 
     // --- Validation Helpers ---
     function isValidTournament(data) {
       let allowedStatuses = ['draft', 'registration_open', 'registration_closed', 'in_progress', 'completed', 'archived'];
-      return data.keys().hasOnly(['clubId', 'name', 'status', 'statusHistory', 'startDate', 'endDate', 'minParticipants', 'maxParticipants', 'bracketConfirmed', 'entryFee', 'sport', 'locations', 'categories', 'version', 'createdAt', 'deletedAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees', 'isFeatured', 'hasWelcomePack', 'welcomePackDescription', 'requiresSize', 'imageUrl']) &&
+      return data.keys().hasAll(['clubId', 'name', 'status']) &&
              data.status in allowedStatuses;
     }
 
@@ -41,9 +42,9 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /users/{userId} {
-      // BREAK RECURSION: Basic authenticated read allowed.
-      // This allows isAdmin() helper to function globally.
+      // Allow any signed-in user to read profiles (needed for admin check logic)
       allow read: if isSignedIn();
+      // Only owner or admin can update
       allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       
       match /notifications/{notifId} {
@@ -62,11 +63,11 @@ service cloud.firestore {
     }
 
     match /tournaments/{tournamentId} {
-      // Surgical Read: Open read for listing and public views.
+      // Global Read for public listings and dashboard
       allow read: if true; 
       allow create: if isSignedIn() && isClubAdmin(request.resource.data.clubId) && isValidTournament(request.resource.data);
       allow update: if isClubAdmin(resource.data.clubId) && isValidTournament(request.resource.data);
-      allow delete: if false; // Soft deletes only via update
+      allow delete: if false; 
     }
 
     match /matches/{matchId} {
