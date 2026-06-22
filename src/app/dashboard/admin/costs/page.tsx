@@ -18,7 +18,8 @@ import {
   Cpu,
   ArrowUpRight,
   TrendingUp,
-  History
+  History,
+  Activity
 } from 'lucide-react';
 import { collection, query, limit, orderBy, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -128,8 +129,9 @@ export default function AdminCostDashboard() {
           <p className="text-muted-foreground font-medium">Tracking 5% commissions + AI credits against operational burn.</p>
         </div>
         <div className="flex items-center gap-3">
-           <Badge variant="outline" className="h-10 border-emerald-500/30 text-emerald-500 px-4 bg-emerald-500/5 font-bold uppercase tracking-widest text-[10px]">
-             Firebase Spark Plan Active
+           <Badge variant="outline" className="h-10 border-emerald-500/30 text-emerald-500 px-4 bg-emerald-500/5 font-bold uppercase tracking-widest text-[10px] flex items-center gap-2">
+             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+             Real-time Sync Active
            </Badge>
         </div>
       </div>
@@ -199,10 +201,15 @@ export default function AdminCostDashboard() {
             <div className="lg:col-span-4 space-y-6">
               <Card className="bg-[#1E293B] border-primary/20 shadow-2xl overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-white/5">
-                  <CardTitle className="text-lg font-headline uppercase tracking-tighter flex items-center gap-2">
-                    <Database className="h-5 w-5 text-emerald-400" /> 
-                    Free Tier Monitor
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-headline uppercase tracking-tighter flex items-center gap-2">
+                      <Database className="h-5 w-5 text-emerald-400" /> 
+                      Free Tier Monitor
+                    </CardTitle>
+                    <span className="flex items-center gap-1.5 text-[8px] font-bold text-emerald-500 uppercase tracking-widest">
+                       <Activity className="h-3 w-3 animate-pulse" /> Live
+                    </span>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <UsageProgress label="Firestore Reads" current={stats.readUsagePercent} sub="50,000 / Day Free" />
