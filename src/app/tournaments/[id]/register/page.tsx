@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, CheckCircle2, Loader2, User, Mail, DollarSign, CreditCard, ShieldCheck, Zap, Lock, MessageSquare, Send, Shirt } from 'lucide-react';
 import { collection, addDoc, doc } from 'firebase/firestore';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -20,6 +19,7 @@ export default function TournamentRegistration() {
   const { id } = useParams();
   const router = useRouter();
   const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [step, setStep] = useState<'details' | 'payment'>('details');
@@ -40,8 +40,8 @@ export default function TournamentRegistration() {
   const { data: club } = useDoc(clubRef)
 
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
+    name: user?.displayName || "",
+    email: user?.email || "",
     telegramHandle: "",
     skillLevel: "intermediate",
     categoryId: "",
@@ -68,6 +68,7 @@ export default function TournamentRegistration() {
     const entryFee = Number(tournament.entryFee) || 0;
     const registrationData = {
       ...formData,
+      userId: user?.uid || null, // Link registration to user if logged in
       clubId: tournament.clubId,
       tournamentId: id,
       createdAt: new Date().toISOString(),
