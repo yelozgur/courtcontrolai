@@ -20,7 +20,11 @@
         "locations": { "type": "array", "items": { "type": "object" } },
         "categories": { "type": "array", "items": { "type": "object" } },
         "version": { "type": "number", "default": 1 },
-        "deletedAt": { "type": "string", "format": "date-time" }
+        "deletedAt": { "type": "string", "format": "date-time" },
+        "isFeatured": { "type": "boolean", "default": false },
+        "hasWelcomePack": { "type": "boolean", "default": false },
+        "welcomePackDescription": { "type": "string" },
+        "requiresSize": { "type": "boolean", "default": false }
       },
       "required": ["clubId", "name", "status"]
     },
@@ -68,7 +72,9 @@
         "rating": { "type": "number", "default": 1000 },
         "ratingDelta": { "type": "number", "default": 0 },
         "name": { "type": "string" },
-        "email": { "type": "string" }
+        "email": { "type": "string" },
+        "packSize": { "type": "string" },
+        "verified": { "type": "boolean", "default": false }
       }
     },
     "Court": {
@@ -83,18 +89,39 @@
         "currentMatchId": { "type": "string" }
       }
     },
-    "Notification": {
-      "title": "Notification",
-      "description": "In-app delivery record.",
+    "PromoCode": {
+      "title": "PromoCode",
+      "description": "Platform-wide fee discount codes.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "type": { "type": "string" },
-        "message": { "type": "string" },
-        "read": { "type": "boolean", "default": false },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "relatedId": { "type": "string" },
-        "relatedType": { "type": "string" }
+        "code": { "type": "string" },
+        "discountPercent": { "type": "number" },
+        "active": { "type": "boolean" },
+        "expiryDate": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Sponsor": {
+      "title": "Sponsor",
+      "description": "Commercial partner registry.",
+      "type": "object",
+      "properties": {
+        "clubId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "name": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "websiteUrl": { "type": "string" },
+        "tier": { "type": "string", "enum": ["gold", "silver", "bronze"] }
+      }
+    },
+    "CheckIn": {
+      "title": "CheckIn",
+      "description": "Arrival verification log.",
+      "type": "object",
+      "properties": {
+        "participantId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" }
       }
     }
   },
@@ -106,6 +133,8 @@
     "/matches/{matchId}": { "schema": "Match", "description": "Structured bracket records." },
     "/participants/{participantId}": { "schema": "Participant", "description": "Scoped by UID/Admin." },
     "/courts/{courtId}": { "schema": "Court", "description": "Facility registry." },
-    "/users/{userId}/notifications/{notifId}": { "schema": "Notification", "description": "Private audit trail." }
+    "/promocodes/{promoId}": { "schema": "PromoCode", "description": "Platform Admin Only." },
+    "/sponsors/{sponsorId}": { "schema": "Sponsor", "description": "Public Read. Club Admin Write." },
+    "/checkins/{checkinId}": { "schema": "CheckIn", "description": "Event management audit trail." }
   }
 }

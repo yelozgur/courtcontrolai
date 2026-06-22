@@ -23,12 +23,12 @@ service cloud.firestore {
 
     // --- Validation ---
     function isValidTournament(data) {
-      return data.keys().hasOnly(['clubId', 'name', 'status', 'statusHistory', 'startDate', 'endDate', 'minParticipants', 'maxParticipants', 'bracketConfirmed', 'entryFee', 'sport', 'locations', 'categories', 'version', 'createdAt', 'deletedAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees']) &&
+      return data.keys().hasOnly(['clubId', 'name', 'status', 'statusHistory', 'startDate', 'endDate', 'minParticipants', 'maxParticipants', 'bracketConfirmed', 'entryFee', 'sport', 'locations', 'categories', 'version', 'createdAt', 'deletedAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees', 'isFeatured', 'hasWelcomePack', 'welcomePackDescription', 'requiresSize']) &&
              data.status in ['draft', 'registration_open', 'registration_closed', 'in_progress', 'completed', 'archived'];
     }
 
     function isValidMatch(data) {
-      return data.keys().hasOnly(['tournamentId', 'clubId', 'round', 'bracketPosition', 'nextMatchId', 'isBye', 'byePlayerId', 'courtId', 'court', 'teamA', 'teamB', 'score', 'status', 'scheduledTime', 'actualStartTime', 'actualEndTime', 'durationMinutes', 'version', 'location', 'category', 'categoryId', 'startTime']) &&
+      return data.keys().hasOnly(['tournamentId', 'clubId', 'round', 'bracketPosition', 'nextMatchId', 'isBye', 'byePlayerId', 'courtId', 'court', 'teamA', 'teamB', 'score', 'status', 'scheduledTime', 'actualStartTime', 'actualEndTime', 'durationMinutes', 'version', 'location', 'category', 'categoryId', 'startTime', 'completedAt']) &&
              data.status in ['scheduled', 'live', 'completed'];
     }
 
@@ -43,7 +43,7 @@ service cloud.firestore {
       }
       match /stats/main {
         allow read: if true;
-        allow write: if isAdmin(); // Server actions handle stats
+        allow write: if isAdmin();
       }
     }
 
@@ -81,6 +81,21 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isSignedIn() && isClubAdmin(get(/databases/$(database)/documents/courts/$(courtId)).data.clubId);
       }
+    }
+
+    match /promocodes/{promoId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /sponsors/{sponsorId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isClubAdmin(request.resource.data.clubId);
+    }
+
+    match /checkins/{checkinId} {
+      allow read: if isSignedIn() && (isAdmin() || exists(/databases/$(database)/documents/participants/$(resource.data.participantId)));
+      allow create: if isSignedIn();
     }
   }
 }
