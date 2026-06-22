@@ -21,7 +21,10 @@ import {
   Users2,
   Megaphone,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  Search,
+  Bell,
+  SearchIcon
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -38,6 +41,16 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from '@/components/ui/input';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -54,9 +67,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
-  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
-  const isClubManager = isAdmin || profile?.role === 'club_owner' || profile?.role === 'user' || !profile?.role;
-  const isReferee = profile?.role === 'referee';
+  const isAdmin = profile?.role === 'admin';
+  const isClubOwner = profile?.role === 'club_owner';
 
   const handleSignOut = () => {
     setIsMobileMenuOpen(false);
@@ -65,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (authLoading || (user && profileLoading)) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#0F172A] gap-4">
+      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">Syncing Console...</p>
       </div>
@@ -75,110 +87,164 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   const navItems = isAdmin ? [
-    { name: 'SaaS Overview', icon: LayoutDashboard, href: '/dashboard' },
-    { name: 'Marketing Center', icon: Megaphone, href: '/dashboard/admin/marketing' },
-    { name: 'Manage Clubs', icon: Building, href: '/dashboard/admin/clubs' },
-    { name: 'System Users', icon: Users2, href: '/dashboard/admin/users' },
-    { name: 'Revenue & Costs', icon: Calculator, href: '/dashboard/admin/costs' },
-    { name: 'My Profile', icon: User, href: '/dashboard/profile' },
+    { name: 'Platform Admin', icon: ShieldCheck, href: '/dashboard' },
+    { name: 'Marketing', icon: Megaphone, href: '/dashboard/admin/marketing' },
+    { name: 'Clubs Registry', icon: Building, href: '/dashboard/admin/clubs' },
+    { name: 'User Accounts', icon: Users2, href: '/dashboard/admin/users' },
+    { name: 'Economics', icon: Calculator, href: '/dashboard/admin/costs' },
   ] : [
-    { name: 'Club Console', icon: LayoutDashboard, href: '/dashboard', show: true },
-    { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments/new', show: isClubManager },
-    { name: 'Match Planner', icon: Calendar, href: '/dashboard/schedule', show: isClubManager },
-    { name: 'Participants', icon: Users, href: '/dashboard/participants', show: isClubManager },
-    { name: 'Check-In Hub', icon: QrCode, href: '/dashboard/check-in', show: isClubManager },
-    { name: 'Partners', icon: Heart, href: '/dashboard/sponsors', show: isClubManager },
-    { name: 'Referee Hub', icon: Gavel, href: '/referee', show: isReferee || isClubManager },
-    { name: 'My Profile', icon: User, href: '/dashboard/profile', show: true },
-    { name: 'Club Settings', icon: Building, href: '/dashboard/club', show: isClubManager },
-  ].filter(item => item.show);
+    { name: 'Console', icon: LayoutDashboard, href: '/dashboard' },
+    { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments' },
+    { name: 'Match Planner', icon: Calendar, href: '/dashboard/schedule' },
+    { name: 'Club Roster', icon: Users, href: '/dashboard/participants' },
+    { name: 'Venue Arrival', icon: QrCode, href: '/dashboard/check-in' },
+    { name: 'Partners', icon: Heart, href: '/dashboard/sponsors' },
+    { name: 'Settings', icon: Building, href: '/dashboard/club' },
+  ];
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-[#0F172A] border-r border-white/5">
-      <div className="p-8 flex items-center gap-4">
+    <div className="flex flex-col h-full bg-card border-r border-border">
+      <div className="p-8 flex items-center gap-3">
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
           <Zap className="text-white h-6 w-6" />
         </div>
-        <span className="font-headline font-bold text-xl text-white uppercase tracking-tighter">Console</span>
+        <div>
+          <span className="font-headline font-bold text-lg leading-tight block">CourtControl</span>
+          <span className="text-[10px] text-primary font-bold uppercase tracking-widest leading-none">Management AI</span>
+        </div>
       </div>
+      
       <ScrollArea className="flex-1 px-4">
-        <div className="space-y-1 py-2">
-          <p className="px-4 py-3 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-40">{isAdmin ? 'Platform Admin' : 'MANAGEMENT'}</p>
+        <div className="space-y-1 py-4">
+          <p className="px-4 pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-50">Main Menu</p>
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setIsMobileMenuOpen(false)}
               className={cn(
-                'group flex items-center rounded-2xl px-4 py-4 text-sm font-bold transition-all duration-300',
+                'group flex items-center rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200',
                 pathname === item.href 
-                  ? 'bg-primary/20 text-primary border border-primary/20 shadow-inner' 
-                  : 'text-muted-foreground hover:bg-white/5 hover:text-white'
+                  ? 'bg-primary text-primary-foreground shadow-md' 
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
               )}
             >
-              <item.icon className={cn("mr-3 h-5 w-5 transition-transform group-hover:scale-110", pathname === item.href ? "text-primary" : "opacity-50")} />
+              <item.icon className={cn("mr-3 h-5 w-5", pathname === item.href ? "text-primary-foreground" : "opacity-70 group-hover:opacity-100")} />
               {item.name}
             </Link>
           ))}
         </div>
       </ScrollArea>
-      <div className="p-6 border-t border-white/5 bg-black/10">
-        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-3xl mb-4 border border-white/5 backdrop-blur-sm">
-          <div className="w-11 h-11 rounded-2xl bg-primary/20 flex items-center justify-center text-sm font-bold text-primary border border-primary/20">
-            {profile?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
-          </div>
+
+      <div className="p-4 border-t border-border bg-muted/20">
+        <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl">
+          <Avatar className="h-10 w-10 border-2 border-primary/20">
+            <AvatarImage src={profile?.photoURL} />
+            <AvatarFallback className="bg-primary/10 text-primary font-bold">{profile?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate text-white">{profile?.displayName || 'User'}</p>
+            <p className="text-xs font-bold truncate leading-none mb-1">{profile?.displayName || 'Club Manager'}</p>
             <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">{profile?.role?.replace('_', ' ') || 'Member'}</p>
           </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
-        <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-12 rounded-2xl font-bold text-xs uppercase tracking-widest" onClick={handleSignOut}>
-          <LogOut className="mr-3 h-4 w-4" /> Sign Out
-        </Button>
       </div>
     </div>
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0F172A]">
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Desktop Sidebar */}
       <aside className="w-72 hidden lg:flex flex-col">
         <SidebarContent />
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-background/50 relative">
-        <header className="lg:hidden flex items-center justify-between p-5 border-b border-white/5 bg-card/50 sticky top-0 z-50 backdrop-blur-xl">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Global Header */}
+        <header className="h-16 border-b border-border bg-card/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-4">
-             {pathname !== '/dashboard' && (
-               <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 rounded-xl bg-white/5">
-                 <ChevronLeft className="h-5 w-5" />
-               </Button>
-             )}
-             <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-               <Zap className="text-white h-5 w-5" />
+             <div className="lg:hidden">
+               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                 <SheetTrigger asChild>
+                   <Button variant="ghost" size="icon" className="h-10 w-10">
+                     <Menu className="h-6 w-6" />
+                   </Button>
+                 </SheetTrigger>
+                 <SheetContent side="left" className="p-0 border-r-0 w-72">
+                    <SidebarContent />
+                 </SheetContent>
+               </Sheet>
              </div>
-             <span className="font-headline font-bold text-xs uppercase tracking-tighter text-white">Tournament Hub</span>
+             
+             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+               <LayoutDashboard className="h-4 w-4" />
+               <span className="hidden md:block">Dashboard</span>
+               <span className="mx-2 hidden md:block">/</span>
+               <span className="text-foreground font-bold capitalize">{pathname.split('/').pop() || 'Overview'}</span>
+             </div>
           </div>
-          
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white h-10 w-10 rounded-xl bg-white/5">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 bg-[#0F172A] border-r border-white/10 w-72">
-               <SheetHeader className="sr-only">
-                  <SheetTitle>Navigation Menu</SheetTitle>
-                  <SheetDescription>Mobile navigation drawer for dashboard controls.</SheetDescription>
-               </SheetHeader>
-               <SidebarContent />
-            </SheetContent>
-          </Sheet>
+
+          <div className="flex items-center gap-4">
+             <div className="relative hidden md:block w-64">
+               <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+               <Input placeholder="Search anything (⌘K)" className="pl-9 h-9 bg-secondary/50 border-transparent focus:bg-background transition-all rounded-full" />
+             </div>
+             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative">
+               <Bell className="h-5 w-5" />
+               <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background"></span>
+             </Button>
+             
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="p-1 h-9 rounded-full gap-2 pr-3 hover:bg-secondary">
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src={profile?.photoURL} />
+                      <AvatarFallback className="text-[10px]">{profile?.displayName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs font-bold hidden sm:inline-block">Account</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>Profile Settings</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/club')}>Club Identity</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">Log Out</DropdownMenuItem>
+                </DropdownMenuContent>
+             </DropdownMenu>
+          </div>
         </header>
 
-        <div className="container max-w-7xl mx-auto p-6 md:p-12 lg:p-16">
-          {children}
+        {/* Main Viewport */}
+        <main className="flex-1 overflow-y-auto page-transition p-6 md:p-10">
+          <div className="container max-w-6xl mx-auto space-y-10">
+            {children}
+          </div>
+        </main>
+
+        {/* Mobile Tab Bar */}
+        <div className="lg:hidden border-t border-border bg-card flex justify-around p-3 pb-safe-offset-2">
+           <Link href="/dashboard" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground')}>
+             <LayoutDashboard className="h-5 w-5" />
+             <span className="text-[9px] font-bold uppercase tracking-widest">Home</span>
+           </Link>
+           <Link href="/dashboard/tournaments" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname.includes('tournaments') ? 'text-primary' : 'text-muted-foreground')}>
+             <Trophy className="h-5 w-5" />
+             <span className="text-[9px] font-bold uppercase tracking-widest">Events</span>
+           </Link>
+           <Link href="/dashboard/schedule" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname.includes('schedule') ? 'text-primary' : 'text-muted-foreground')}>
+             <Calendar className="h-5 w-5" />
+             <span className="text-[9px] font-bold uppercase tracking-widest">Plan</span>
+           </Link>
+           <Link href="/dashboard/profile" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname.includes('profile') ? 'text-primary' : 'text-muted-foreground')}>
+             <User className="h-5 w-5" />
+             <span className="text-[9px] font-bold uppercase tracking-widest">Me</span>
+           </Link>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

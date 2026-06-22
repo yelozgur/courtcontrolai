@@ -17,8 +17,13 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'Court Control AI | Smart Sports Management',
-  description: 'Manage tournaments, schedules, and player stats with AI-powered precision.',
+  title: 'CourtControl AI | Smart Sports Management',
+  description: 'The elite platform for managing sports clubs, tournaments, and live scoring with AI-powered precision.',
+  openGraph: {
+    title: 'CourtControl AI',
+    description: 'Smart Sports Management and Tournament Logic.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

@@ -17,11 +17,17 @@ import {
   Users,
   DollarSign,
   TrendingUp,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  QrCode,
+  MapPin,
+  ChevronRight
 } from "lucide-react"
 import { collection, query, limit, doc, where, orderBy } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
 import { cn } from "@/lib/utils"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function DashboardOverview() {
   const db = useFirestore()
@@ -33,37 +39,25 @@ export default function DashboardOverview() {
   }, [db, user]);
   
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
-  const isAdmin = profile?.role === 'admin' || user?.email?.toLowerCase() === 'admin@deneme.com';
+  const isAdmin = profile?.role === 'admin';
 
-  // 1. Resolve the User's Club first to ensure strict isolation
+  // 1. Resolve User's Club
   const userClubsQuery = useMemoFirebase(() => {
     if (!db || !user || isAdmin) return null;
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1));
   }, [db, user, isAdmin]);
 
   const { data: userClubs, loading: clubsLoading } = useCollection(userClubsQuery);
-  const clubId = userClubs?.[0]?.id;
+  const clubData = userClubs?.[0];
+  const clubId = clubData?.id;
 
-  // Admin Queries
-  const allClubsQuery = useMemoFirebase(() => {
-    if (!db || !isAdmin) return null;
-    return query(collection(db, "clubs"), orderBy("createdAt", "desc"), limit(10));
-  }, [db, isAdmin]);
-
-  const allUsersQuery = useMemoFirebase(() => {
-    if (!db || !isAdmin) return null;
-    return query(collection(db, "users"), orderBy("createdAt", "desc"), limit(10));
-  }, [db, isAdmin]);
-
-  const { data: allClubs } = useCollection(allClubsQuery);
-  const { data: allUsers } = useCollection(allUsersQuery);
-
-  // Scoped Queries for Club Owners
+  // 2. Scoped Queries for Club Owners
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null;
     return query(
       collection(db, "tournaments"), 
       where("clubId", "==", clubId),
+      orderBy("createdAt", "desc"),
       limit(5)
     );
   }, [db, clubId]);
@@ -74,88 +68,28 @@ export default function DashboardOverview() {
       collection(db, "matches"), 
       where("clubId", "==", clubId),
       where("status", "==", "live"), 
-      limit(3)
+      limit(4)
     );
   }, [db, clubId]);
 
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
-  const { data: matches } = useCollection(liveMatchesQuery);
+  const { data: matches, loading: matchesLoading } = useCollection(liveMatchesQuery);
 
-  if (profileLoading || (isAdmin ? false : (clubsLoading || (clubId && toursLoading)))) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 gap-4">
-        <Loader2 className="animate-spin text-primary h-12 w-12" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Environment...</p>
-      </div>
-    );
+  if (profileLoading || (isAdmin ? false : clubsLoading)) {
+    return <DashboardSkeleton />;
   }
 
-  if (isAdmin) {
+  if (!clubId && !isAdmin) {
     return (
-      <div className="space-y-8 animate-in fade-in duration-700">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-headline font-bold text-white tracking-tighter uppercase leading-none">Platform Master</h1>
-            <p className="text-muted-foreground mt-2 font-medium">Global system status and SaaS metrics.</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild className="border-accent text-accent hover:bg-accent/10 h-12 px-6 rounded-xl font-bold">
-              <Link href="/dashboard/admin/costs">
-                <DollarSign className="mr-2 h-4 w-4" /> Economic Health
-              </Link>
-            </Button>
-          </div>
+      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-6 animate-in fade-in duration-700">
+        <div className="w-24 h-24 bg-primary/10 rounded-3xl flex items-center justify-center border border-primary/20">
+          <Building className="h-10 w-10 text-primary" />
         </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Recent Clubs" value={allClubs?.length || 0} icon={Building} sub="Onboarded Orgs" />
-          <StatCard title="Recent Users" value={allUsers?.length || 0} icon={Users} sub="Unique Accounts" color="text-accent" />
-          <StatCard title="Growth Rate" value="+12%" icon={TrendingUp} sub="Past 30 days" />
-          <StatCard title="System" value="Stable" icon={Zap} sub="Node Health" color="text-emerald-400" />
+        <div className="space-y-2">
+          <h2 className="text-3xl font-headline font-bold">Initialize Your Hub</h2>
+          <p className="text-muted-foreground max-w-sm mx-auto">To start managing tournaments and matches, you must first configure your club identity.</p>
         </div>
-
-        <div className="grid gap-8 lg:grid-cols-12">
-          <div className="lg:col-span-8 space-y-6">
-            <Card className="bg-white/5 border-white/5 rounded-3xl">
-              <CardHeader>
-                <CardTitle className="text-xl font-headline uppercase tracking-tight">Recent Club Activity</CardTitle>
-                <CardDescription>Latest sports organizations joining the network.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                 <div className="space-y-4">
-                   {allClubs?.map(club => (
-                     <div key={club.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary font-bold">{club.name?.charAt(0) || 'C'}</div>
-                          <div>
-                            <p className="font-bold text-sm">{club.name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{club.location || 'Global'}</p>
-                          </div>
-                        </div>
-                        <Badge variant="secondary" className="bg-white/5 text-muted-foreground border-none text-[10px] uppercase font-bold px-3">{club.primarySport}</Badge>
-                     </div>
-                   ))}
-                   {!allClubs?.length && <p className="text-center text-muted-foreground py-10 italic">No clubs registered yet.</p>}
-                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!clubId && !clubsLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-in fade-in duration-700">
-        <div className="w-24 h-24 bg-secondary rounded-[2.5rem] flex items-center justify-center">
-          <Building className="h-12 w-12 text-muted-foreground opacity-50" />
-        </div>
-        <div>
-          <h2 className="text-4xl font-headline font-bold uppercase tracking-tighter">Initialize Your Hub</h2>
-          <p className="text-muted-foreground max-w-xs mx-auto mt-2 text-lg">To start managing tournaments, you must first register your club profile.</p>
-        </div>
-        <Button asChild size="lg" className="bg-primary font-bold px-12 h-14 rounded-2xl shadow-xl shadow-primary/20">
+        <Button asChild size="lg" className="rounded-2xl font-bold h-14 px-10 shadow-xl shadow-primary/20">
           <Link href="/dashboard/club">Configure Club Identity</Link>
         </Button>
       </div>
@@ -163,104 +97,116 @@ export default function DashboardOverview() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-5xl font-headline font-bold text-white tracking-tighter uppercase leading-none">
-            TOURNAMENT COMMAND
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <p className="text-sm font-bold text-primary uppercase tracking-[0.2em]">Management Console</p>
+          <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter leading-none">
+            Tournament Command
           </h1>
-          <p className="text-xl text-muted-foreground mt-2 font-medium flex items-center gap-2">
-            Managing: <span className="text-primary font-bold uppercase tracking-widest">{userClubs?.[0]?.name}</span>
+          <p className="text-muted-foreground font-medium flex items-center gap-2">
+            Operating: <span className="text-foreground font-bold">{clubData?.name || "SaaS Network"}</span>
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button className="bg-primary hover:bg-primary/90 h-14 rounded-2xl px-8 font-bold text-sm flex items-center gap-2 shadow-2xl shadow-primary/20 transition-all active:scale-95" asChild>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" className="rounded-xl border-border bg-card font-bold h-12" asChild>
+            <Link href="/dashboard/check-in">
+              <QrCode className="mr-2 h-4 w-4" /> Check In Player
+            </Link>
+          </Button>
+          <Button className="rounded-xl font-bold h-12 px-6" asChild>
             <Link href="/dashboard/tournaments/new">
-              <PlusCircle className="h-5 w-5" /> Create Tournament
+              <PlusCircle className="mr-2 h-4 w-4" /> Create Tournament
             </Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Club Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Owned Events" />
-        <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="At Your Venues" color="text-accent" />
-        <StatCard title="Club Rank" value="Verified" icon={Star} sub="System status" color="text-amber-400" />
-        <StatCard title="System Performance" value="Optimal" icon={Zap} sub="AI Scheduler Active" color="text-accent" />
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Active Events" />
+        <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="Currently Officiating" />
+        <StatCard title="Participants" value="2.4k" icon={Users} sub="Total Members" />
+        <StatCard title="Revenue" value="$12.5k" icon={DollarSign} sub="Gross Volume" />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8 space-y-6">
-          <h2 className="text-2xl font-headline font-bold flex items-center gap-3 text-white uppercase tracking-tighter">
-            <Calendar className="h-6 w-6 text-primary" /> Recent Events
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-headline font-bold uppercase flex items-center gap-3">
+              <Calendar className="h-6 w-6 text-primary" /> Recent Events
+            </h2>
+            <Button variant="link" asChild className="font-bold text-primary p-0">
+              <Link href="/dashboard/tournaments">View All <ChevronRight className="ml-1 h-4 w-4" /></Link>
+            </Button>
+          </div>
+
           <div className="grid gap-4">
-            {tournaments && tournaments.length > 0 ? (
+            {toursLoading ? (
+              [1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
+            ) : tournaments && tournaments.length > 0 ? (
               tournaments.map(t => (
-                <Card key={t.id} className="bg-white/5 border-white/5 hover:border-primary/20 transition-all group overflow-hidden rounded-3xl">
-                  <CardContent className="p-6 flex items-center justify-between">
-                    <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 bg-secondary/30 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform border border-white/5">
-                        <Trophy className="h-7 w-7" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xl text-white group-hover:text-primary transition-colors">{t.name}</h4>
-                        <div className="flex items-center gap-3 mt-1">
-                          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em]">
-                            {t.sport}
-                          </p>
-                          <Badge variant="outline" className="text-[9px] h-5 border-accent/20 text-accent font-bold uppercase tracking-widest">
-                            {t.status?.toUpperCase() || 'DRAFT'}
-                          </Badge>
+                <Card key={t.id} className="group hover:border-primary/50 transition-all rounded-2xl overflow-hidden border-border bg-card">
+                  <Link href={`/dashboard/tournaments/${t.id}/edit`}>
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                          <Trophy className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-lg group-hover:text-primary transition-colors">{t.name}</h4>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                            <StatusBadge status={t.status} />
+                            <span>{t.sport} • {t.startDate}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <Button variant="ghost" size="sm" asChild className="hover:bg-primary/10 hover:text-primary h-10 rounded-xl px-4 font-bold text-xs">
-                      <Link href={`/dashboard/tournaments/${t.id}/edit`}>
-                        Manage Console <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </CardContent>
+                      <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-transform translate-x-0 group-hover:translate-x-1" />
+                    </CardContent>
+                  </Link>
                 </Card>
               ))
             ) : (
-              <div className="text-center py-20 bg-white/5 rounded-[2.5rem] border-dashed border-2 border-white/10">
-                <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest opacity-40">No tournaments created yet.</p>
+              <div className="p-12 text-center bg-muted/20 border-2 border-dashed rounded-3xl">
+                <Trophy className="h-8 w-8 text-muted-foreground mx-auto mb-4 opacity-30" />
+                <p className="text-muted-foreground font-medium">No active tournaments found.</p>
               </div>
             )}
           </div>
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <h2 className="text-2xl font-headline font-bold flex items-center gap-3 text-white uppercase tracking-tighter">
-            <Activity className="h-6 w-6 text-accent" /> Live Scoring
+          <h2 className="text-2xl font-headline font-bold uppercase flex items-center gap-3">
+            <Activity className="h-6 w-6 text-primary" /> Live Now
           </h2>
           <div className="space-y-4">
-            {matches && matches.length > 0 ? (
-              matches.map(match => (
-                <Card key={match.id} className="bg-white/5 border-white/5 backdrop-blur-md rounded-3xl group hover:border-accent/40 transition-all">
+            {matchesLoading ? (
+               [1, 2].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)
+            ) : matches && matches.length > 0 ? (
+              matches.map(m => (
+                <Card key={m.id} className="rounded-2xl border-border bg-card group hover:border-primary/40 transition-all">
                   <CardContent className="p-5">
                     <div className="flex justify-between items-center mb-4">
-                      <Badge variant="secondary" className="bg-primary/20 text-primary border-none text-[8px] uppercase tracking-[0.2em] font-black px-3 py-1">LIVE</Badge>
-                      <span className="text-[9px] text-muted-foreground font-mono font-bold uppercase tracking-widest">Court {match.court}</span>
+                      <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-none text-[8px] uppercase tracking-widest font-black px-2 py-0.5 animate-pulse">LIVE</Badge>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase">Court {m.court}</span>
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between font-bold text-base">
-                        <span className="text-white truncate max-w-[150px]">{match.teamA?.name}</span>
-                        <span className="text-accent font-mono text-2xl drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]">{match.teamA?.score}</span>
+                    <div className="space-y-3 font-bold text-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="truncate max-w-[140px]">{m.teamA?.name}</span>
+                        <span className="text-primary text-xl font-headline">{m.teamA?.score}</span>
                       </div>
-                      <div className="h-px bg-white/5"></div>
-                      <div className="flex items-center justify-between font-bold text-base opacity-60">
-                        <span className="text-white truncate max-w-[150px]">{match.teamB?.name}</span>
-                        <span className="text-white font-mono text-2xl">{match.teamB?.score}</span>
+                      <div className="h-px bg-border"></div>
+                      <div className="flex justify-between items-center opacity-60">
+                        <span className="truncate max-w-[140px]">{m.teamB?.name}</span>
+                        <span className="text-xl font-headline">{m.teamB?.score}</span>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))
             ) : (
-              <div className="p-16 text-center bg-white/5 rounded-[2.5rem] border border-white/5 border-dashed">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold italic opacity-30">No matches currently in play</p>
+              <div className="p-10 text-center bg-muted/20 border rounded-3xl">
+                <Activity className="h-6 w-6 text-muted-foreground mx-auto mb-2 opacity-20" />
+                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Silence on Courts</p>
               </div>
             )}
           </div>
@@ -270,22 +216,49 @@ export default function DashboardOverview() {
   )
 }
 
-function StatCard({ title, value, icon: Icon, sub, color }: any) {
+function StatCard({ title, value, icon: Icon, sub }: any) {
   return (
-    <Card className="bg-card/50 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden rounded-[2rem] shadow-2xl shadow-black/40">
-      <div className={cn("absolute -right-2 -top-2 opacity-10 transition-transform group-hover:scale-125 group-hover:rotate-12 duration-500", color)}>
-        <Icon className="h-24 w-24" />
-      </div>
-      <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
-        <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em]">{title}</CardTitle>
-        <div className={cn("p-2 rounded-xl bg-white/5", color)}>
-          <Icon className="h-5 w-5" />
+    <Card className="rounded-2xl border-border bg-card relative overflow-hidden group hover:shadow-lg transition-all">
+      <div className="absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <CardHeader className="pb-2 space-y-1">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{title}</p>
+          <div className="p-1.5 bg-primary/10 rounded-lg text-primary group-hover:scale-110 transition-transform">
+            <Icon className="h-4 w-4" />
+          </div>
         </div>
+        <CardTitle className="text-3xl font-headline font-bold">{value}</CardTitle>
       </CardHeader>
-      <CardContent className="relative z-10">
-        <div className="text-4xl font-headline font-bold text-white tracking-tighter">{value}</div>
-        <p className="text-[10px] text-muted-foreground mt-2 font-bold uppercase tracking-widest opacity-60">{sub}</p>
+      <CardContent>
+        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight flex items-center gap-1">
+          <TrendingUp className="h-3 w-3 text-emerald-500" /> {sub}
+        </p>
       </CardContent>
     </Card>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-10 animate-pulse">
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-4 w-48" />
+      </div>
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+      </div>
+      <div className="grid gap-8 lg:grid-cols-12">
+        <div className="lg:col-span-8 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-64 w-full rounded-3xl" />
+        </div>
+        <div className="lg:col-span-4 space-y-4">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-64 w-full rounded-3xl" />
+        </div>
+      </div>
+    </div>
   )
 }
