@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -175,7 +174,7 @@ export default function RefereeConsole() {
             </div>
             <h2 className="text-2xl font-headline font-bold uppercase tracking-tighter">No Live Matches</h2>
             <p className="text-muted-foreground text-sm mt-2 max-w-[200px] mx-auto leading-relaxed">
-              Waiting for a match to be set to "Live" at <span className="text-accent font-bold">{selectedLocation}</span>.
+              Waiting for a match to be set to &quot;Live&quot; at <span className="text-accent font-bold">{selectedLocation}</span>.
             </p>
           </div>
         ) : (

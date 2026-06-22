@@ -10,6 +10,10 @@ import { useMemo, useRef } from 'react';
 export function useMemoFirebase<T>(factory: () => T, deps: any[]): T {
   // Use a ref to track if it's the first render
   const isFirstRender = useRef(true);
+  
+  // Disable exhaustive-deps here as this is a wrapper hook designed 
+  // to work with dynamic dependency arrays for Firebase reference stability.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedValue = useMemo(factory, deps);
 
   if (isFirstRender.current) {

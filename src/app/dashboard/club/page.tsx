@@ -56,7 +56,7 @@ export const COMPREHENSIVE_SPORTS = [
   { label: "Baseball", value: "baseball" },
   { label: "Golf", value: "golf" },
   { label: "Cricket", value: "cricket" },
-  { label: "Rugby", value: "rugby" },
+  { label: "Rugby", value: "ruby" },
   { label: "Handball", value: "handball" },
   { label: "Hockey", value: "hockey" },
   { label: "Ice Hockey", value: "ice-hockey" },
@@ -165,7 +165,7 @@ export default function ClubSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">Club Identity</h1>
-          <p className="text-muted-foreground font-medium">Manage your organization's brand and operating timezone.</p>
+          <p className="text-muted-foreground font-medium">Manage your organization&apos;s brand and operating timezone.</p>
         </div>
         {!clubId && (
           <Badge variant="outline" className="border-primary text-primary bg-primary/5 px-4 h-8 uppercase tracking-widest font-bold animate-pulse">

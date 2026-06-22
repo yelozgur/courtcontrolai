@@ -222,7 +222,7 @@ export default function MarketingCenter() {
                     <Sparkles className="h-4 w-4" /> Marketing Pro-Tip
                   </h3>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Featured tournaments appear in the "Live Arenas" feed for guest users. Use this to highlight elite series or professional matches to drive guest traffic.
+                    Featured tournaments appear in the &quot;Live Arenas&quot; feed for guest users. Use this to highlight elite series or professional matches to drive guest traffic.
                   </p>
                </div>
             </div>
@@ -238,7 +238,7 @@ export default function MarketingCenter() {
                 <div>
                    <h2 className="text-3xl font-headline font-bold uppercase tracking-tighter">Sponsorship Network Hub</h2>
                    <p className="text-muted-foreground max-w-lg mx-auto mt-2">
-                      In the future, brands will bid on tournament placements here. You will earn a <strong>5% Finder's Fee</strong> on every matched sponsorship deal.
+                      In the future, brands will bid on tournament placements here. You will earn a <strong>5% Finder&apos;s Fee</strong> on every matched sponsorship deal.
                    </p>
                 </div>
                 <div className="flex justify-center gap-4">
@@ -259,7 +259,7 @@ export default function MarketingCenter() {
              </div>
           </Card>
         </TabsContent>
-      </Tabs>
+      </tabs>
     </div>
   );
 }

@@ -1,7 +1,7 @@
-
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -18,16 +18,11 @@ import {
   Users, 
   UserPlus, 
   Search, 
-  Mail, 
-  MessageSquare,
   MoreVertical,
   Loader2,
-  Plus,
   Share2,
   Copy,
   Check,
-  ExternalLink,
-  Trophy,
   Shirt
 } from "lucide-react"
 import { collection, query, limit, where, addDoc } from "firebase/firestore"
@@ -191,7 +186,15 @@ export default function ParticipantManagement() {
 
               {selectedTournamentId && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-white rounded-2xl flex justify-center"><img src={qrCodeUrl} alt="QR" className="w-[140px] h-[140px]" /></div>
+                  <div className="p-4 bg-white rounded-2xl flex justify-center">
+                    <Image 
+                      src={qrCodeUrl} 
+                      alt="QR" 
+                      width={140}
+                      height={140}
+                      unoptimized
+                    />
+                  </div>
                   <Button variant="default" className="w-full" onClick={() => copyToClipboard(registerUrl)}>{copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />} Copy URL</Button>
                 </div>
               )}

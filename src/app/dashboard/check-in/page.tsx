@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { QrCode, ExternalLink, LogIn, Copy, Check, Trophy, MapPin, Smartphone, Zap } from "lucide-react"
+import { QrCode, ExternalLink, Copy, Check, Trophy, MapPin, Smartphone, Zap } from "lucide-react"
 import { collection, query, where, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -82,7 +82,7 @@ export default function CheckInPage() {
           <QrCode className="h-20 w-20 text-muted-foreground mb-4 opacity-10" />
           <h3 className="text-2xl font-bold text-muted-foreground uppercase tracking-tighter">Ready for Arrival</h3>
           <p className="text-muted-foreground max-w-sm mx-auto mt-2 text-center text-sm px-10">
-            Select an active tournament to generate the venue's day-of arrival link and functional QR code.
+            Select an active tournament to generate the venue&apos;s day-of arrival link and functional QR code.
           </p>
         </Card>
       ) : (
@@ -97,10 +97,12 @@ export default function CheckInPage() {
               </CardHeader>
               <CardContent className="flex flex-col items-center p-12 space-y-8">
                 <div className="p-8 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(34,211,238,0.2)]">
-                  <img 
+                  <Image 
                     src={qrCodeUrl} 
                     alt="Check-in QR Code" 
-                    className="w-[240px] h-[240px]"
+                    width={240}
+                    height={240}
+                    unoptimized
                   />
                 </div>
                 <div className="flex gap-4 w-full max-w-md">
