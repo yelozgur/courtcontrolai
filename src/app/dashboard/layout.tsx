@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ].filter(item => item.show);
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#0F172A]">
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
           <Zap className="text-white h-5 w-5" />
@@ -121,7 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </div>
       </ScrollArea>
-      <div className="p-4 border-t border-white/5">
+      <div className="p-4 border-t border-white/5 bg-black/10">
         <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl mb-2 border border-white/5">
           <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary border border-primary/20">
             {profile?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
@@ -131,8 +131,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <p className="text-[10px] text-muted-foreground uppercase font-semibold">{profile?.role?.replace('_', ' ') || 'Member'}</p>
           </div>
         </div>
-        <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={handleSignOut}>
-          <LogOut className="mr-3 h-5 w-5" /> Sign Out
+        <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-10" onClick={handleSignOut}>
+          <LogOut className="mr-3 h-4 w-4" /> Sign Out
         </Button>
       </div>
     </div>
@@ -141,7 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen overflow-hidden bg-[#0F172A]">
       {/* Desktop Sidebar */}
-      <aside className="w-64 border-r border-white/5 bg-card/30 backdrop-blur-xl hidden md:flex flex-col">
+      <aside className="w-64 border-r border-white/5 bg-[#0F172A] hidden md:flex flex-col">
         <SidebarContent />
       </aside>
 

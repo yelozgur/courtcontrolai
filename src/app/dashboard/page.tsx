@@ -47,7 +47,7 @@ export default function DashboardOverview() {
   const { data: userClubs, loading: clubsLoading } = useCollection(userClubsQuery);
   const clubId = userClubs?.[0]?.id;
 
-  // Optimized Admin Queries: Only run if strictly verified as admin
+  // Admin Queries
   const allClubsQuery = useMemoFirebase(() => {
     if (!db || !isAdmin) return null;
     return query(collection(db, "clubs"), orderBy("createdAt", "desc"), limit(10));
@@ -61,7 +61,7 @@ export default function DashboardOverview() {
   const { data: allClubs } = useCollection(allClubsQuery);
   const { data: allUsers } = useCollection(allUsersQuery);
 
-  // Optimized Club Owner Queries: Fetch specific data strictly scoped to THEIR club
+  // Scoped Queries for Club Owners
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null;
     return query(
@@ -85,7 +85,7 @@ export default function DashboardOverview() {
   const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
   const { data: matches } = useCollection(liveMatchesQuery);
 
-  if (profileLoading || (isAdmin ? false : clubsLoading) || (clubId && toursLoading)) {
+  if (profileLoading || (isAdmin ? false : (clubsLoading || (clubId && toursLoading)))) {
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-4">
         <Loader2 className="animate-spin text-primary h-12 w-12" />
@@ -143,59 +143,12 @@ export default function DashboardOverview() {
                  </div>
               </CardContent>
             </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <Card className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] border-accent/20 relative overflow-hidden group">
-                  <ShoppingBag className="absolute -right-4 -top-4 h-24 w-24 text-accent opacity-5 group-hover:scale-125 transition-transform" />
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                       <CardTitle className="text-accent flex items-center gap-2">Marketplace</CardTitle>
-                       <Badge variant="outline" className="text-[8px] border-accent text-accent">PASSIVE</Badge>
-                    </div>
-                    <CardDescription className="text-xs">Monetize used rackets and gear sales with a platform commission.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                     <Button variant="ghost" size="sm" className="text-accent p-0 hover:bg-transparent hover:text-accent/80">
-                        View Vision <ArrowRight className="ml-2 h-3 w-3" />
-                     </Button>
-                  </CardContent>
-               </Card>
-               <Card className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] border-primary/20 relative overflow-hidden group">
-                  <Handshake className="absolute -right-4 -top-4 h-24 w-24 text-primary opacity-5 group-hover:scale-125 transition-transform" />
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                       <CardTitle className="text-primary flex items-center gap-2">Sponsor Hub</CardTitle>
-                       <Badge variant="outline" className="text-[8px] border-primary text-primary">STRATEGY</Badge>
-                    </div>
-                    <CardDescription className="text-xs">Automated matching for tournament sponsors. 5% Finder's Fee model.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                     <Button variant="ghost" size="sm" className="text-primary p-0 hover:bg-transparent hover:text-primary/80">
-                        Expansion Plan <ArrowRight className="ml-2 h-3 w-3" />
-                     </Button>
-                  </CardContent>
-               </Card>
-            </div>
-          </div>
-
-          <div className="lg:col-span-4 space-y-6">
-            <Card className="bg-primary/10 border-primary/20">
-               <CardHeader>
-                  <CardTitle className="text-primary">Admin Tips</CardTitle>
-               </CardHeader>
-               <CardContent className="text-xs text-muted-foreground space-y-4">
-                  <p>Use the <strong>System Users</strong> tab to promote new signups to "Club Owner" or "Referee" roles.</p>
-                  <p>Monitor <strong>Revenue & Costs</strong> daily to ensure Spark Plan quotas aren't exceeded by heavy AI scheduling sessions.</p>
-                  <p>The <strong>Sponsorship Finder's Fee</strong> (5%) logic is planned for Q3 release.</p>
-               </CardContent>
-            </Card>
           </div>
         </div>
       </div>
     );
   }
 
-  // Handle case where user has signed up but not created a club yet
   if (!clubId && !clubsLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-in fade-in duration-700">
@@ -217,17 +170,17 @@ export default function DashboardOverview() {
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-headline font-bold text-white tracking-tighter uppercase">
-            Tournament Command
+          <h1 className="text-5xl font-headline font-bold text-white tracking-tighter uppercase leading-none">
+            TOURNAMENT COMMAND
           </h1>
-          <p className="text-muted-foreground mt-1 font-medium">
+          <p className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
             Managing: <span className="text-primary font-bold">{userClubs?.[0]?.name}</span>
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="bg-primary" asChild>
+          <Button className="bg-primary hover:bg-primary/90 h-12 rounded-xl px-6 font-bold text-sm flex items-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95" asChild>
             <Link href="/dashboard/tournaments/new">
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Tournament
+              <PlusCircle className="h-5 w-5" /> Create Tournament
             </Link>
           </Button>
         </div>
@@ -236,30 +189,32 @@ export default function DashboardOverview() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Club Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Owned Events" />
         <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="At Your Venues" color="text-accent" />
-        <StatCard title="Club Rank" value="Verified" icon={Star} sub="System status" />
+        <StatCard title="Club Rank" value="Verified" icon={Star} sub="System status" color="text-amber-400" />
         <StatCard title="System Performance" value="Optimal" icon={Zap} sub="AI Scheduler Active" color="text-accent" />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-8 space-y-6">
-          <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
+          <h2 className="text-2xl font-headline font-bold flex items-center gap-3 text-white uppercase tracking-tighter">
             <Calendar className="h-6 w-6 text-primary" /> Recent Events
           </h2>
           <div className="grid gap-4">
             {tournaments && tournaments.length > 0 ? (
               tournaments.map(t => (
-                <Card key={t.id} className="bg-white/5 border-white/5 hover:border-primary/20 transition-all group">
+                <Card key={t.id} className="bg-white/5 border-white/5 hover:border-primary/20 transition-all group overflow-hidden">
                   <CardContent className="p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 bg-secondary/30 rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform border border-white/5">
                         <Trophy className="h-6 w-6" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-lg">{t.name}</h4>
-                        <p className="text-sm text-muted-foreground">{t.sport} • Status: <span className="text-accent font-bold uppercase">{t.status || 'draft'}</span></p>
+                        <h4 className="font-bold text-lg text-white">{t.name}</h4>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
+                          {t.sport} • Status: <span className="text-accent font-black">{t.status?.toUpperCase() || 'DRAFT'}</span>
+                        </p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" asChild>
+                    <Button variant="ghost" size="sm" asChild className="hover:bg-primary/10 hover:text-primary">
                       <Link href={`/dashboard/tournaments/${t.id}/edit`}>
                         Manage <ArrowUpRight className="ml-2 h-4 w-4" />
                       </Link>
@@ -268,39 +223,43 @@ export default function DashboardOverview() {
                 </Card>
               ))
             ) : (
-              <div className="text-center py-20 bg-white/5 rounded-2xl border-dashed border-2 border-white/10">
-                <p className="text-muted-foreground">No tournaments created for this club yet.</p>
+              <div className="text-center py-20 bg-white/5 rounded-3xl border-dashed border-2 border-white/10">
+                <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest opacity-40">No tournaments created yet.</p>
               </div>
             )}
           </div>
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
+          <h2 className="text-2xl font-headline font-bold flex items-center gap-3 text-white uppercase tracking-tighter">
             <Activity className="h-6 w-6 text-accent" /> Live Scoring
           </h2>
           <div className="space-y-4">
             {matches && matches.length > 0 ? (
               matches.map(match => (
-                <Card key={match.id} className="bg-white/5 border-white/5">
+                <Card key={match.id} className="bg-white/5 border-white/5 backdrop-blur-md">
                   <CardContent className="p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <Badge variant="outline" className="text-[8px] uppercase">{match.status}</Badge>
-                      <span className="text-[10px] text-muted-foreground">Court {match.court}</span>
+                    <div className="flex justify-between items-center mb-3">
+                      <Badge variant="secondary" className="bg-primary/20 text-primary border-none text-[8px] uppercase tracking-widest font-bold px-2 py-0.5">LIVE</Badge>
+                      <span className="text-[9px] text-muted-foreground font-mono font-bold uppercase">Court {match.court}</span>
                     </div>
-                    <div className="flex items-center justify-between font-bold">
-                      <span>{match.teamA?.name}</span>
-                      <span className="text-accent">{match.teamA?.score}</span>
-                    </div>
-                    <div className="flex items-center justify-between font-bold opacity-60">
-                      <span>{match.teamB?.name}</span>
-                      <span>{match.teamB?.score}</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between font-bold text-sm">
+                        <span className="text-white">{match.teamA?.name}</span>
+                        <span className="text-accent font-mono text-lg">{match.teamA?.score}</span>
+                      </div>
+                      <div className="flex items-center justify-between font-bold text-sm opacity-50">
+                        <span className="text-white">{match.teamB?.name}</span>
+                        <span className="text-white font-mono text-lg">{match.teamB?.score}</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-10 italic">No matches live in your venues.</p>
+              <div className="p-10 text-center bg-white/5 rounded-3xl border border-white/5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold italic opacity-30">No matches live</p>
+              </div>
             )}
           </div>
         </div>
@@ -311,14 +270,17 @@ export default function DashboardOverview() {
 
 function StatCard({ title, value, icon: Icon, sub, color }: any) {
   return (
-    <Card className="bg-white/5 border-white/5">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{title}</CardTitle>
-        <Icon className={cn("h-4 w-4 text-primary", color)} />
+    <Card className="bg-card/50 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden">
+      <div className={cn("absolute -right-2 -top-2 opacity-5 transition-transform group-hover:scale-125 group-hover:rotate-12", color)}>
+        <Icon className="h-20 w-20" />
+      </div>
+      <CardHeader className="flex flex-row items-center justify-between pb-1">
+        <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">{title}</CardTitle>
+        <Icon className={cn("h-4 w-4", color)} />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>
+        <div className="text-3xl font-headline font-bold text-white tracking-tighter">{value}</div>
+        <p className="text-[10px] text-muted-foreground mt-1 font-medium">{sub}</p>
       </CardContent>
     </Card>
   )
