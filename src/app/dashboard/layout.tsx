@@ -68,7 +68,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
 
   const isAdmin = profile?.role === 'admin';
-  const isClubOwner = profile?.role === 'club_owner';
 
   const handleSignOut = () => {
     setIsMobileMenuOpen(false);

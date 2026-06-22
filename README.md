@@ -13,7 +13,6 @@ Court Control AI is an elite, multi-tenant sports management platform designed t
 ### Development
 - `npm run dev`: Start Next.js development server on port 9002.
 - `npm run genkit:dev`: Start Genkit Developer UI for flow testing.
-- `npm run genkit:watch`: Start Genkit with hot-reload for flow logic changes.
 
 ### Quality Assurance
 - `npm run lint`: Run ESLint static analysis.
@@ -23,7 +22,6 @@ Court Control AI is an elite, multi-tenant sports management platform designed t
 ### Production
 - `npm run build`: Create an optimized production build for Firebase App Hosting.
 - `npm start`: Start the production server.
-- `npm run analyze`: Build and open the Next.js bundle analyzer.
 
 ## Deployment
 This project is optimized for **Firebase App Hosting**. 

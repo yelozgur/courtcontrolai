@@ -50,7 +50,6 @@ export default function DashboardOverview() {
   // 2. Scoped Queries for Club Metrics
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null;
-    // Removing orderBy temporarily to handle legacy documents without createdAt and prevent index-related permission confusion
     return query(
       collection(db, "tournaments"), 
       where("clubId", "==", clubId),
@@ -88,7 +87,7 @@ export default function DashboardOverview() {
     return { count, revenue };
   }, [participants]);
 
-  // Sort tournaments client-side to ensure stability regardless of missing fields
+  // Sort tournaments client-side to handle documents without createdAt
   const sortedTournaments = useMemo(() => {
     if (!tournaments) return [];
     return [...tournaments].sort((a, b) => {
