@@ -21,6 +21,7 @@
         "categories": { "type": "array", "items": { "type": "object" } },
         "version": { "type": "number", "default": 1 },
         "deletedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
         "isFeatured": { "type": "boolean", "default": false },
         "hasWelcomePack": { "type": "boolean", "default": false },
         "welcomePackDescription": { "type": "string" },
@@ -129,6 +130,8 @@
     "providers": ["password", "google.com"]
   },
   "firestore": {
+    "/users/{userId}": { "schema": "object", "description": "User profiles and roles." },
+    "/clubs/{clubId}": { "schema": "object", "description": "Multi-tenant organization registry." },
     "/tournaments/{tournamentId}": { "schema": "Tournament", "description": "Global Read. Club Admin Write." },
     "/matches/{matchId}": { "schema": "Match", "description": "Structured bracket records." },
     "/participants/{participantId}": { "schema": "Participant", "description": "Scoped by UID/Admin." },

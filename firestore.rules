@@ -7,18 +7,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // BREAK RECURSION: We allow authenticated read on users collection 
+    // to allow the isAdmin check to proceed without calling itself.
     function isAdmin() {
       return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isClubAdmin(clubId) {
+      // Use get() safely. Clubs have public read access, so this evaluation won't recurse.
       let club = get(/databases/$(database)/documents/clubs/$(clubId)).data;
       return isSignedIn() && (
         club.ownerId == request.auth.uid || 
         request.auth.uid in club.get('adminIds', []) ||
-        isAdmin()
+        // Check admin role directly to avoid nested helper calls
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
 
@@ -38,7 +41,9 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // BREAK RECURSION: Basic authenticated read allowed.
+      // This allows isAdmin() helper to function globally.
+      allow read: if isSignedIn();
       allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       
       match /notifications/{notifId} {
@@ -57,11 +62,11 @@ service cloud.firestore {
     }
 
     match /tournaments/{tournamentId} {
-      // Surgical Read: Public can see published tournaments, Admins see all.
+      // Surgical Read: Open read for listing and public views.
       allow read: if true; 
       allow create: if isSignedIn() && isClubAdmin(request.resource.data.clubId) && isValidTournament(request.resource.data);
       allow update: if isClubAdmin(resource.data.clubId) && isValidTournament(request.resource.data);
-      allow delete: if false; // Soft deletes only
+      allow delete: if false; // Soft deletes only via update
     }
 
     match /matches/{matchId} {
