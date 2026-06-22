@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -35,6 +34,9 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -167,6 +169,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 bg-[#0F172A] border-r border-white/10 w-72">
+               <SheetHeader className="sr-only">
+                  <SheetTitle>Navigation Menu</SheetTitle>
+                  <SheetDescription>Mobile navigation drawer for dashboard controls.</SheetDescription>
+               </SheetHeader>
                <SidebarContent />
             </SheetContent>
           </Sheet>

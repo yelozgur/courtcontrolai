@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -9,8 +8,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
         request.auth.token.email.lower() == 'admin@deneme.com'
       );
     }
@@ -30,20 +29,20 @@ service cloud.firestore {
 
     // Clubs
     match /clubs/{clubId} {
-      allow read: if true; // Required for public branding and internal checks
+      allow read: if true; 
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Tournaments - Fixed: Always allow read (list/get) for public access
+    // Tournaments - Simplified for Global Read
     match /tournaments/{tournamentId} {
       allow read: if true; 
       allow create: if isSignedIn(); 
       allow update, delete: if isSignedIn() && (isClubOwner(resource.data.clubId) || isAdmin());
     }
 
-    // Matches - Fixed: Always allow read for public results
+    // Matches - Simplified for Global Read
     match /matches/{matchId} {
       allow read: if true; 
       allow write: if isSignedIn() && (
@@ -59,7 +58,7 @@ service cloud.firestore {
       allow create: if true; 
       allow update, delete: if isSignedIn() && (
         isClubOwner(resource.data.clubId) || 
-        request.auth.token.email.lower() == resource.data.email.lower() ||
+        (resource != null && request.auth.token.email.lower() == resource.data.email.lower()) ||
         isAdmin()
       );
     }
