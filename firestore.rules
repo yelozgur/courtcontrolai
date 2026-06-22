@@ -22,24 +22,30 @@ service cloud.firestore {
 
     // --- Validation Functions ---
     function isValidTournament(data) {
-      return data.keys().hasOnly(['clubId', 'name', 'startDate', 'endDate', 'sport', 'status', 'createdAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees', 'categories', 'entryFee', 'hasWelcomePack', 'welcomePackDescription', 'requiresSize', 'isFeatured']) &&
+      return data.keys().hasOnly(['clubId', 'name', 'startDate', 'endDate', 'sport', 'status', 'createdAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees', 'categories', 'entryFee', 'hasWelcomePack', 'welcomePackDescription', 'requiresSize', 'isFeatured', 'imageUrl']) &&
              data.clubId is string && data.name is string && data.status in ['draft', 'registration', 'active', 'completed'];
     }
 
     function isValidMatch(data) {
-      return data.clubId is string && data.tournamentId is string && data.status in ['scheduled', 'live', 'completed'];
+      return data.keys().hasOnly(['clubId', 'tournamentId', 'court', 'location', 'categoryId', 'category', 'teamA', 'teamB', 'status', 'startTime', 'completedAt']) &&
+             data.clubId is string && data.tournamentId is string && data.status in ['scheduled', 'live', 'completed'];
     }
 
     function isValidParticipant(data) {
-      return data.clubId is string && data.tournamentId is string && data.email is string;
+      return data.keys().hasOnly(['clubId', 'tournamentId', 'categoryId', 'categoryName', 'name', 'email', 'skillLevel', 'telegramHandle', 'verified', 'paymentStatus', 'paidAmount', 'packSize', 'createdAt', 'userId']) &&
+             data.clubId is string && data.tournamentId is string && data.email is string;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasOnly(['email', 'displayName', 'role', 'photoURL', 'createdAt', 'updatedAt']) &&
+             data.email is string && data.role in ['admin', 'club_owner', 'referee', 'player'];
     }
 
     // --- Collection Rules ---
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin()) &&
-                   request.resource.data.keys().hasOnly(['email', 'displayName', 'role', 'photoURL', 'createdAt', 'updatedAt']);
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && isValidUser(request.resource.data);
     }
 
     match /clubs/{clubId} {
@@ -66,7 +72,9 @@ service cloud.firestore {
 
     match /participants/{participantId} {
       allow read: if true; 
-      allow create: if (request.resource.data.tournamentId != null) && isValidParticipant(request.resource.data); 
+      allow create: if (request.resource.data.tournamentId != null) && 
+                      exists(/databases/$(database)/documents/tournaments/$(request.resource.data.tournamentId)) &&
+                      isValidParticipant(request.resource.data); 
       allow update, delete: if isSignedIn() && (
         isClubOwner(resource.data.clubId) || 
         (resource.data.userId == request.auth.uid) ||
