@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, Globe } from 'lucide-react';
+import { Zap, LogIn, Loader2, Mail, Lock, Globe, Trophy, Monitor, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -25,13 +25,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authSuccess, setAuthSuccess] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | 'domain' | null>(null);
-
-  useEffect(() => {
-    if (existingUser && !loading) {
-      router.push('/dashboard');
-    }
-  }, [existingUser, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,39 +38,27 @@ export default function LoginPage() {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       const loggedUser = result.user;
-
       const isAdminEmail = loggedUser.email?.toLowerCase() === 'admin@deneme.com';
-      const userRef = doc(db, 'users', loggedUser.uid);
-      
-      getDoc(userRef).then(async (userSnap) => {
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            email: loggedUser.email,
-            displayName: loggedUser.displayName || email.split('@')[0],
-            role: isAdminEmail ? 'admin' : 'club_owner',
-            createdAt: serverTimestamp(),
-          });
-        } else if (isAdminEmail && userSnap.data().role !== 'admin') {
-          await setDoc(userRef, { role: 'admin' }, { merge: true });
-        }
-      }).catch(e => console.warn('Background profile sync failed:', e));
+      setIsAdminUser(isAdminEmail);
 
-      toast({
-        title: 'Welcome Back',
-        description: 'Successfully signed in.',
-      });
-      router.push('/dashboard');
-    } catch (error: any) {
-      if (error.code === 'auth/unauthorized-domain') {
-        setErrorType('domain');
-      } else {
-        setErrorType('creds');
+      const userRef = doc(db, 'users', loggedUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          email: loggedUser.email,
+          displayName: loggedUser.displayName || email.split('@')[0],
+          role: isAdminEmail ? 'admin' : 'club_owner',
+          createdAt: serverTimestamp(),
+        });
+      } else if (isAdminEmail && userSnap.data().role !== 'admin') {
+        await setDoc(userRef, { role: 'admin' }, { merge: true });
       }
-      toast({
-        variant: 'destructive',
-        title: 'Sign In Failed',
-        description: error.message,
-      });
+
+      setAuthSuccess(true);
+    } catch (error: any) {
+      setErrorType(error.code === 'auth/unauthorized-domain' ? 'domain' : 'creds');
+      toast({ variant: 'destructive', title: 'Sign In Failed', description: error.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -83,52 +67,75 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     if (!auth || !db) return;
     setIsSubmitting(true);
-    setErrorType(null);
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      
       const isAdminEmail = user.email?.toLowerCase() === 'admin@deneme.com';
+      setIsAdminUser(isAdminEmail);
+
       const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
 
-      getDoc(userRef).then(async (userSnap) => {
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            role: isAdminEmail ? 'admin' : 'club_owner',
-            createdAt: serverTimestamp(),
-          });
-        } else if (isAdminEmail && userSnap.data().role !== 'admin') {
-          await setDoc(userRef, { role: 'admin' }, { merge: true });
-        }
-      }).catch(e => console.warn('Background Google profile sync failed:', e));
-
-      toast({
-        title: 'Welcome Back',
-        description: 'Signed in with Google.',
-      });
-      router.push('/dashboard');
-    } catch (error: any) {
-      if (error.code === 'auth/unauthorized-domain') {
-        setErrorType('domain');
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          role: isAdminEmail ? 'admin' : 'club_owner',
+          createdAt: serverTimestamp(),
+        });
+      } else if (isAdminEmail && userSnap.data().role !== 'admin') {
+        await setDoc(userRef, { role: 'admin' }, { merge: true });
       }
-      toast({
-        variant: 'destructive',
-        title: 'Google Login Failed',
-        description: error.message,
-      });
+
+      setAuthSuccess(true);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Google Login Failed', description: error.message });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading || (existingUser && !loading)) {
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#0F172A]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (authSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F172A] p-4">
+        <Card className="w-full max-w-lg border-primary/20 bg-card/50 backdrop-blur-xl p-8 space-y-8 animate-in fade-in zoom-in-95 duration-500">
+          <div className="text-center space-y-2">
+            <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+              <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            </div>
+            <CardTitle className="text-3xl font-headline font-bold uppercase tracking-tighter">Identity Verified</CardTitle>
+            <CardDescription className="text-lg">Select your destination to proceed.</CardDescription>
+          </div>
+
+          <div className="grid gap-4">
+            <Button size="lg" className="h-20 text-lg font-bold flex flex-col items-center justify-center gap-1 group bg-primary/10 border-primary/20 hover:bg-primary/20 text-white" variant="outline" onClick={() => router.push('/dashboard')}>
+              <Zap className="h-5 w-5 text-primary group-hover:animate-pulse" />
+              <span>TOURNAMENT COMMAND</span>
+            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10" variant="outline" onClick={() => router.push('/tournaments')}>
+                <Trophy className="h-5 w-5 text-amber-400" />
+                <span>BROWSE EVENTS</span>
+              </Button>
+              <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10" variant="outline" onClick={() => router.push('/arena')}>
+                <Monitor className="h-5 w-5 text-accent" />
+                <span>WATCH ARENA</span>
+              </Button>
+            </div>
+            {isAdminUser && (
+              <Button size="lg" className="h-16 font-bold border-accent/30 text-accent hover:bg-accent/10 flex items-center justify-center gap-2" variant="outline" onClick={() => router.push('/dashboard')}>
+                <ShieldCheck className="h-5 w-5" />
+                SAAS ADMIN CONSOLE
+              </Button>
+            )}
+          </div>
+        </Card>
       </div>
     );
   }

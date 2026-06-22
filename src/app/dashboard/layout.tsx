@@ -141,14 +141,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0F172A]">
-      {/* Desktop Sidebar */}
       <aside className="w-72 hidden lg:flex flex-col">
         <SidebarContent />
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-background/50 relative">
-        {/* Mobile & Tablet Header */}
         <header className="lg:hidden flex items-center justify-between p-5 border-b border-white/5 bg-card/50 sticky top-0 z-50 backdrop-blur-xl">
           <div className="flex items-center gap-4">
              {pathname !== '/dashboard' && (
