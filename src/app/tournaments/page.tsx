@@ -11,6 +11,7 @@ import { collection, query, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export default function PublicTournaments() {
   const db = useFirestore()
@@ -24,7 +25,7 @@ export default function PublicTournaments() {
   const { data: tournaments, loading, error } = useCollection(tournamentsQuery)
 
   const filtered = tournaments?.filter(t => 
-    (t.status === "active" || t.status === "registration" || !t.status) && 
+    (t.status === "registration_open" || t.status === "in_progress" || !t.status) && 
     t.name.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -86,6 +87,9 @@ export default function PublicTournaments() {
                     data-ai-hint="sports tournament"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] to-transparent"></div>
+                  <div className="absolute top-5 left-5">
+                    <StatusBadge status={t.status} />
+                  </div>
                   <Badge className="absolute top-5 right-5 bg-primary uppercase tracking-[0.2em] font-black text-[10px] px-4 py-1">{t.sport || 'SPORTS'}</Badge>
                   <div className="absolute bottom-5 left-5 flex items-center gap-2">
                     <Badge className="bg-emerald-500 text-white uppercase text-[10px] font-black tracking-widest px-3 py-1 shadow-lg shadow-emerald-500/20">
@@ -103,15 +107,11 @@ export default function PublicTournaments() {
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Calendar className="h-4 w-4" /></div>
                     <span>Starts {t.startDate}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-muted-foreground text-sm font-medium">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><MapPin className="h-4 w-4" /></div>
-                    <span className="truncate">{typeof t.locations?.[0] === 'object' ? t.locations[0].name : (t.locations?.[0] || 'Main Venue')}</span>
-                  </div>
                 </CardContent>
                 <CardFooter className="pt-0">
                   <Button asChild className="w-full h-14 bg-primary hover:bg-primary/90 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-xl shadow-primary/10">
                     <Link href={`/tournaments/${t.id}/register`}>
-                      {t.status === 'registration' ? 'Register Now' : 'Enter Arena'}
+                      {t.status === 'registration_open' ? 'Register Now' : 'View Arena'}
                     </Link>
                   </Button>
                 </CardFooter>
@@ -123,7 +123,7 @@ export default function PublicTournaments() {
             <Trophy className="h-20 w-20 text-muted-foreground opacity-10" />
             <div className="space-y-2">
                <h3 className="text-3xl font-headline font-bold uppercase tracking-tighter">Quiet on the Courts</h3>
-               <p className="text-muted-foreground text-lg max-w-sm mx-auto">No active tournaments found. Check back soon for the next series.</p>
+               <p className="text-muted-foreground text-lg max-w-sm mx-auto">No active tournaments found matching your search.</p>
             </div>
             <Button variant="outline" onClick={() => setSearch('')} className="rounded-xl border-primary/30 text-primary">Clear Search</Button>
           </div>

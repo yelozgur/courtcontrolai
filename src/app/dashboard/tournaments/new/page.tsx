@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -161,9 +162,10 @@ export default function TournamentWizard() {
     const tournamentData = {
       ...formData,
       clubId,
-      status: "active",
+      status: "registration_open", // Launch into registration state
       createdAt: serverTimestamp(),
-      entryFee: Number(formData.entryFee) || 0
+      entryFee: Number(formData.entryFee) || 0,
+      version: 1
     }
 
     setDoc(tournamentRef, tournamentData)
@@ -222,11 +224,6 @@ export default function TournamentWizard() {
                       onChange={(e) => setFormData({ ...formData, entryFee: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
-                  {formData.entryFee > 0 && formData.entryFee < 5 && (
-                    <p className="text-[10px] text-destructive flex items-center gap-1 font-bold uppercase tracking-widest mt-1">
-                      <AlertCircle className="h-3 w-3" /> Minimum paid entry is $5.00
-                    </p>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Sport Category</Label>
@@ -245,49 +242,12 @@ export default function TournamentWizard() {
                   <Label>Start Date</Label>
                   <Input type="date" className="bg-secondary/50 h-12" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
                 </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input type="date" className="bg-secondary/50 h-12" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
-                </div>
               </div>
-
-              <div className="pt-6 border-t border-white/5 space-y-4">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                       <Shirt className="h-5 w-5 text-accent" />
-                       <Label className="text-lg font-bold">Offer Welcome Pack?</Label>
-                    </div>
-                    <Switch 
-                      checked={formData.hasWelcomePack} 
-                      onCheckedChange={val => setFormData({...formData, hasWelcomePack: val})} 
-                    />
-                 </div>
-                 {formData.hasWelcomePack && (
-                   <div className="space-y-4 animate-in fade-in duration-300">
-                      <Textarea 
-                        placeholder="What's in the pack? (e.g. T-Shirt, Grips, Energy Drink)" 
-                        value={formData.welcomePackDescription}
-                        onChange={e => setFormData({...formData, welcomePackDescription: e.target.value})}
-                      />
-                      <div className="flex items-center justify-between p-4 bg-accent/10 rounded-xl">
-                         <div className="text-sm">
-                            <p className="font-bold">Collect Size Information?</p>
-                            <p className="text-xs text-muted-foreground">Players will select a size during registration.</p>
-                         </div>
-                         <Switch 
-                           checked={formData.requiresSize} 
-                           onCheckedChange={val => setFormData({...formData, requiresSize: val})} 
-                         />
-                      </div>
-                   </div>
-                 )}
-              </div>
-
               <div className="pt-4 flex justify-end">
                 <Button 
                   onClick={() => setStep(2)} 
                   className="h-12 px-10" 
-                  disabled={!formData.name || !formData.startDate || (formData.entryFee > 0 && formData.entryFee < 5)}
+                  disabled={!formData.name || !formData.startDate}
                 >
                   Next: Categories
                 </Button>
@@ -316,13 +276,6 @@ export default function TournamentWizard() {
                    <DialogHeader><DialogTitle>New Category</DialogTitle></DialogHeader>
                    <div className="space-y-4 py-4">
                       <Input placeholder="Category Name" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
-                      <Select value={newCategoryFormat} onValueChange={setNewCategoryFormat}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Single Elimination">Single Elimination</SelectItem>
-                          <SelectItem value="Round Robin">Round Robin</SelectItem>
-                        </SelectContent>
-                      </Select>
                    </div>
                    <DialogFooter>
                       <Button onClick={handleAddCategory}>Add</Button>
@@ -342,7 +295,7 @@ export default function TournamentWizard() {
              <div className="grid gap-4">
                 <div className="flex gap-2">
                    <Input placeholder="Venue Name" value={newLocationName} onChange={e => setNewLocationName(e.target.value)} />
-                   <Input type="number" className="w-24" value={newLocationCourts} onChange={e => setNewLocCourts(parseInt(e.target.value) || 1)} />
+                   <Input type="number" className="w-24" value={newLocationCourts} onChange={e => setNewLocationCourts(parseInt(e.target.value) || 1)} />
                    <Button onClick={handleAddLocation}><Plus className="h-4 w-4" /></Button>
                 </div>
                 {formData.locations.map((l, i) => (

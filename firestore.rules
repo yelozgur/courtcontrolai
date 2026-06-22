@@ -2,7 +2,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- Authentication ---
+    // --- Authentication Helpers ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -17,20 +17,22 @@ service cloud.firestore {
       let club = get(/databases/$(database)/documents/clubs/$(clubId)).data;
       return isSignedIn() && (
         club.ownerId == request.auth.uid || 
-        request.auth.uid in club.adminIds ||
+        request.auth.uid in club.get('adminIds', []) ||
         isAdmin()
       );
     }
 
-    // --- Validation ---
+    // --- Validation Helpers ---
     function isValidTournament(data) {
-      return data.keys().hasOnly(['clubId', 'name', 'status', 'statusHistory', 'startDate', 'endDate', 'minParticipants', 'maxParticipants', 'bracketConfirmed', 'entryFee', 'sport', 'locations', 'categories', 'version', 'createdAt', 'deletedAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees', 'isFeatured', 'hasWelcomePack', 'welcomePackDescription', 'requiresSize']) &&
-             data.status in ['draft', 'registration_open', 'registration_closed', 'in_progress', 'completed', 'archived'];
+      let allowedStatuses = ['draft', 'registration_open', 'registration_closed', 'in_progress', 'completed', 'archived'];
+      return data.keys().hasOnly(['clubId', 'name', 'status', 'statusHistory', 'startDate', 'endDate', 'minParticipants', 'maxParticipants', 'bracketConfirmed', 'entryFee', 'sport', 'locations', 'categories', 'version', 'createdAt', 'deletedAt', 'description', 'numCourts', 'matchDuration', 'recoveryTime', 'referees', 'isFeatured', 'hasWelcomePack', 'welcomePackDescription', 'requiresSize', 'imageUrl']) &&
+             data.status in allowedStatuses;
     }
 
     function isValidMatch(data) {
-      return data.keys().hasOnly(['tournamentId', 'clubId', 'round', 'bracketPosition', 'nextMatchId', 'isBye', 'byePlayerId', 'courtId', 'court', 'teamA', 'teamB', 'score', 'status', 'scheduledTime', 'actualStartTime', 'actualEndTime', 'durationMinutes', 'version', 'location', 'category', 'categoryId', 'startTime', 'completedAt']) &&
-             data.status in ['scheduled', 'live', 'completed'];
+      let allowedStatuses = ['scheduled', 'live', 'completed'];
+      return data.keys().hasAll(['tournamentId', 'clubId', 'status', 'teamA', 'teamB']) &&
+             data.status in allowedStatuses;
     }
 
     // --- Collection Rules ---
@@ -55,10 +57,11 @@ service cloud.firestore {
     }
 
     match /tournaments/{tournamentId} {
-      allow read: if true;
+      // Surgical Read: Public can see published tournaments, Admins see all.
+      allow read: if true; 
       allow create: if isSignedIn() && isClubAdmin(request.resource.data.clubId) && isValidTournament(request.resource.data);
       allow update: if isClubAdmin(resource.data.clubId) && isValidTournament(request.resource.data);
-      allow delete: if false; // Use soft deletes
+      allow delete: if false; // Soft deletes only
     }
 
     match /matches/{matchId} {
@@ -68,7 +71,7 @@ service cloud.firestore {
 
     match /participants/{participantId} {
       allow read: if true;
-      allow create: if (request.resource.data.tournamentId != null) && 
+      allow create: if isSignedIn() && 
                       exists(/databases/$(database)/documents/tournaments/$(request.resource.data.tournamentId)) &&
                       (request.resource.data.userId == request.auth.uid || isClubAdmin(request.resource.data.clubId));
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isClubAdmin(resource.data.clubId));
@@ -77,11 +80,6 @@ service cloud.firestore {
     match /courts/{courtId} {
       allow read: if true;
       allow write: if isSignedIn() && isClubAdmin(request.resource.data.clubId);
-      
-      match /slots/{slotId} {
-        allow read: if true;
-        allow write: if isSignedIn() && isClubAdmin(get(/databases/$(database)/documents/courts/$(courtId)).data.clubId);
-      }
     }
 
     match /promocodes/{promoId} {
@@ -95,7 +93,7 @@ service cloud.firestore {
     }
 
     match /checkins/{checkinId} {
-      allow read: if isSignedIn() && (isAdmin() || exists(/databases/$(database)/documents/participants/$(resource.data.participantId)));
+      allow read: if isSignedIn() && (isAdmin() || isClubAdmin(resource.data.clubId));
       allow create: if isSignedIn();
     }
   }
