@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -17,7 +18,6 @@ export default function CheckInPage() {
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Get user's club
   const clubsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
@@ -26,7 +26,6 @@ export default function CheckInPage() {
   const { data: userClubs } = useCollection(clubsQuery)
   const clubId = userClubs?.[0]?.id
 
-  // Get all tournaments for this club
   const tournamentsQuery = useMemoFirebase(() => {
     if (!db || !clubId) return null
     return query(
@@ -41,7 +40,6 @@ export default function CheckInPage() {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const checkInUrl = selectedTournamentId ? `${origin}/tournaments/${selectedTournamentId}/check-in` : '';
   
-  // Real QR Code API URL
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(checkInUrl)}&bgcolor=FFFFFF&color=0F172A&margin=10`;
 
   const copyToClipboard = (url: string) => {
