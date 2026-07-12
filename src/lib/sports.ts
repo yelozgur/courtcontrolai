@@ -13,7 +13,7 @@ export const COMPREHENSIVE_SPORTS = [
   { label: "Baseball", value: "baseball" },
   { label: "Golf", value: "golf" },
   { label: "Cricket", value: "cricket" },
-  { label: "Rugby", value: "ruby" },
+  { label: "Rugby", value: "rugby" },
   { label: "Handball", value: "handball" },
   { label: "Hockey", value: "hockey" },
   { label: "Ice Hockey", value: "ice-hockey" },

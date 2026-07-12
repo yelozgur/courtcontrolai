@@ -103,18 +103,39 @@ export default function TournamentArena() {
       .slice(0, 4)
   }, [allMatches, selectedLocation])
 
+  // CourtControl AI: Firestore timestamp'leri string ISO veya Firestore Timestamp objesi
+  // olabilir (schedule page elle string yazıyor, AI flow Timestamp yazıyor). Güvenli parse.
+  const parseMatchTime = (val: any): Date | null => {
+    if (!val) return null;
+    try {
+      if (val instanceof Date) return val;
+      if (typeof val?.toDate === 'function') return val.toDate();
+      if (typeof val === 'string') return new Date(val);
+      if (typeof val === 'number') return new Date(val);
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const formatMatchStartLabel = (val: any): string => {
+    const d = parseMatchTime(val);
+    if (!d) return 'TBD';
+    return formatVenueTime(d);
+  };
+
   const formatVenueTime = (date: Date) => {
-    return date.toLocaleTimeString([], { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
       minute: '2-digit',
       timeZone: clubTimezone
     });
   }
 
   const formatVenueDate = (date: Date) => {
-    return date.toLocaleDateString([], { 
-      weekday: 'long', 
-      month: 'short', 
+    return date.toLocaleDateString([], {
+      weekday: 'long',
+      month: 'short',
       day: 'numeric',
       timeZone: clubTimezone
     });
@@ -254,10 +275,10 @@ export default function TournamentArena() {
                        {upcomingMatches.map(m => (
                          <div key={m.id} className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
                             <div className="flex items-center gap-6">
-                               <div className="bg-secondary/30 p-3 rounded-xl text-center min-w-[80px]">
+                                <div className="bg-secondary/30 p-3 rounded-xl text-center min-w-[80px]">
                                   <Clock className="h-4 w-4 mx-auto mb-1 text-primary" />
-                                  <span className="text-sm font-bold">{m.startTime ? (typeof m.startTime === 'string' ? m.startTime.split('T')[1]?.substring(0, 5) : formatVenueTime(m.startTime.toDate())) : 'TBD'}</span>
-                               </div>
+                                  <span className="text-sm font-bold">{m.startTime ? formatMatchStartLabel(m.startTime) : 'TBD'}</span>
+                                </div>
                                <div className="text-left">
                                   <div className="text-xl font-bold">{m.teamA.name} vs {m.teamB.name}</div>
                                   <div className="text-xs text-muted-foreground uppercase tracking-widest">{m.category} • Court {m.court}</div>

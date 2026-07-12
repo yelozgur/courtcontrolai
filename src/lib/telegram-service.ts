@@ -2,49 +2,70 @@
 'use client';
 
 /**
- * @fileOverview Telegram Bot Service
- * Handles sending real-time notifications to players.
+ * @fileOverview Telegram Notification Helper
+ *
+ * Frontend bu helper'i kullanir ama ASLA bot token'i gormez.
+ * Token server-side /api/telegram/send route'unda kalir.
+ * Onceki 'use client' versiyon browser console'dan token
+ * yakalanabiliyordu — artik tum istekler server uzerinden gidiyor.
  */
 
 export interface TelegramNotification {
-  botToken: string;
   chatId: string;
   message: string;
+  // Opsiyonel: eger club'un kendi bot'u varsa server'a token override gonder
+  // (server yine de default env TELEGRAM_BOT_TOKEN'i fallback olarak kullanir)
+  botToken?: string;
+}
+
+export interface TelegramResult {
+  ok: boolean;
+  messageId?: number;
+  error?: string;
 }
 
 /**
- * Sends a message via the Telegram Bot API.
- * Note: In a production environment, this should be handled by a secure 
- * background function or a server-side route to protect the Bot Token.
+ * Server-side Telegram API'ye forward eder. Bot token hicbir zaman
+ * browser'a gitmez.
  */
-export async function sendTelegramNotification({ botToken, chatId, message }: TelegramNotification) {
-  if (!botToken || !chatId) return;
+export async function sendTelegramNotification({
+  chatId,
+  message,
+  botToken,
+}: TelegramNotification): Promise<TelegramResult> {
+  if (!chatId || !message) {
+    return { ok: false, error: 'chatId ve message zorunlu' };
+  }
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    const res = await fetch('/api/telegram/send', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId.startsWith('@') ? chatId : chatId,
-        text: message,
-        parse_mode: 'HTML',
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, message, botToken, parseMode: 'HTML' }),
     });
 
-    if (!response.ok) {
-      console.error('Telegram API error:', await response.text());
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      console.error('[telegram] send failed:', data);
+      return { ok: false, error: data.error || `HTTP ${res.status}` };
     }
-  } catch (error) {
-    console.error('Failed to send Telegram notification:', error);
+    return { ok: true, messageId: data.messageId };
+  } catch (e) {
+    console.error('[telegram] network error:', e);
+    return { ok: false, error: e instanceof Error ? e.message : 'unknown' };
   }
 }
 
 /**
  * Formats a match notification message
  */
-export function formatMatchLiveMessage(tournamentName: string, court: number, teamA: string, teamB: string, category: string) {
+export function formatMatchLiveMessage(
+  tournamentName: string,
+  court: number,
+  teamA: string,
+  teamB: string,
+  category: string
+) {
   return `
 🚀 <b>MATCH LIVE!</b> 🎾
 

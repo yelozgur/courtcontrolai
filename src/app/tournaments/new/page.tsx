@@ -100,11 +100,14 @@ export default function TournamentWizard() {
   const handleLaunch = async () => {
     if (!db || !clubId) return
     setIsSubmitting(true)
-    
+
+    // CourtControl AI: firestore.rules'da allowedStatuses = ['draft', 'registration_open',
+    // 'registration_closed', 'in_progress', 'completed', 'archived']. "active" yok,
+    // eskiden yazım reddediliyordu. Yeni turnuva doğrudan kayıt açık.
     const tournamentData = {
       ...formData,
       clubId,
-      status: "active",
+      status: "registration_open",
       createdAt: serverTimestamp()
     }
 

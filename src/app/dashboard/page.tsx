@@ -137,7 +137,7 @@ export default function DashboardOverview() {
             </Link>
           </Button>
           <Button className="rounded-xl font-bold h-12 px-6" asChild>
-            <Link href="/dashboard/tournaments/new">
+            <Link href="/tournaments/new">
               <PlusCircle className="mr-2 h-4 w-4" /> Create Tournament
             </Link>
           </Button>
