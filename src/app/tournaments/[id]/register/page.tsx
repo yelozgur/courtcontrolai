@@ -45,7 +45,10 @@ export default function TournamentRegistration() {
     telegramHandle: "",
     skillLevel: "intermediate",
     categoryId: "",
-    packSize: ""
+    packSize: "",
+    tshirtSize: "",
+    shoeSize: "",
+    shortsSize: ""
   });
 
   const handleNextToPayment = (e: React.FormEvent) => {
@@ -54,9 +57,17 @@ export default function TournamentRegistration() {
       toast({ variant: "destructive", title: "Selection Required", description: "Please select a bracket." });
       return;
     }
-    if (tournament?.requiresSize && !formData.packSize) {
-      toast({ variant: "destructive", title: "Size Required", description: "Please select your welcome pack size." });
-      return;
+    if (tournament?.requiresSize) {
+      const requiredFields = tournament?.packSizeFields || ['packSize']
+      const missing = requiredFields.filter((f: string) => !formData[f as keyof typeof formData])
+      if (missing.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Size Required",
+          description: `Please complete: ${missing.join(', ')}`
+        });
+        return;
+      }
     }
     setStep('payment');
   };
@@ -186,18 +197,53 @@ export default function TournamentRegistration() {
                    </div>
                    <p className="text-[10px] text-muted-foreground italic">{tournament.welcomePackDescription}</p>
                    {tournament.requiresSize && (
-                     <div className="space-y-2">
-                        <Label className="text-[9px] uppercase font-bold opacity-60">Select Pack Size</Label>
-                        <Select value={formData.packSize} onValueChange={val => setFormData({...formData, packSize: val})}>
-                          <SelectTrigger className="bg-white/5 border-white/10 h-10"><SelectValue placeholder="Size..." /></SelectTrigger>
-                          <SelectContent>
-                             <SelectItem value="S">Small (S)</SelectItem>
-                             <SelectItem value="M">Medium (M)</SelectItem>
-                             <SelectItem value="L">Large (L)</SelectItem>
-                             <SelectItem value="XL">Extra Large (XL)</SelectItem>
-                             <SelectItem value="XXL">2XL</SelectItem>
-                          </SelectContent>
-                        </Select>
+                     <div className="grid grid-cols-2 gap-3">
+                        {/* T-shirt size */}
+                        <div className="space-y-2">
+                           <Label className="text-[9px] uppercase font-bold opacity-60 flex items-center gap-1">
+                             <Shirt className="h-3 w-3" /> T-Shirt Size
+                           </Label>
+                           <Select value={formData.tshirtSize} onValueChange={val => setFormData({...formData, tshirtSize: val})}>
+                             <SelectTrigger className="bg-white/5 border-white/10 h-10"><SelectValue placeholder="Size..." /></SelectTrigger>
+                             <SelectContent>
+                                <SelectItem value="S">S</SelectItem>
+                                <SelectItem value="M">M</SelectItem>
+                                <SelectItem value="L">L</SelectItem>
+                                <SelectItem value="XL">XL</SelectItem>
+                                <SelectItem value="XXL">XXL</SelectItem>
+                             </SelectContent>
+                           </Select>
+                        </div>
+                        {/* Shorts size */}
+                        <div className="space-y-2">
+                           <Label className="text-[9px] uppercase font-bold opacity-60 flex items-center gap-1">
+                             <span className="font-bold">⇅</span> Shorts Size
+                           </Label>
+                           <Select value={formData.shortsSize} onValueChange={val => setFormData({...formData, shortsSize: val})}>
+                             <SelectTrigger className="bg-white/5 border-white/10 h-10"><SelectValue placeholder="Size..." /></SelectTrigger>
+                             <SelectContent>
+                                <SelectItem value="S">S</SelectItem>
+                                <SelectItem value="M">M</SelectItem>
+                                <SelectItem value="L">L</SelectItem>
+                                <SelectItem value="XL">XL</SelectItem>
+                                <SelectItem value="XXL">XXL</SelectItem>
+                             </SelectContent>
+                           </Select>
+                        </div>
+                        {/* Shoe size */}
+                        <div className="space-y-2 col-span-2">
+                           <Label className="text-[9px] uppercase font-bold opacity-60 flex items-center gap-1">
+                             <span className="text-xs">👟</span> Shoe Size (EU)
+                           </Label>
+                           <Select value={formData.shoeSize} onValueChange={val => setFormData({...formData, shoeSize: val})}>
+                             <SelectTrigger className="bg-white/5 border-white/10 h-10"><SelectValue placeholder="EU size..." /></SelectTrigger>
+                             <SelectContent>
+                                {[36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47].map(s => (
+                                  <SelectItem key={s} value={s.toString()}>{s}</SelectItem>
+                                ))}
+                             </SelectContent>
+                           </Select>
+                        </div>
                      </div>
                    )}
                 </div>

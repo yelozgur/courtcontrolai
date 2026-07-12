@@ -6,40 +6,75 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table"
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
+import {
+  Users,
+  UserPlus,
+  Search,
   MoreVertical,
   Loader2,
   Share2,
   Copy,
   Check,
-  Shirt
+  Shirt,
+  Pencil,
+  Trash2,
+  Eye,
+  ExternalLink
 } from "lucide-react"
-import { collection, query, limit, where, addDoc } from "firebase/firestore"
+import { collection, query, limit, where, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+
+interface Player {
+  id: string
+  name?: string
+  email?: string
+  userId?: string
+  clubId?: string
+  packSize?: string
+  skillLevel?: string
+  verified?: boolean
+  createdAt?: string
+}
 
 export default function ParticipantManagement() {
   const db = useFirestore()
@@ -50,7 +85,18 @@ export default function ParticipantManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  
+
+  // Roster actions state
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editEmail, setEditEmail] = useState("")
+  const [editSkill, setEditSkill] = useState("intermediate")
+  const [editPackSize, setEditPackSize] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+
+  const [removingPlayer, setRemovingPlayer] = useState<Player | null>(null)
+  const [isRemoving, setIsRemoving] = useState(false)
+
   const [newPlayer, setNewPlayer] = useState({
     name: "",
     email: "",
@@ -84,7 +130,7 @@ export default function ParticipantManagement() {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const registerUrl = selectedTournamentId ? `${origin}/tournaments/${selectedTournamentId}/register` : '';
-  
+
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(registerUrl)}&bgcolor=FFFFFF&color=0F172A&margin=10`;
 
   const copyToClipboard = (url: string) => {
@@ -98,7 +144,7 @@ export default function ParticipantManagement() {
   const handleAddPlayer = () => {
     if (!db || !clubId || !newPlayer.name || !newPlayer.email) return
     setIsAdding(true)
-    
+
     const playerData = {
       ...newPlayer,
       clubId,
@@ -125,8 +171,57 @@ export default function ParticipantManagement() {
       })
   }
 
-  const filteredParticipants = participants?.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const openEdit = (p: Player) => {
+    setEditingPlayer(p)
+    setEditName(p.name || "")
+    setEditEmail(p.email || "")
+    setEditSkill(p.skillLevel || "intermediate")
+    setEditPackSize(p.packSize || "")
+  }
+
+  const handleSaveEdit = async () => {
+    if (!db || !editingPlayer) return
+    setIsSaving(true)
+    try {
+      await updateDoc(doc(db, "participants", editingPlayer.id), {
+        name: editName,
+        email: editEmail,
+        skillLevel: editSkill,
+        packSize: editPackSize || null,
+      })
+      toast({ title: "Player Updated", description: `${editName} has been updated.` })
+      setEditingPlayer(null)
+    } catch (e: any) {
+      toast({
+        title: "Update Failed",
+        description: e.message,
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRemove = async () => {
+    if (!db || !removingPlayer) return
+    setIsRemoving(true)
+    try {
+      await deleteDoc(doc(db, "participants", removingPlayer.id))
+      toast({ title: "Player Removed", description: `${removingPlayer.name} has been removed from the roster.` })
+      setRemovingPlayer(null)
+    } catch (e: any) {
+      toast({
+        title: "Remove Failed",
+        description: e.message,
+        variant: "destructive"
+      })
+    } finally {
+      setIsRemoving(false)
+    }
+  }
+
+  const filteredParticipants = participants?.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -248,7 +343,42 @@ export default function ParticipantManagement() {
                           <Badge variant="outline" className="capitalize text-[10px] border-primary/20 text-primary">{player.skillLevel}</Badge>
                         </TableCell>
                         <TableCell className="text-right pr-6">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10"><MoreVertical className="h-4 w-4" /></Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Actions</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => openEdit(player)}
+                                className="text-xs"
+                              >
+                                <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Player
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const userId = player.userId || player.id
+                                  const win = window.open(`/dashboard/profile?userId=${userId}`, '_blank')
+                                  if (!win) {
+                                    toast({ title: "Popup Blocked", description: "Allow popups to view profile.", variant: "destructive" })
+                                  }
+                                }}
+                                className="text-xs"
+                              >
+                                <Eye className="mr-2 h-3.5 w-3.5" /> View Profile
+                                <ExternalLink className="ml-auto h-3 w-3 opacity-50" />
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setRemovingPlayer(player)}
+                                className="text-xs text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Remove from Roster
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -261,6 +391,86 @@ export default function ParticipantManagement() {
           </Card>
         </div>
       </div>
+
+      {/* Edit Player Dialog */}
+      <Dialog open={!!editingPlayer} onOpenChange={(open) => !open && setEditingPlayer(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Player</DialogTitle>
+            <DialogDescription>Update player details. Changes are saved immediately.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Skill Level</Label>
+                <Select value={editSkill} onValueChange={setEditSkill}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Pack Size</Label>
+                <Select value={editPackSize || "none"} onValueChange={(v) => setEditPackSize(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="No pack" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No selection</SelectItem>
+                    <SelectItem value="S">S</SelectItem>
+                    <SelectItem value="M">M</SelectItem>
+                    <SelectItem value="L">L</SelectItem>
+                    <SelectItem value="XL">XL</SelectItem>
+                    <SelectItem value="XXL">XXL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingPlayer(null)} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSaving || !editName || !editEmail}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Confirmation AlertDialog */}
+      <AlertDialog open={!!removingPlayer} onOpenChange={(open) => !open && setRemovingPlayer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removingPlayer?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the player from your club roster. Their tournament registrations and match history will remain intact, but they will no longer appear in your club's player database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemove}
+              disabled={isRemoving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

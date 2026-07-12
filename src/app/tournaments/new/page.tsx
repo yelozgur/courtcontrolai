@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin } from "lucide-react"
+import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { collection, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
 import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -64,8 +65,10 @@ export default function TournamentWizard() {
     name: "",
     description: "",
     startDate: "",
+    endDate: "",
     sport: "padel",
     numCourts: 1,
+    locations: [] as string[],
     categories: [] as Category[]
   })
 
@@ -202,12 +205,26 @@ export default function TournamentWizard() {
                   <Label htmlFor="t-date">Start Date</Label>
                   <div className="relative">
                     <CalendarDays className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
-                    <Input 
-                      id="t-date" 
-                      type="date" 
-                      className="bg-secondary/50 h-12 pl-10" 
+                    <Input
+                      id="t-date"
+                      type="date"
+                      className="bg-secondary/50 h-12 pl-10"
                       value={formData.startDate}
-                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value, endDate: formData.endDate && formData.endDate < e.target.value ? e.target.value : formData.endDate })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="t-end-date">End Date <span className="text-muted-foreground text-[10px]">(multi-day)</span></Label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      id="t-end-date"
+                      type="date"
+                      className="bg-secondary/50 h-12 pl-10"
+                      min={formData.startDate}
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                     />
                   </div>
                 </div>
@@ -227,6 +244,94 @@ export default function TournamentWizard() {
                       <SelectItem value="basketball">Basketball</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Multi-location support */}
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-bold flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" /> Venues / Locations
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      ({formData.locations.length} added, {formData.numCourts} courts total)
+                    </span>
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground italic">Multi-venue: matches consolidate across locations</span>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="t-location"
+                    placeholder="e.g. Nicosia Central Court, Kyrenia Beach Club"
+                    className="bg-secondary/30 h-11"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const target = e.target as HTMLInputElement
+                        const value = target.value.trim()
+                        if (value && !formData.locations.includes(value)) {
+                          setFormData({ ...formData, locations: [...formData.locations, value] })
+                          target.value = ''
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11"
+                    onClick={(e) => {
+                      const input = document.getElementById('t-location') as HTMLInputElement
+                      const value = input.value.trim()
+                      if (value && !formData.locations.includes(value)) {
+                        setFormData({ ...formData, locations: [...formData.locations, value] })
+                        input.value = ''
+                      }
+                    }}
+                  >
+                    <Plus className="h-4 w-4" /> Add
+                  </Button>
+                </div>
+                {formData.locations.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.locations.map((loc, idx) => (
+                      <Badge
+                        key={idx}
+                        variant="secondary"
+                        className="bg-primary/10 text-primary border-primary/20 px-3 py-1.5 text-xs flex items-center gap-2"
+                      >
+                        <MapPin className="h-3 w-3" />
+                        {loc}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, locations: formData.locations.filter((_, i) => i !== idx) })}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Total Courts</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={formData.numCourts}
+                      onChange={(e) => setFormData({ ...formData, numCourts: parseInt(e.target.value) || 1 })}
+                      className="bg-secondary/30 h-11"
+                    />
+                  </div>
+                  {formData.startDate && formData.endDate && formData.endDate > formData.startDate && (
+                    <div className="space-y-2">
+                      <Label>Duration</Label>
+                      <div className="bg-secondary/30 h-11 px-4 rounded-xl flex items-center text-sm text-accent font-bold">
+                        {Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="pt-4 flex justify-end">
