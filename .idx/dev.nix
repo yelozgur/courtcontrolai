@@ -9,14 +9,24 @@
     pkgs.zulu
   ];
   # Sets environment variables in the workspace
-  env = {};
-  # This adds a file watcher to startup the firebase emulators. The emulators will only start if
-  # a firebase.json file is written into the user's directory
+  env = {
+    # Local dev: app NEXT_PUBLIC_USE_EMULATOR=true ile emulator'a baglanir,
+    # prod'da bu flag set edilmez, gercek Firebase backend'e gider.
+    NEXT_PUBLIC_USE_EMULATOR = "true";
+    # Firebase emulator project id (firebase.json'daki singleProjectMode ile eslesir)
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID = "demo-app";
+    # Genkit dev UI icin local ayar (genkit start ile)
+    GENKIT_ENV = "dev";
+  };
+  # CourtControl AI: firebase.json olusturuldu, emulators artik aktif.
+  # Onceki 'detect = false' sebebiyle prod backend kullaniyorduk —
+  # lokalde rules + auth + firestore'u emulator'de test edebilmek icin aktif ettik.
   services.firebase.emulators = {
-    # Disabling because we are using prod backends right now
-    detect = false;
+    detect = true;
     projectId = "demo-app";
     services = ["auth" "firestore"];
+    # UI console: http://localhost:4000
+    enableUi = true;
   };
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
