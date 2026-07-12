@@ -36,3 +36,8 @@ yarn-error.log*
 .firebase/
 firebase-debug.log*
 firestore-debug.log*
+
+# Local test scripts (manuel emulator test)
+test-*.cjs
+test-*.mjs
+

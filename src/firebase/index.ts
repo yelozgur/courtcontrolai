@@ -35,8 +35,12 @@ export function initializeFirebase(): {
     // browser'da ikinci kez connect etmeyi onler.
     if (!(window as any).__CCA_EMULATOR_CONNECTED) {
       try {
+        // CourtControl AI: Firebase v11 connectAuthEmulator strict scheme check yapiyor.
+        // URL 'http://localhost:9099' OLMALI (sadece 'localhost' yetersiz,
+        // "must start with a valid scheme (http:// or https://)" hatasi).
+        // connectFirestoreEmulator ise hostname serbest, 127.0.0.1 kabul eder.
         connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
-        connectAuthEmulator(auth, '127.0.0.1', 9099, { disableWarnings: true });
+        connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
         (window as any).__CCA_EMULATOR_CONNECTED = true;
         // eslint-disable-next-line no-console
         console.info('[firebase] Connected to LOCAL emulators (Firestore 8080, Auth 9099)');
