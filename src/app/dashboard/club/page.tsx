@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Save, Loader2, Send, MessageSquare, Globe, PlusCircle } from "lucide-react"
-import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
+import { useFirestore, useUser, useMemoFirebase, useCollection, useUserClub, useFilteredCollection } from "@/firebase"
 import { doc, setDoc, query, collection, where, limit, addDoc, serverTimestamp } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -48,14 +48,8 @@ export default function ClubSettings() {
   const { user } = useUser()
   const { toast } = useToast()
   
-  const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
-
-  const { data: userClubs, loading } = useCollection(clubsQuery)
-  const clubData = userClubs?.[0]
-  const clubId = clubData?.id
+  // Club resolution (client-side filter workaround)
+  const { club: clubData, clubId, loading } = useUserClub()
   
   const [formData, setFormData] = useState({
     name: "",

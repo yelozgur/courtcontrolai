@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
+import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc, useUserClub, useFilteredCollection } from "@/firebase"
 import { collection, query, where, orderBy, doc, limit, setDoc } from "firebase/firestore"
 import { 
   Trophy, 
@@ -54,23 +54,17 @@ export default function PlayerProfile() {
     if (profile?.photoURL) setAvatarUrl(profile.photoURL)
   }, [profile])
 
-  // 2. Get User's Club (if they are an owner)
-  const clubQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
-  const { data: userClubs } = useCollection(clubQuery)
-  const ownedClub = userClubs?.[0]
+  // 2. Get User's Club (if they are an owner) — client-side filter
+  const { data: allUserClubs } = useFilteredCollection<any>("clubs", user ? (c: any) => c.ownerId === user.uid : undefined, { deps: [user?.uid] })
+  const ownedClub = allUserClubs?.[0]
 
-  // 3. Get Player Registrations (linked by email)
-  const registrationsQuery = useMemoFirebase(() => {
-    if (!db || !user?.email) return null
-    return query(
-      collection(db, "participants"),
-      where("email", "==", user.email.toLowerCase())
-    )
-  }, [db, user])
-  const { data: registrations, loading: regsLoading } = useCollection(registrationsQuery)
+  // 3. Get Player Registrations (linked by email) — client-side filter
+  const { data: allParticipants } = useFilteredCollection<any>("participants", undefined, { limit: 1000 })
+  const registrations = useMemo(() => {
+    if (!allParticipants || !user?.email) return null
+    return allParticipants.filter((p: any) => p.email === user.email?.toLowerCase())
+  }, [allParticipants, user?.email])
+  const regsLoading = false
 
   // 4. Get Club Leaderboard
   const clubId = registrations?.[0]?.clubId || ownedClub?.id

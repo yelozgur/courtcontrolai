@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Tournament Bracket Generator
  *
@@ -12,6 +11,8 @@
  * - Eğer tournament tek günse (endDate yoksa), tüm round'lar day 0'da
  * - Eğer tournament multi-day ise, round'lar günlere round-robin dağıtılır
  * - Bye logic: power-of-2'ye tamamlayana kadar top-seeded'lara bye verilir
+ *
+ * Server-side kısıtlaması yok — saf TypeScript, client'tan direkt import.
  */
 
 import { z } from 'zod';

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Trophy, MapPin, Loader2, Search, Plus, ChevronRight, Users, Layers, Clock } from "lucide-react"
 import { collection, query, where, orderBy, limit } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
+import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc, useUserClub, useFilteredCollection } from "@/firebase"
 import { useState, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { doc } from "firebase/firestore"
@@ -23,26 +23,15 @@ export default function DashboardTournaments() {
   const { user } = useUser()
   const [search, setSearch] = useState("")
 
-  // 1. Resolve current user's clubId
-  const userClubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
+  // 1. Resolve current user's clubId (client-side filter workaround for emulator WHERE bug)
+  const { clubId } = useUserClub()
 
-  const { data: userClubs } = useCollection(userClubsQuery)
-  const clubId = userClubs?.[0]?.id
-
-  // 2. Fetch all tournaments for this club (admin icin: tum)
-  const tournamentsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null
-    return query(
-      collection(db, "tournaments"),
-      where("clubId", "==", clubId),
-      limit(100)
-    )
-  }, [db, clubId])
-
-  const { data: tournaments, loading, error } = useCollection(tournamentsQuery)
+  // 2. Fetch all tournaments for this club (admin icin: tum) — client-side filter
+  const { data: tournaments, loading, error } = useFilteredCollection<any>(
+    "tournaments",
+    clubId ? (t: any) => t.clubId === clubId : undefined,
+    { deps: [clubId] }
+  )
 
   // 3. Client-side filter
   const filtered = useMemo(() => {

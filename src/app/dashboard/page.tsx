@@ -21,7 +21,7 @@ import {
   ChevronRight 
 } from "lucide-react"
 import { collection, query, limit, doc, where, orderBy } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc } from "@/firebase"
+import { useFirestore, useMemoFirebase, useCollection, useUser, useDoc, useUserClub, useFilteredCollection } from "@/firebase"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -37,47 +37,17 @@ export default function DashboardOverview() {
   const { data: profile, loading: profileLoading } = useDoc(userProfileRef);
   const isAdmin = profile?.role === 'admin';
 
-  // 1. Resolve User's Club
-  const userClubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1));
-  }, [db, user]);
+  // 1. Resolve User's Club (client-side filter workaround for emulator WHERE bug)
+  const { club: clubData, clubId, loading: clubsLoading } = useUserClub()
 
-  const { data: userClubs, loading: clubsLoading } = useCollection(userClubsQuery);
-  const clubData = userClubs?.[0];
-  const clubId = clubData?.id;
+  // 2. Scoped Queries for Club Metrics (client-side filter)
+  const { data: allTournaments, loading: toursLoading } = useFilteredCollection<any>("tournaments", undefined, { limit: 100 })
+  const { data: allMatches, loading: matchesLoading } = useFilteredCollection<any>("matches", undefined, { limit: 200 })
+  const { data: allParticipants, loading: partsLoading } = useFilteredCollection<any>("participants", undefined, { limit: 500 })
 
-  // 2. Scoped Queries for Club Metrics
-  const tournamentsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null;
-    return query(
-      collection(db, "tournaments"), 
-      where("clubId", "==", clubId),
-      limit(5)
-    );
-  }, [db, clubId]);
-
-  const liveMatchesQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null;
-    return query(
-      collection(db, "matches"), 
-      where("clubId", "==", clubId),
-      where("status", "==", "live"), 
-      limit(4)
-    );
-  }, [db, clubId]);
-
-  const participantsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null;
-    return query(
-      collection(db, "participants"),
-      where("clubId", "==", clubId)
-    );
-  }, [db, clubId]);
-
-  const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery);
-  const { data: matches, loading: matchesLoading } = useCollection(liveMatchesQuery);
-  const { data: participants, loading: partsLoading } = useCollection(participantsQuery);
+  const tournaments = useMemo(() => clubId ? (allTournaments || []).filter((t: any) => t.clubId === clubId).slice(0, 5) : (allTournaments || []).slice(0, 5), [allTournaments, clubId])
+  const matches = useMemo(() => clubId ? (allMatches || []).filter((m: any) => m.clubId === clubId && m.status === "live").slice(0, 4) : (allMatches || []).filter((m: any) => m.status === "live").slice(0, 4), [allMatches, clubId])
+  const participants = useMemo(() => clubId ? (allParticipants || []).filter((p: any) => p.clubId === clubId) : (allParticipants || []), [allParticipants, clubId])
 
   // 3. Computed Metrics for THIS Club only
   const metrics = useMemo(() => {

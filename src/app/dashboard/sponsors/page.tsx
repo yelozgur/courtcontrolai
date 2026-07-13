@@ -25,7 +25,7 @@ import {
   Building
 } from "lucide-react"
 import { collection, addDoc, deleteDoc, doc, query, where, limit } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
+import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -37,21 +37,15 @@ export default function SponsorManagement() {
   const { toast } = useToast()
   
   // Get current user's clubId
-  const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
+  // Club resolution (client-side filter workaround)
+  const { clubId } = useUserClub()
 
-  const { data: userClubs } = useCollection(clubsQuery)
-  const clubId = userClubs?.[0]?.id
-
-  // Get tournaments for sponsorship context
-  const tournamentsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null
-    return query(collection(db, "tournaments"), where("clubId", "==", clubId))
-  }, [db, clubId])
-
-  const { data: tournaments } = useCollection(tournamentsQuery)
+  // Get tournaments for sponsorship context (client-side filter)
+  const { data: tournaments } = useFilteredCollection<any>(
+    "tournaments",
+    clubId ? (t: any) => t.clubId === clubId : undefined,
+    { deps: [clubId] }
+  )
 
   const [isAdding, setIsAdding] = useState(false)
   const [formData, setFormData] = useState({
@@ -61,12 +55,12 @@ export default function SponsorManagement() {
     tournamentId: "club" // Default to club-wide
   })
 
-  const sponsorsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null
-    return query(collection(db, "sponsors"), where("clubId", "==", clubId), limit(50))
-  }, [db, clubId])
-
-  const { data: sponsors, loading } = useCollection(sponsorsQuery)
+  // Sponsors (client-side filter)
+  const { data: sponsors, loading } = useFilteredCollection<any>(
+    "sponsors",
+    clubId ? (s: any) => s.clubId === clubId : undefined,
+    { deps: [clubId] }
+  )
 
   const handleAddSponsor = () => {
     if (!db || !clubId || !formData.name) return

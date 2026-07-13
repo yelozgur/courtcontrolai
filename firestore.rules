@@ -84,7 +84,9 @@ service cloud.firestore {
 
     match /matches/{matchId} {
       allow read: if true;
-      allow write: if isSignedIn() && (isClubAdmin(request.resource.data.clubId) || isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     match /participants/{participantId} {

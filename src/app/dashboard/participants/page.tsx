@@ -30,7 +30,7 @@ import {
   ExternalLink
 } from "lucide-react"
 import { collection, query, limit, where, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
+import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
 import {
   Dialog,
   DialogContent,
@@ -104,29 +104,22 @@ export default function ParticipantManagement() {
     telegramHandle: ""
   })
 
-  // Get current user's clubId
-  const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
+  // Get current user's clubId (client-side filter workaround)
+  const { clubId } = useUserClub()
 
-  const { data: userClubs } = useCollection(clubsQuery)
-  const clubId = userClubs?.[0]?.id
+  // Get tournaments for link generation (client-side filter)
+  const { data: tournaments } = useFilteredCollection<any>(
+    "tournaments",
+    clubId ? (t: any) => t.clubId === clubId : undefined,
+    { deps: [clubId] }
+  )
 
-  // Get tournaments for link generation
-  const tournamentsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null
-    return query(collection(db, "tournaments"), where("clubId", "==", clubId))
-  }, [db, clubId])
-
-  const { data: tournaments } = useCollection(tournamentsQuery)
-
-  const participantsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null
-    return query(collection(db, "participants"), where("clubId", "==", clubId), limit(100))
-  }, [db, clubId])
-
-  const { data: participants, loading } = useCollection(participantsQuery)
+  // Get participants (client-side filter)
+  const { data: participants, loading } = useFilteredCollection<any>(
+    "participants",
+    clubId ? (p: any) => p.clubId === clubId : undefined,
+    { deps: [clubId] }
+  )
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const registerUrl = selectedTournamentId ? `${origin}/tournaments/${selectedTournamentId}/register` : '';

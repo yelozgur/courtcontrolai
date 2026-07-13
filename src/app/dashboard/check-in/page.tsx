@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { QrCode, ExternalLink, Copy, Check, Trophy, MapPin, Smartphone, Zap } from "lucide-react"
 import { collection, query, where, limit } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
+import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 
@@ -18,23 +18,14 @@ export default function CheckInPage() {
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
+  // Club resolution (client-side filter workaround)
+  const { clubId } = useUserClub()
 
-  const { data: userClubs } = useCollection(clubsQuery)
-  const clubId = userClubs?.[0]?.id
-
-  const tournamentsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null
-    return query(
-      collection(db, "tournaments"), 
-      where("clubId", "==", clubId)
-    )
-  }, [db, clubId])
-
-  const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery)
+  const { data: tournaments, loading: toursLoading } = useFilteredCollection<any>(
+    "tournaments",
+    clubId ? (t: any) => t.clubId === clubId : undefined,
+    { deps: [clubId] }
+  )
   const selectedTournament = tournaments?.find(t => t.id === selectedTournamentId)
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';

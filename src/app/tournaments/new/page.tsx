@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Trophy, Users, Layout, Zap, CheckCircle2, Loader2, Plus, Trash2, CalendarDays, Building2, MapPin, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { collection, addDoc, serverTimestamp, query, where, limit } from "firebase/firestore"
-import { useFirestore, useUser, useMemoFirebase, useCollection } from "@/firebase"
+import { useFirestore, useUser, useMemoFirebase, useCollection, useUserClub, useFilteredCollection } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
@@ -52,14 +52,8 @@ export default function TournamentWizard() {
   const [newCategoryAge, setNewCategoryAge] = useState("Open")
   const [newCategoryIsTeam, setNewCategoryIsTeam] = useState(false)
 
-  // Get current user's clubId
-  const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
-
-  const { data: userClubs } = useCollection(clubsQuery)
-  const clubId = userClubs?.[0]?.id
+  // Get current user's clubId (client-side filter workaround)
+  const { club: userClub, clubId } = useUserClub()
 
   const [formData, setFormData] = useState({
     name: "",
@@ -154,7 +148,7 @@ export default function TournamentWizard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold">Tournament Wizard</h1>
-          <p className="text-muted-foreground">Configure an event for <span className="text-primary font-bold">{userClubs?.[0]?.name}</span>.</p>
+          <p className="text-muted-foreground">Configure an event for <span className="text-primary font-bold">{userClub?.name}</span>.</p>
         </div>
         <div className="flex items-center gap-2">
           {[1, 2, 3, 4].map((s) => (
@@ -513,14 +507,14 @@ export default function TournamentWizard() {
                       <Input 
                         type="number" 
                         min="1" 
-                        max={userClubs?.[0]?.numCourts || 100}
+                        max={userClub?.numCourts || 100}
                         value={formData.numCourts}
                         onChange={(e) => setFormData({ ...formData, numCourts: parseInt(e.target.value) || 1 })}
                         className="h-12 text-center text-xl font-bold bg-background"
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground italic">Your club has {userClubs?.[0]?.numCourts} courts available in total.</p>
+                  <p className="text-xs text-muted-foreground italic">Your club has {userClub?.numCourts} courts available in total.</p>
                 </div>
 
                 <div className="flex items-center gap-4 p-5 border rounded-2xl bg-card">

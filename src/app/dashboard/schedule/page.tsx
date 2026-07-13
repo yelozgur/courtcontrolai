@@ -5,8 +5,8 @@ import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Building, Sparkles, Trash2, BrainCircuit, Users2, Gavel } from "lucide-react"
-import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, deleteDoc, increment } from "firebase/firestore"
-import { useFirestore, useMemoFirebase, useCollection, useUser } from "@/firebase"
+import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, deleteDoc, increment, updateDoc, setDoc } from "firebase/firestore"
+import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -29,6 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { optimizeTournamentSchedule } from "@/ai/dev"
+import { generateTournamentBracket, type BracketOutput } from "@/ai/flows/bracket-flow"
 
 export default function SchedulingPage() {
   const db = useFirestore()
@@ -40,6 +41,7 @@ export default function SchedulingPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isAddingMatch, setIsAddingMatch] = useState(false)
   const [isOptimizing, setIsOptimizing] = useState(false)
+  const [isGeneratingBracket, setIsGeneratingBracket] = useState(false)
   const [showOptimizationSettings, setShowOptimizationSettings] = useState(false)
   const [aiInstructions, setAiInstructions] = useState("")
   const [participantsCount, setParticipantsCount] = useState(0)
@@ -53,22 +55,18 @@ export default function SchedulingPage() {
     location: ""
   })
 
-  const clubsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
-  }, [db, user])
-
-  const { data: userClubs } = useCollection(clubsQuery)
-  const clubData = userClubs?.[0]
-  const clubId = clubData?.id
+  // Club resolution (client-side filter workaround for emulator WHERE bug)
+  const { club: clubData, clubId, loading: clubLoading } = useUserClub()
   const aiUsage = clubData?.aiUsageCount || 0
 
-  const tournamentsQuery = useMemoFirebase(() => {
-    if (!db || !clubId) return null
-    return query(collection(db, "tournaments"), where("clubId", "==", clubId))
-  }, [db, clubId])
-
-  const { data: tournaments, loading: toursLoading } = useCollection(tournamentsQuery)
+  // Tournament resolution (client-side filter workaround for emulator WHERE bug)
+  const { data: allTournaments, loading: toursLoading } = useFilteredCollection<any>("tournaments", undefined, { limit: 50 })
+  const tournaments = useMemo(() => {
+    if (!allTournaments) return null
+    if (!clubId) return allTournaments
+    const filtered = allTournaments.filter((t: any) => t.clubId === clubId)
+    return filtered.length > 0 ? filtered : allTournaments  // fallback to all if filter empty
+  }, [allTournaments, clubId])
   
   useEffect(() => {
     if (tournaments && tournaments.length > 0 && !selectedTournamentId) {
@@ -84,16 +82,12 @@ export default function SchedulingPage() {
     getDocs(pQuery).then(snap => setParticipantsCount(snap.size))
   }, [db, selectedTournamentId])
 
-  const matchesQuery = useMemoFirebase(() => {
-    if (!db || !selectedTournamentId) return null
-    return query(
-      collection(db, "matches"), 
-      where("tournamentId", "==", selectedTournamentId),
-      limit(500)
-    )
-  }, [db, selectedTournamentId])
-
-  const { data: rawMatches, loading: matchesLoading } = useCollection(matchesQuery)
+  // Matches resolution (client-side filter workaround)
+  const { data: rawMatches, loading: matchesLoading } = useFilteredCollection<any>(
+    "matches",
+    selectedTournamentId ? (m: any) => m.tournamentId === selectedTournamentId : undefined,
+    { deps: [selectedTournamentId] }
+  )
   
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd")
 
@@ -120,17 +114,23 @@ export default function SchedulingPage() {
 
   const allCourts = useMemo(() => {
     const result: { location: string; num: number }[] = [];
-    if (!activeTournament?.locations) return result;
-    
-    activeTournament.locations.forEach((loc: any) => {
-      const locName = typeof loc === 'object' ? loc.name : loc;
-      const count = typeof loc === 'object' ? (loc.numCourts || 1) : 1;
-      for (let i = 1; i <= count; i++) {
-        result.push({ location: locName, num: i });
-      }
-    });
+    const tLocations = activeTournament?.locations;
+    if (tLocations && tLocations.length > 0) {
+      tLocations.forEach((loc: any) => {
+        const locName = typeof loc === 'object' ? loc.name : loc;
+        const count = typeof loc === 'object' ? (loc.numCourts || 1) : 1;
+        for (let i = 1; i <= count; i++) {
+          result.push({ location: locName, num: i });
+        }
+      });
+    } else {
+      // Fallback: tournament'ta locations yoksa, club'tan veya default
+      const clubLoc = clubData?.location;
+      const numCourts = activeTournament?.numCourts || clubData?.numCourts || 1;
+      result.push({ location: clubLoc || 'Main Venue', num: 1 });
+    }
     return result;
-  }, [activeTournament?.locations]);
+  }, [activeTournament?.locations, activeTournament?.numCourts, clubData]);
 
   const matrixData = useMemo(() => {
     const grid: Record<string, any> = {}
@@ -247,24 +247,183 @@ export default function SchedulingPage() {
     }
   }
 
+  /**
+   * CourtControl AI: Sıfırdan deterministic bracket tree generate et.
+   * Mevcut maçları siler, yerine R1..Final maçlarını yazar.
+   * Sonraki round'larda winner placeholder olarak "TBD" bırakılır;
+   * referee finalize edince winnerNextMatch'e propagate olur.
+   */
+  const handleGenerateBracket = async () => {
+    if (!db || !activeTournament || !clubId) return
+    setIsGeneratingBracket(true)
+
+    try {
+      // 1) Participants'ı registrations subcollection'dan çek
+      const regSnap = await getDocs(
+        collection(db, "tournaments", activeTournament.id, "registrations")
+      )
+      if (regSnap.empty) {
+        toast({
+          variant: "destructive",
+          title: "No Registrations",
+          description: "Players must register before generating a bracket."
+        })
+        setIsGeneratingBracket(false)
+        return
+      }
+
+      // 2) Her player için rating al (skillLevel proxy + ratings doc)
+      const participants: Array<{ id: string; name: string; rating: number }> = []
+      for (const regDoc of regSnap.docs) {
+        const reg = regDoc.data() as any
+        // Rating: ratings/{userId} doc'tan, yoksa skillLevel'den tahmin
+        let rating = 1200
+        try {
+          const ratingDoc = await getDocs(query(collection(db, "ratings"), where("__name__", "==", reg.playerId || regDoc.id), limit(1)))
+          if (!ratingDoc.empty) {
+            rating = (ratingDoc.docs[0].data() as any).elo_score || 1200
+          } else {
+            // Fallback: skillLevel proxy
+            const proxy: Record<string, number> = {
+              beginner: 1100,
+              intermediate: 1200,
+              advanced: 1300,
+              pro: 1400,
+            }
+            rating = proxy[(reg.skillLevel || "intermediate").toLowerCase()] || 1200
+          }
+        } catch {
+          rating = 1200
+        }
+        participants.push({
+          id: regDoc.id,
+          name: reg.name || reg.email?.split("@")[0] || "Player",
+          rating,
+        })
+      }
+
+      if (participants.length < 2) {
+        toast({
+          variant: "destructive",
+          title: "Not Enough Players",
+          description: "Need at least 2 players to generate a bracket."
+        })
+        setIsGeneratingBracket(false)
+        return
+      }
+
+      // 3) Bracket generate (deterministic)
+      const bracket: BracketOutput = await generateTournamentBracket({
+        tournamentId: activeTournament.id,
+        categoryId: activeTournament.categories?.[0]?.id || "open",
+        categoryName: activeTournament.categories?.[0]?.name || "Open",
+        participants,
+        startDate: activeTournament.startDate || new Date().toISOString().split("T")[0],
+        endDate: activeTournament.endDate,
+        format: "Single Elimination",
+      })
+
+      // 4) Mevcut matches'leri sil (sıralı, batch yerine)
+      const existingMatches = await getDocs(
+        query(collection(db, "matches"), where("tournamentId", "==", activeTournament.id))
+      )
+      for (const m of existingMatches.docs) {
+        await deleteDoc(doc(db, "matches", m.id))
+      }
+
+      // 5) Yeni bracket match'lerini yaz (sıralı)
+      const defaultCourt = 1
+      const defaultLocation =
+        (typeof activeTournament.locations?.[0] === "object" ? activeTournament.locations[0]?.name : activeTournament.locations?.[0]) ||
+        clubData?.location ||
+        "Main Venue"
+
+      for (const bm of bracket.matches) {
+        const matchRef = doc(collection(db, "matches"))
+        await setDoc(matchRef, {
+          clubId,
+          tournamentId: activeTournament.id,
+          status: bm.isBye ? "completed" : "scheduled",
+          court: defaultCourt,
+          startTime: `${bm.scheduledDate || activeTournament.startDate}T09:00:00`,
+          teamA: bm.teamA
+            ? { id: bm.teamA.id, name: bm.teamA.name, score: 0, setsWon: 0 }
+            : { id: null, name: "TBD", score: 0, setsWon: 0 },
+          teamB: bm.teamB
+            ? { id: bm.teamB.id, name: bm.teamB.name, score: 0, setsWon: 0 }
+            : { id: null, name: "TBD", score: 0, setsWon: 0 },
+          category: activeTournament.categories?.[0]?.name || "Open",
+          location: defaultLocation,
+          round: bm.round,
+          bracketPosition: bm.bracketPosition,
+          dayIndex: bm.dayIndex,
+          scheduledDate: bm.scheduledDate,
+          winnerNextMatch: bm.winnerNextMatch || null,
+          isBye: bm.isBye,
+          byePlayerId: bm.byePlayerId || null,
+          categoryId: activeTournament.categories?.[0]?.id || "open",
+        })
+      }
+
+      // 6) Tournament status'u güncelle
+      const tournamentRef = doc(db, "tournaments", activeTournament.id)
+      await updateDoc(tournamentRef, {
+        status: "registration_closed",
+        bracketGeneratedAt: new Date().toISOString(),
+        totalRounds: bracket.totalRounds,
+        totalDays: bracket.totalDays,
+      })
+
+      toast({
+        title: "Bracket Generated",
+        description: `${bracket.matches.length} matches across ${bracket.totalRounds} round(s), ${bracket.totalDays} day(s).`,
+      })
+
+      // Set selected date to first match's scheduled date
+      if (bracket.matches[0]?.scheduledDate) {
+        setSelectedDate(new Date(bracket.matches[0].scheduledDate))
+      }
+    } catch (e: any) {
+      console.error("Bracket generation failed:", e)
+      toast({
+        variant: "destructive",
+        title: "Bracket Generation Failed",
+        description: e.message || "Unknown error",
+      })
+    } finally {
+      setIsGeneratingBracket(false)
+    }
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
-          <div className="text-muted-foreground flex items-center gap-2">
-            Interactive Venue Matrix: {allCourts.length} Total Courts Allocation
-            <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-none">
-              AI Runs: {aiUsage}/3 Free
-            </Badge>
-          </div>
+            <div className="text-muted-foreground flex items-center gap-2">
+              Interactive Venue Matrix: {allCourts.length} Total Courts Allocation
+              <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-none">
+                AI Runs: {aiUsage}/3 Free
+              </Badge>
+            </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowOptimizationSettings(true)} 
-            disabled={isOptimizing || !selectedTournamentId} 
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleGenerateBracket}
+            disabled={isGeneratingBracket || isOptimizing || !selectedTournamentId}
+            className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/10"
+          >
+            {isGeneratingBracket ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trophy className="w-4 h-4 mr-2" />}
+            Generate Bracket
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOptimizationSettings(true)}
+            disabled={isOptimizing || !selectedTournamentId}
             className="border-primary text-primary hover:bg-primary/10 shadow-lg shadow-primary/10"
           >
             {isOptimizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}

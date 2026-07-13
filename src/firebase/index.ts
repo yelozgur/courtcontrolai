@@ -31,7 +31,7 @@ export function initializeFirebase(): {
     process.env.NEXT_PUBLIC_USE_EMULATOR === 'true';
 
   if (useEmulator) {
-    // @ts-expect-error - __CCA_EMULATOR_CONNECTED global flag SSR'da paylasilmiyor,
+    // __CCA_EMULATOR_CONNECTED global flag SSR'da paylasilmiyor,
     // browser'da ikinci kez connect etmeyi onler.
     if (!(window as any).__CCA_EMULATOR_CONNECTED) {
       try {
@@ -59,3 +59,5 @@ export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './auth/use-user';
 export * from './use-memo-firebase';
+export * from './use-user-club';
+export * from './use-filtered-collection';

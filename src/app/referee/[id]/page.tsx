@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Zap, Loader2, ArrowLeft, Gavel, CheckCircle2, Clock, MapPin, Building, Send } from "lucide-react"
-import { doc, updateDoc, collection, query, where, limit } from "firebase/firestore"
+import { doc, updateDoc, collection, query, where, limit, getDocs, increment } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -96,28 +96,122 @@ export default function RefereeConsole() {
     setIsNotifying(false)
   }
 
-  const finalizeMatch = () => {
+  const finalizeMatch = async () => {
     if (!db || !activeMatch) return
     setIsSubmitting(true)
     const matchRef = doc(db, "matches", activeMatch.id)
-    const updateData = { 
-      status: "completed", 
-      completedAt: new Date().toISOString() 
+    const teamAScore = activeMatch.teamA?.score || 0
+    const teamBScore = activeMatch.teamB?.score || 0
+    const winner = teamAScore > teamBScore ? 'teamA' : teamBScore > teamAScore ? 'teamB' : null
+    const winnerTeam = winner ? activeMatch[winner] : null
+
+    const updateData: any = {
+      status: "completed",
+      completedAt: new Date().toISOString(),
+      winner: winnerTeam ? {
+        team: winner,
+        id: winnerTeam.id || null,
+        name: winnerTeam.name || 'Unknown',
+        finalScore: { teamA: teamAScore, teamB: teamBScore }
+      } : null
     }
 
-    updateDoc(matchRef, updateData)
-      .then(() => {
-        toast({ title: "Finalized", description: "Match results verified and locked." })
-        setIsSubmitting(false)
+    try {
+      // 1) Match'i completed yap
+      await updateDoc(matchRef, updateData)
+
+      // 2) Winner'ı sonraki round'a propagate et
+      const nextMatch = activeMatch.winnerNextMatch
+      if (nextMatch && winnerTeam) {
+        // Sonraki match'i bul: aynı tournamentId, round=nextMatch.round, bracketPosition=nextMatch.bracketPosition
+        const nextMatchQuery = query(
+          collection(db, "matches"),
+          where("tournamentId", "==", activeMatch.tournamentId),
+          where("round", "==", nextMatch.round),
+          where("bracketPosition", "==", nextMatch.bracketPosition),
+          limit(1)
+        )
+        const nextMatchSnap = await getDocs(nextMatchQuery)
+        if (!nextMatchSnap.empty) {
+          const nextMatchDoc = nextMatchSnap.docs[0]
+          // Hangi takım yuvasına yazacağımıza bracketPosition parity ile karar ver
+          // Çift bracketPosition → teamA, tek → teamB (R1'den gelen çift → A, tek → B)
+          // Aslında: matchesInRound = bracketSize / 2^r, ve R1'den 2 match bir R2 match'ine gider
+          // (1,2)→R2.1, (3,4)→R2.2, ... — yani parentPos = ceil(bracketPosition / 2)
+          // Ve slot: parentPos çift ise A, tek ise B (veya tam tersi, conventional bracket)
+          // Burada basit yaklaşım: bracketPosition çift ise teamA, tek ise teamB
+          const parentPos = Math.ceil(activeMatch.bracketPosition / 2)
+          const slot = parentPos % 2 === 1 ? 'teamA' : 'teamB'
+
+          await updateDoc(doc(db, "matches", nextMatchDoc.id), {
+            [slot]: {
+              id: winnerTeam.id || null,
+              name: winnerTeam.name || 'Winner',
+              score: 0,
+              setsWon: 0
+            }
+          })
+          toast({
+            title: "Finalized",
+            description: `${winnerTeam.name} advances to Round ${nextMatch.round}.`
+          })
+        } else {
+          toast({ title: "Finalized", description: "Match completed. No next round." })
+        }
+      } else if (!nextMatch && winnerTeam) {
+        // Tournament bitti!
+        await updateDoc(doc(db, "tournaments", activeMatch.tournamentId), {
+          status: "completed",
+          champion: {
+            id: winnerTeam.id || null,
+            name: winnerTeam.name || 'Unknown',
+            finalScore: { teamA: teamAScore, teamB: teamBScore }
+          },
+          completedAt: new Date().toISOString()
+        })
+        toast({
+          title: "🏆 Tournament Complete!",
+          description: `${winnerTeam.name} is the champion!`,
+        })
+      } else {
+        toast({ title: "Finalized", description: "Match completed." })
+      }
+
+      // 3) Rating update (ELO-style)
+      if (winner && activeMatch.teamA?.id && activeMatch.teamB?.id) {
+        const winnerId = activeMatch[winner].id
+        const loserId = activeMatch[winner === 'teamA' ? 'teamB' : 'teamA'].id
+        // Basit ELO: kazanan +20, kaybeden -10 (gerçek ELO formula sonra)
+        const ratingDelta = 20
+        try {
+          await updateDoc(doc(db, "ratings", winnerId), {
+            elo_score: increment(ratingDelta),
+            matches_played: increment(1),
+            last_updated: new Date().toISOString()
+          })
+          await updateDoc(doc(db, "ratings", loserId), {
+            elo_score: increment(-10),
+            matches_played: increment(1),
+            last_updated: new Date().toISOString()
+          })
+        } catch (e) {
+          console.warn("Rating update failed:", e)
+        }
+      }
+    } catch (e: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: matchRef.path,
+        operation: 'update',
+        requestResourceData: updateData
+      }))
+      toast({
+        variant: "destructive",
+        title: "Finalize Failed",
+        description: e.message || "Unknown error"
       })
-      .catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: matchRef.path,
-          operation: 'update',
-          requestResourceData: updateData
-        }))
-        setIsSubmitting(false)
-      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (tourneyLoading) return (
