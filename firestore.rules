@@ -56,7 +56,8 @@ service cloud.firestore {
 
       // Registrations (player signups)
       match /registrations/{registrationId} {
-        allow read: if isSignedIn();
+        // CourtControl AI: read public (REST API, leaderboard)
+        allow read: if true;
         allow create: if isSignedIn();
         allow update, delete: if isClubAdmin(get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.clubId) || isAdmin();
       }
@@ -76,13 +77,15 @@ service cloud.firestore {
 
     // Player ratings (ELO scores)
     match /ratings/{userId} {
-      allow read: if isSignedIn();
-      // Player can write own rating, admin can write any, system updates from matches allowed
+      // CourtControl AI: read public (REST API public fetch) — yalnizca
+      // authenticated yazma (sahiplik).
+      allow read: if true;
       allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /matches/{matchId} {
+      // CourtControl AI: read public (REST API, leaderboard/bracket/results sayfalari)
       allow read: if true;
       allow create: if isSignedIn();
       allow update: if isSignedIn();

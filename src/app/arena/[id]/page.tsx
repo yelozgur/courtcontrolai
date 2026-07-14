@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { format } from "date-fns"
+import Link from "next/link"
 
 export default function TournamentArena() {
   const { id } = useParams()
@@ -172,6 +173,28 @@ export default function TournamentArena() {
               Arena Dashboard <Badge variant="outline" className="text-[10px] border-accent/30 text-accent font-mono flex items-center gap-1"><Globe className="h-3 w-3" /> {clubTimezone}</Badge>
             </div>
           </div>
+        </div>
+
+        {/* Public links: Leaderboard / Bracket / Results */}
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/tournaments/${id}/leaderboard`}
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white transition-colors"
+          >
+            <Trophy className="h-3 w-3 inline mr-1" /> Leaderboard
+          </Link>
+          <Link
+            href={`/tournaments/${id}/bracket`}
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white transition-colors"
+          >
+            Bracket
+          </Link>
+          <Link
+            href={`/tournaments/${id}/results`}
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white transition-colors"
+          >
+            Results
+          </Link>
         </div>
 
         <div className="flex items-center gap-12">

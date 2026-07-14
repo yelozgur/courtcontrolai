@@ -108,12 +108,29 @@ export default function PublicTournaments() {
                     <span>Starts {t.startDate}</span>
                   </div>
                 </CardContent>
-                <CardFooter className="pt-0">
+                <CardFooter className="pt-0 flex flex-col gap-2">
                   <Button asChild className="w-full h-14 bg-primary hover:bg-primary/90 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-xl shadow-primary/10">
                     <Link href={`/tournaments/${t.id}/register`}>
                       {t.status === 'registration_open' ? 'Register Now' : 'View Arena'}
                     </Link>
                   </Button>
+                  <div className="flex gap-2 w-full">
+                    <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl text-[10px] uppercase tracking-widest font-bold">
+                      <Link href={`/tournaments/${t.id}/leaderboard`}>
+                        <Trophy className="h-3 w-3 mr-1" /> Leaders
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl text-[10px] uppercase tracking-widest font-bold">
+                      <Link href={`/tournaments/${t.id}/bracket`}>
+                        Bracket
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl text-[10px] uppercase tracking-widest font-bold">
+                      <Link href={`/tournaments/${t.id}/results`}>
+                        Results
+                      </Link>
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
             ))}

@@ -103,7 +103,25 @@ const optimizeTournamentScheduleFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await optimizeSchedulePrompt(input);
-    return output!;
+
+    // CourtControl AI: LLM output Zod ile reparse — output! non-null assertion
+    // kaldırıldı, runtime'da crash riski yok. Garbage dönerse fallback dön.
+    if (!output) {
+      console.warn('[optimize-schedule] LLM returned null/undefined, returning empty schedule');
+      return { scheduledMatches: [], summary: 'AI returned no output. Please try again or use manual scheduling.' };
+    }
+
+    // Reparse: schema validation + sanitization
+    const parsed = ScheduleOutputSchema.safeParse(output);
+    if (!parsed.success) {
+      console.error('[optimize-schedule] LLM output failed Zod validation:', parsed.error.issues);
+      return {
+        scheduledMatches: [],
+        summary: `AI output failed validation: ${parsed.error.issues[0]?.message || 'unknown error'}. Try again with simpler instructions.`,
+      };
+    }
+
+    return parsed.data;
   }
 );
 

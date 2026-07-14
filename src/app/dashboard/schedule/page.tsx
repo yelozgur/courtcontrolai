@@ -188,6 +188,20 @@ export default function SchedulingPage() {
 
   const handleAutoSchedule = async () => {
     if (!db || !activeTournament || !clubId) return
+
+    // Quota check: 3 ücretsiz AI call (Sprint 4 — quota enforcement)
+    const FREE_TIER_LIMIT = 3
+    if (aiUsage >= FREE_TIER_LIMIT) {
+      toast({
+        variant: "destructive",
+        title: "AI Quota Reached",
+        description: `You've used all ${FREE_TIER_LIMIT} free AI optimizations. Upgrade to Pro for unlimited access.`,
+      })
+      setIsOptimizing(false)
+      setShowOptimizationSettings(false)
+      return
+    }
+
     setIsOptimizing(true)
     setShowOptimizationSettings(false)
 
