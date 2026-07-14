@@ -33,6 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
+import { LocaleSwitcher } from '@/i18n/LocaleSwitcher';
 import {
   Sheet,
   SheetContent,
@@ -199,16 +200,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background"></span>
              </Button>
              
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="p-1 h-9 rounded-full gap-2 pr-3 hover:bg-secondary">
-                    <Avatar className="h-7 w-7">
-                      <AvatarImage src={profile?.photoURL} />
-                      <AvatarFallback className="text-[10px]">{profile?.displayName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs font-bold hidden sm:inline-block">Account</span>
-                  </Button>
-                </DropdownMenuTrigger>
+              <LocaleSwitcher />
+
+              <DropdownMenu>
+                 <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" className="p-1 h-9 rounded-full gap-2 pr-3 hover:bg-secondary">
+                     <Avatar className="h-7 w-7">
+                       <AvatarImage src={profile?.photoURL} />
+                       <AvatarFallback className="text-[10px]">{profile?.displayName?.charAt(0)}</AvatarFallback>
+                     </Avatar>
+                     <span className="text-xs font-bold hidden sm:inline-block">Account</span>
+                   </Button>
+                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />

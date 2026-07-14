@@ -20,6 +20,7 @@ import { useFirestore, useDoc, useMemoFirebase, useFilteredCollection } from "@/
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useI18n } from "@/i18n/I18nProvider"
 
 interface MatchRow {
   id: string
@@ -52,6 +53,7 @@ export default function TournamentResults() {
     return doc(db, "tournaments", id as string)
   }, [db, id])
   const { data: tournament, loading: tourLoading } = useDoc(tournamentRef)
+  const { t } = useI18n()
 
   // Tournament matches (client-side filter)
   const { data: allMatches } = useFilteredCollection<any>("matches", undefined, { limit: 500 })
@@ -88,7 +90,7 @@ export default function TournamentResults() {
       <div className="min-h-screen bg-[#0F172A] text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading Results</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     )
@@ -119,11 +121,11 @@ export default function TournamentResults() {
           <div className="flex items-center justify-center gap-2">
             {isCompleted ? (
               <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 px-3 py-1">
-                <CheckCircle2 className="h-3 w-3 mr-1" /> Completed
+                <CheckCircle2 className="h-3 w-3 mr-1" /> {t('results.completed')}
               </Badge>
             ) : (
               <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 px-3 py-1">
-                <Clock className="h-3 w-3 mr-1" /> In Progress
+                <Clock className="h-3 w-3 mr-1" /> {t('results.inProgress')}
               </Badge>
             )}
             <Badge variant="outline" className="text-xs">
@@ -138,17 +140,17 @@ export default function TournamentResults() {
             <CardContent className="p-8 text-center space-y-3">
               <Crown className="h-16 w-16 text-yellow-400 mx-auto" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-1">Tournament Champion</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-1">{t('results.champion')}</p>
                 <h2 className="text-5xl font-headline font-bold">{champion.name}</h2>
               </div>
               {champion.finalScore && (
                 <Badge variant="outline" className="bg-background/50 text-base px-4 py-1">
-                  Final Score: {champion.finalScore.teamA} - {champion.finalScore.teamB}
+                  {t('results.finalScore')}: {champion.finalScore.teamA} - {champion.finalScore.teamB}
                 </Badge>
               )}
               {tournament?.completedAt && (
                 <p className="text-xs text-muted-foreground">
-                  Completed {new Date(tournament.completedAt).toLocaleDateString()}
+                  {t('results.completedOn')}: {new Date(tournament.completedAt).toLocaleDateString()}
                 </p>
               )}
             </CardContent>
@@ -169,7 +171,7 @@ export default function TournamentResults() {
               <CardContent className="p-4 text-center">
                 <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-1" />
                 <p className="text-2xl font-headline font-bold">{completedMatches}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Completed</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('results.completedMatches')}</p>
               </CardContent>
             </Card>
             <Card className="bg-card/50 border-border">
@@ -312,7 +314,7 @@ export default function TournamentResults() {
           <Card className="bg-card/50 border-border">
             <CardContent className="p-12 text-center">
               <Trophy className="h-16 w-16 mx-auto text-muted-foreground opacity-30 mb-4" />
-              <h3 className="text-2xl font-headline font-bold mb-2">No Matches Yet</h3>
+              <h3 className="text-2xl font-headline font-bold mb-2">{t('results.noMatches')}</h3>
               <p className="text-muted-foreground">The bracket hasn't been generated for this tournament.</p>
               <Button asChild className="mt-6">
                 <Link href={`/tournaments/${id}`}>View Tournament</Link>

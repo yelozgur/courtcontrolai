@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { format } from "date-fns"
 import Link from "next/link"
+import { useI18n } from "@/i18n/I18nProvider"
 
 export default function TournamentArena() {
   const { id } = useParams()
@@ -23,6 +24,7 @@ export default function TournamentArena() {
   const [time, setTime] = useState<Date | null>(null)
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const db = useFirestore()
+  const { t } = useI18n()
 
   const tournamentRef = useMemoFirebase(() => {
     if (!db || !id) return null
@@ -181,19 +183,19 @@ export default function TournamentArena() {
             href={`/tournaments/${id}/leaderboard`}
             className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white transition-colors"
           >
-            <Trophy className="h-3 w-3 inline mr-1" /> Leaderboard
+            <Trophy className="h-3 w-3 inline mr-1" /> {t('leaderboard.title')}
           </Link>
           <Link
             href={`/tournaments/${id}/bracket`}
             className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white transition-colors"
           >
-            Bracket
+            {t('bracket.title')}
           </Link>
           <Link
             href={`/tournaments/${id}/results`}
             className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white transition-colors"
           >
-            Results
+            {t('results.title')}
           </Link>
         </div>
 

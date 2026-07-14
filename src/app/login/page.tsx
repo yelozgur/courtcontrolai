@@ -13,6 +13,7 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useI18n } from '@/i18n/I18nProvider';
 import { Separator } from '@/components/ui/separator';
 
 export default function LoginPage() {
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +60,7 @@ export default function LoginPage() {
       setAuthSuccess(true);
     } catch (error: any) {
       setErrorType(error.code === 'auth/unauthorized-domain' ? 'domain' : 'creds');
-      toast({ variant: 'destructive', title: 'Sign In Failed', description: error.message });
+      toast({ variant: 'destructive', title: t('common.error'), description: error.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -146,14 +148,14 @@ export default function LoginPage() {
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
           <Zap className="text-white h-6 w-6" />
         </div>
-        <span className="text-2xl font-headline font-bold text-white tracking-tighter uppercase">Court Control AI</span>
+        <span className="text-2xl font-headline font-bold text-white tracking-tighter uppercase">{t('common.appName')}</span>
       </Link>
 
       <Card className="w-full max-w-md border-white/5 bg-card/50 backdrop-blur-xl">
         <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-headline font-bold text-white">Sign In</CardTitle>
+          <CardTitle className="text-2xl font-headline font-bold text-white">{t('auth.signIn.title')}</CardTitle>
           <CardDescription>
-            Enter your credentials to access your club console.
+            {t('auth.signIn.subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -193,7 +195,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">Email</Label>
+              <Label htmlFor="email" className="text-white">{t('auth.signIn.email')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -207,7 +209,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">Password</Label>
+              <Label htmlFor="password" className="text-white">{t('auth.signIn.password')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -223,14 +225,14 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full h-11" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-              Sign In
+              {t('auth.signIn.button')}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-sm text-center text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-primary hover:underline font-bold">Sign Up</Link>
+            {t('auth.signIn.signUpPrompt')}{' '}
+            <Link href="/signup" className="text-primary hover:underline font-bold">{t('auth.signIn.signUpLink')}</Link>
           </div>
         </CardFooter>
       </Card>

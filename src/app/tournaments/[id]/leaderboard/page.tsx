@@ -19,6 +19,7 @@ import { useFirestore, useDoc, useMemoFirebase, useFilteredCollection } from "@/
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { useI18n } from "@/i18n/I18nProvider"
 
 interface PlayerStanding {
   id: string
@@ -53,6 +54,7 @@ export default function TournamentLeaderboard() {
     return doc(db, "tournaments", id as string)
   }, [db, id])
   const { data: tournament } = useDoc(tournamentRef)
+  const { t } = useI18n()
 
   // Get registrations (tournament-specific, subcollection)
   const { data: registrations } = useFilteredCollection<any>(
@@ -165,7 +167,7 @@ export default function TournamentLeaderboard() {
       <div className="min-h-screen bg-[#0F172A] text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading Standings</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     )
@@ -191,18 +193,18 @@ export default function TournamentLeaderboard() {
         {/* Title */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter">
-            {tournament?.name || "Tournament"} Standings
+            {tournament?.name || t('tournament.title')} {t('leaderboard.title')}
           </h1>
           <p className="text-muted-foreground">
-            Live ELO ratings + match performance · Updated in real-time
+            {t('ai.poweredBy')} ELO · {t('common.success')}
           </p>
         </div>
 
         {/* Tabs */}
         <Tabs value={view} onValueChange={(v: any) => setView(v)} className="w-full">
           <TabsList className="bg-secondary/30">
-            <TabsTrigger value="overall">All Players</TabsTrigger>
-            <TabsTrigger value="category">By Category</TabsTrigger>
+            <TabsTrigger value="overall">{t('leaderboard.allPlayers')}</TabsTrigger>
+            <TabsTrigger value="category">{t('leaderboard.byCategory')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overall" className="mt-6">
@@ -210,8 +212,8 @@ export default function TournamentLeaderboard() {
               <Card className="bg-card/50 border-border">
                 <CardContent className="p-12 text-center">
                   <Users className="h-16 w-16 mx-auto text-muted-foreground opacity-30 mb-4" />
-                  <h3 className="text-2xl font-headline font-bold mb-2">No Players Yet</h3>
-                  <p className="text-muted-foreground">Standings will appear once players register.</p>
+                  <h3 className="text-2xl font-headline font-bold mb-2">{t('leaderboard.noPlayers')}</h3>
+                  <p className="text-muted-foreground">{t('leaderboard.noPlayersDesc')}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -219,7 +221,7 @@ export default function TournamentLeaderboard() {
                 <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 border-b border-white/5">
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-primary" />
-                    Top Performers
+                    {t('leaderboard.topPerformers')}
                   </CardTitle>
                   <CardDescription>{standings.length} player{standings.length !== 1 ? 's' : ''} ranked</CardDescription>
                 </CardHeader>
@@ -240,7 +242,7 @@ export default function TournamentLeaderboard() {
                             <div className="flex items-center gap-2 mb-2">
                               {getRankIcon(p.rank)}
                               <span className="text-xs font-bold uppercase tracking-widest">
-                                {i === 0 ? 'Champion' : i === 1 ? 'Runner-up' : '3rd Place'}
+                                {i === 0 ? t('leaderboard.champion') : i === 1 ? t('leaderboard.runnerUp') : t('leaderboard.thirdPlace')}
                               </span>
                             </div>
                             <p className="font-bold text-lg truncate">{p.name}</p>

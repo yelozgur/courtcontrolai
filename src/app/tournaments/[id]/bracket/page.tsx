@@ -14,6 +14,7 @@ import { doc } from "firebase/firestore"
 import { useFirestore, useDoc, useMemoFirebase, useFilteredCollection } from "@/firebase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useI18n } from "@/i18n/I18nProvider"
 
 interface MatchRow {
   id: string
@@ -42,6 +43,7 @@ export default function TournamentBracket() {
     return doc(db, "tournaments", id as string)
   }, [db, id])
   const { data: tournament, loading: tourLoading } = useDoc(tournamentRef)
+  const { t } = useI18n()
 
   const { data: allMatches } = useFilteredCollection<any>("matches", undefined, { limit: 500 })
 
@@ -78,7 +80,7 @@ export default function TournamentBracket() {
       <div className="min-h-screen bg-[#0F172A] text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading Bracket</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     )
@@ -136,7 +138,7 @@ export default function TournamentBracket() {
           <Card className="bg-card/50 border-border">
             <CardContent className="p-12 text-center">
               <Trophy className="h-16 w-16 mx-auto text-muted-foreground opacity-30 mb-4" />
-              <h3 className="text-2xl font-headline font-bold mb-2">No Bracket Generated</h3>
+              <h3 className="text-2xl font-headline font-bold mb-2">{t('bracket.noBracket')}</h3>
               <p className="text-muted-foreground">The bracket tree will appear once the organizer generates it.</p>
             </CardContent>
           </Card>

@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { I18nProvider } from '@/i18n/I18nProvider';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -35,8 +36,10 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased bg-background text-foreground`} suppressHydrationWarning>
         <FirebaseClientProvider>
-          {children}
-          <Toaster />
+          <I18nProvider>
+            {children}
+            <Toaster />
+          </I18nProvider>
         </FirebaseClientProvider>
       </body>
     </html>

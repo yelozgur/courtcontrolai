@@ -9,12 +9,14 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar, Trophy, MapPin, Loader2, Search, AlertCircle, DollarSign } from "lucide-react"
 import { collection, query, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { useI18n } from "@/i18n/I18nProvider"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/ui/status-badge"
 
 export default function PublicTournaments() {
   const db = useFirestore()
+  const { t } = useI18n()
   const [search, setSearch] = useState("")
 
   const tournamentsQuery = useMemoFirebase(() => {
@@ -24,9 +26,9 @@ export default function PublicTournaments() {
 
   const { data: tournaments, loading, error } = useCollection(tournamentsQuery)
 
-  const filtered = tournaments?.filter(t => 
-    (t.status === "registration_open" || t.status === "in_progress" || !t.status) && 
-    t.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = tournaments?.filter(trn =>
+    (trn.status === "registration_open" || trn.status === "in_progress" || !trn.status) &&
+    trn.name.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -74,12 +76,12 @@ export default function PublicTournaments() {
           </div>
         ) : filtered && filtered.length > 0 ? (
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((t, i) => (
-              <Card key={t.id} className="bg-card/50 border-white/5 overflow-hidden group hover:border-primary/50 transition-all rounded-[2rem] shadow-2xl">
+            {filtered.map((trn, i) => (
+              <Card key={trn.id} className="bg-card/50 border-white/5 overflow-hidden group hover:border-primary/50 transition-all rounded-[2rem] shadow-2xl">
                 <div className="h-56 bg-slate-800 relative overflow-hidden">
                   <Image 
-                    src={t.imageUrl || `https://picsum.photos/seed/${t.id}/800/400`} 
-                    alt={t.name}
+                    src={trn.imageUrl || `https://picsum.photos/seed/${trn.id}/800/400`}
+                    alt={trn.name}
                     fill
                     priority={i < 3}
                     className="object-cover opacity-60 group-hover:scale-110 transition-transform duration-700"
@@ -88,45 +90,45 @@ export default function PublicTournaments() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] to-transparent"></div>
                   <div className="absolute top-5 left-5">
-                    <StatusBadge status={t.status} />
+                    <StatusBadge status={trn.status} />
                   </div>
-                  <Badge className="absolute top-5 right-5 bg-primary uppercase tracking-[0.2em] font-black text-[10px] px-4 py-1">{t.sport || 'SPORTS'}</Badge>
+                  <Badge className="absolute top-5 right-5 bg-primary uppercase tracking-[0.2em] font-black text-[10px] px-4 py-1">{trn.sport || 'SPORTS'}</Badge>
                   <div className="absolute bottom-5 left-5 flex items-center gap-2">
                     <Badge className="bg-emerald-500 text-white uppercase text-[10px] font-black tracking-widest px-3 py-1 shadow-lg shadow-emerald-500/20">
-                      {t.entryFee > 0 ? `$${t.entryFee.toFixed(2)}` : 'FREE ENTRY'}
+                      {trn.entryFee > 0 ? `$${trn.entryFee.toFixed(2)}` : 'FREE ENTRY'}
                     </Badge>
                   </div>
                 </div>
                 <CardHeader className="pt-6">
                   <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-3xl font-headline font-bold leading-tight group-hover:text-primary transition-colors">{t.name}</CardTitle>
+                    <CardTitle className="text-3xl font-headline font-bold leading-tight group-hover:text-primary transition-colors">{trn.name}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5 pb-8">
                   <div className="flex items-center gap-3 text-muted-foreground text-sm font-medium">
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Calendar className="h-4 w-4" /></div>
-                    <span>Starts {t.startDate}</span>
+                    <span>Starts {trn.startDate}</span>
                   </div>
                 </CardContent>
                 <CardFooter className="pt-0 flex flex-col gap-2">
                   <Button asChild className="w-full h-14 bg-primary hover:bg-primary/90 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-xl shadow-primary/10">
-                    <Link href={`/tournaments/${t.id}/register`}>
-                      {t.status === 'registration_open' ? 'Register Now' : 'View Arena'}
+                    <Link href={`/tournaments/${trn.id}/register`}>
+                      {trn.status === 'registration_open' ? t('tournament.wizard.launch') : t('tournament.title')}
                     </Link>
                   </Button>
                   <div className="flex gap-2 w-full">
                     <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl text-[10px] uppercase tracking-widest font-bold">
-                      <Link href={`/tournaments/${t.id}/leaderboard`}>
+                      <Link href={`/tournaments/${trn.id}/leaderboard`}>
                         <Trophy className="h-3 w-3 mr-1" /> Leaders
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl text-[10px] uppercase tracking-widest font-bold">
-                      <Link href={`/tournaments/${t.id}/bracket`}>
+                      <Link href={`/tournaments/${trn.id}/bracket`}>
                         Bracket
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl text-[10px] uppercase tracking-widest font-bold">
-                      <Link href={`/tournaments/${t.id}/results`}>
+                      <Link href={`/tournaments/${trn.id}/results`}>
                         Results
                       </Link>
                     </Button>

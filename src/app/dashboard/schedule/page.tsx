@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Building, Sparkles, Trash2, BrainCircuit, Users2, Gavel } from "lucide-react"
 import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, deleteDoc, increment, updateDoc, setDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
+import { useI18n } from "@/i18n/I18nProvider"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -35,6 +36,7 @@ export default function SchedulingPage() {
   const db = useFirestore()
   const { user } = useUser()
   const { toast } = useToast()
+  const { t } = useI18n()
   
   const [view, setView] = useState<'matrix' | 'list'>('matrix')
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
@@ -194,8 +196,8 @@ export default function SchedulingPage() {
     if (aiUsage >= FREE_TIER_LIMIT) {
       toast({
         variant: "destructive",
-        title: "AI Quota Reached",
-        description: `You've used all ${FREE_TIER_LIMIT} free AI optimizations. Upgrade to Pro for unlimited access.`,
+        title: t('schedule.quotaReached'),
+        description: t('schedule.quotaReachedDesc'),
       })
       setIsOptimizing(false)
       setShowOptimizationSettings(false)
@@ -210,7 +212,7 @@ export default function SchedulingPage() {
       const participants = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
 
       if (participants.length < 2) {
-        toast({ variant: "destructive", title: "Roster Empty", description: "Register players before optimizing." })
+        toast({ variant: "destructive", title: t('schedule.emptyRoster'), description: t('schedule.emptyRosterDesc') })
         setIsOptimizing(false)
         return
       }
@@ -251,11 +253,11 @@ export default function SchedulingPage() {
       batch.update(clubRef, { aiUsageCount: increment(1) })
 
       await batch.commit()
-      toast({ title: "AI Director Success", description: `Optimized ${result.scheduledMatches.length} matches.` })
+      toast({ title: t('schedule.director.success'), description: `${result.scheduledMatches.length} ${t('results.totalMatches').toLowerCase()}.` })
       if (result.scheduledMatches.length > 0) setSelectedDate(new Date(result.scheduledMatches[0].startTime))
 
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Optimization Error" })
+      toast({ variant: "destructive", title: t('common.error') + ': ' + t('schedule.optimize') })
     } finally {
       setIsOptimizing(false)
     }
@@ -389,8 +391,12 @@ export default function SchedulingPage() {
       })
 
       toast({
-        title: "Bracket Generated",
-        description: `${bracket.matches.length} matches across ${bracket.totalRounds} round(s), ${bracket.totalDays} day(s).`,
+        title: t('schedule.bracket.generated'),
+        description: t('schedule.bracket.summary', {
+          matches: bracket.matches.length,
+          rounds: bracket.totalRounds,
+          days: bracket.totalDays,
+        }),
       })
 
       // Set selected date to first match's scheduled date
@@ -413,9 +419,9 @@ export default function SchedulingPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Match Planner</h1>
+          <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">{t('schedule.title')}</h1>
             <div className="text-muted-foreground flex items-center gap-2">
-              Interactive Venue Matrix: {allCourts.length} Total Courts Allocation
+              {t('schedule.venueMatrix')}: {allCourts.length} {t('schedule.totalCourts')}
               <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-none">
                 AI Runs: {aiUsage}/3 Free
               </Badge>
@@ -430,7 +436,7 @@ export default function SchedulingPage() {
             className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/10"
           >
             {isGeneratingBracket ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trophy className="w-4 h-4 mr-2" />}
-            Generate Bracket
+            {t('schedule.generateBracket')}
           </Button>
 
           <Button
@@ -441,7 +447,7 @@ export default function SchedulingPage() {
             className="border-primary text-primary hover:bg-primary/10 shadow-lg shadow-primary/10"
           >
             {isOptimizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-            AI Auto-Schedule
+            {t('schedule.aiAutoSchedule')}
           </Button>
 
           <Popover>
@@ -459,14 +465,14 @@ export default function SchedulingPage() {
             <SelectContent>{tournaments?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
 
-          <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary"><Plus className="w-4 h-4 mr-2" /> Manual Match</Button>
+          <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary"><Plus className="w-4 h-4 mr-2" /> {t('schedule.manualMatch')}</Button>
         </div>
       </div>
 
       <Dialog open={showOptimizationSettings} onOpenChange={setShowOptimizationSettings}>
         <DialogContent className="bg-card border-white/10 max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-headline text-2xl uppercase">AI Director Setup</DialogTitle>
+            <DialogTitle className="font-headline text-2xl uppercase">{t('schedule.director.setup')}</DialogTitle>
             <DialogDescription>Optimize your bracket logic across all venues.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
