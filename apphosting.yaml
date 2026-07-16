@@ -1,8 +1,49 @@
-# Settings to manage and configure a Firebase App Hosting backend.
+# CourtControl AI: Firebase App Hosting Configuration
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
-  # Minimum instances to avoid cold starts
-  minInstances: 1
-  # Maximum instances to handle concurrent traffic
+  # Next.js 15 framework
+  framework: nextjs
+  # Memory: 512MB is enough for this app
+  memory: 512MiB
+  # CPU: 1 vCPU
+  cpu: 1
+  # Max instances: 10 (auto-scaling)
   maxInstances: 10
+  # Min instances: 0 (cold start OK for MVP)
+  minInstances: 0
+  # Concurrency: 80 requests per instance
+  concurrency: 80
+  # CPU always allocated (better for low-latency responses)
+  cpuAlwaysAllocated: false
+
+# Environment variables (production)
+env:
+  # Firebase (public — bundled into client)
+  variable:
+    NEXT_PUBLIC_FIREBASE_API_KEY:
+      value: "AIzaSyBxyoJTlKNejpHi33mxzeFoymwpPVNCn4w"
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:
+      value: "courtcontrolai-2294b.firebaseapp.com"
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID:
+      value: "courtcontrolai-2294b"
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:
+      value: "courtcontrolai-2294b.firebasestorage.app"
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:
+      value: "159679715722"
+    NEXT_PUBLIC_FIREBASE_APP_ID:
+      value: "1:159679715722:web:23a91a16bb8a5832041073"
+    # Disable emulator in production
+    NEXT_PUBLIC_USE_EMULATOR:
+      value: "false"
+
+  # Secrets (server-side only) — set via Firebase CLI:
+  # firebase apphosting:secrets:set SECRET_NAME
+  # Or use Secret Manager directly
+  secret:
+    # Google AI API key for Genkit / Gemini
+    GOOGLE_GENAI_API_KEY:
+      secret: GOOGLE_GENAI_API_KEY
+    # Telegram bot token (server-side, for /api/telegram/send)
+    TELEGRAM_BOT_TOKEN:
+      secret: TELEGRAM_BOT_TOKEN
