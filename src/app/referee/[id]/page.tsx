@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Zap, Loader2, ArrowLeft, Gavel, CheckCircle2, Clock, MapPin, Building, Send } from "lucide-react"
 import { doc, updateDoc, collection, query, where, limit, getDocs, increment } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase"
+import { useI18n } from "@/i18n/I18nProvider"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
@@ -18,6 +19,7 @@ export default function RefereeConsole() {
   const { id } = useParams()
   const router = useRouter()
   const db = useFirestore()
+  const { t } = useI18n()
   const { toast } = useToast()
   
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
@@ -217,7 +219,7 @@ export default function RefereeConsole() {
   if (tourneyLoading) return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center gap-4">
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Syncing Venue...</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t('referee.syncing')}</p>
     </div>
   )
 
@@ -330,8 +332,8 @@ export default function RefereeConsole() {
       </main>
 
       <footer className="p-4 border-t border-white/5 grid grid-cols-2 gap-4 bg-card/50 backdrop-blur-md">
-        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest border-white/5"><Clock className="w-4 h-4 mr-2 opacity-50 text-primary" /> Medical TO</Button>
-        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest border-white/5"><MapPin className="w-4 h-4 mr-2 opacity-50 text-accent" /> Court Issue</Button>
+        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest border-white/5"><Clock className="w-4 h-4 mr-2 opacity-50 text-primary" /> {t('referee.medicalTO')}</Button>
+        <Button variant="outline" size="sm" className="h-12 rounded-xl text-[10px] font-bold uppercase tracking-widest border-white/5"><MapPin className="w-4 h-4 mr-2 opacity-50 text-accent" /> {t('referee.courtIssue')}</Button>
       </footer>
     </div>
   )

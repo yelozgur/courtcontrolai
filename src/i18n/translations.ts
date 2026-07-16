@@ -126,6 +126,14 @@ const tr = {
   'schedule.bracket.generated': 'Bracket Oluşturuldu',
   'schedule.bracket.summary': '{matches} maç, {rounds} round, {days} gün',
   'schedule.bracket.failed': 'Bracket Oluşturulamadı',
+  'schedule.consolidate': 'Birleştir',
+  'schedule.consolidateDone': 'Çapraz Gün Aktarımı Tamamlandı',
+  'schedule.consolidateCount': '{count} bekleyen maç sonraki günlere taşındı.',
+  'schedule.consolidateNone': 'Aktif Maç Yok',
+  'schedule.consolidateNoneDesc': 'Tüm maçlar zaten tamamlandı.',
+  'schedule.consolidateSingle': 'Tek Günlük Turnuva',
+  'schedule.consolidateSingleDesc': 'Çapraz gün aktarımı multi-day turnuvalar için.',
+  'schedule.consolidateFailed': 'Birleştirme Başarısız',
 
   // Bracket
   'bracket.title': 'Bracket Ağacı',
@@ -263,6 +271,44 @@ const tr = {
   'error.serverError': 'Sunucu hatası',
   'error.tryAgain': 'Tekrar deneyin',
   'error.somethingWrong': 'Bir şeyler ters gitti.',
+
+  // Navigation (sidebar)
+  'nav.console': 'Konsol',
+  'nav.tournaments': 'Turnuvalar',
+  'nav.matchPlanner': 'Maç Planlayıcı',
+  'nav.clubRoster': 'Kulüp Roster',
+  'nav.venueArrival': 'Mekan Girişi',
+  'nav.partners': 'Partnerler',
+  'nav.settings': 'Ayarlar',
+  'nav.mainMenu': 'Ana Menü',
+
+  // Settings
+  'settings.title': 'Kulüp Ayarları',
+  'settings.clubName': 'Kulüp Adı',
+  'settings.location': 'Konum',
+  'settings.address': 'Adres',
+  'settings.numCourts': 'Saha Sayısı',
+  'settings.timezone': 'Zaman Dilimi',
+  'settings.telegramBotToken': 'Telegram Bot Token',
+  'settings.telegramUsername': 'Telegram Kanal Adı',
+  'settings.save': 'Kaydet',
+  'settings.saved': 'Ayarlar Kaydedildi',
+
+  // Profile
+  'profile.title': 'Profil',
+  'profile.myRegistrations': 'Kayıtlarım',
+  'profile.clubLeaderboard': 'Kulüp Sıralaması',
+  'profile.checkInHistory': 'Giriş Geçmişi',
+  'profile.statistics': 'İstatistikler',
+  'profile.wins': 'Galibiyetler',
+  'profile.losses': 'Mağlubiyetler',
+  'profile.winRate': 'Kaz. %',
+  'profile.findArena': 'İlk Arenını Bul',
+  'profile.profile': 'Profil',
+  'profile.profileSettings': 'Profil Ayarları',
+  'profile.clubIdentity': 'Kulüp Kimliği',
+  'profile.logOut': 'Çıkış',
+  'profile.myAccount': 'Hesabım',
 }
 
 const en = {
@@ -374,6 +420,14 @@ const en = {
   'schedule.bracket.generated': 'Bracket Generated',
   'schedule.bracket.summary': '{matches} matches across {rounds} round(s), {days} day(s).',
   'schedule.bracket.failed': 'Bracket Generation Failed',
+  'schedule.consolidate': 'Consolidate',
+  'schedule.consolidateDone': 'Cross-Day Carryover Complete',
+  'schedule.consolidateCount': '{count} pending match(es) moved to later days.',
+  'schedule.consolidateNone': 'No Pending Matches',
+  'schedule.consolidateNoneDesc': 'All matches are already completed.',
+  'schedule.consolidateSingle': 'Single Day Tournament',
+  'schedule.consolidateSingleDesc': 'Cross-day carryover applies to multi-day tournaments.',
+  'schedule.consolidateFailed': 'Consolidate Failed',
 
   // Bracket
   'bracket.title': 'Bracket Tree',
@@ -511,6 +565,44 @@ const en = {
   'error.serverError': 'Server Error',
   'error.tryAgain': 'Try again',
   'error.somethingWrong': 'Something went wrong.',
+
+  // Navigation (sidebar)
+  'nav.console': 'Console',
+  'nav.tournaments': 'Tournaments',
+  'nav.matchPlanner': 'Match Planner',
+  'nav.clubRoster': 'Club Roster',
+  'nav.venueArrival': 'Venue Arrival',
+  'nav.partners': 'Partners',
+  'nav.settings': 'Settings',
+  'nav.mainMenu': 'Main Menu',
+
+  // Settings
+  'settings.title': 'Club Settings',
+  'settings.clubName': 'Club Name',
+  'settings.location': 'Location',
+  'settings.address': 'Address',
+  'settings.numCourts': 'Number of Courts',
+  'settings.timezone': 'Timezone',
+  'settings.telegramBotToken': 'Telegram Bot Token',
+  'settings.telegramUsername': 'Telegram Channel',
+  'settings.save': 'Save',
+  'settings.saved': 'Settings Saved',
+
+  // Profile
+  'profile.title': 'Profile',
+  'profile.myRegistrations': 'My Registrations',
+  'profile.clubLeaderboard': 'Club Leaderboard',
+  'profile.checkInHistory': 'Check-In History',
+  'profile.statistics': 'Statistics',
+  'profile.wins': 'Wins',
+  'profile.losses': 'Losses',
+  'profile.winRate': 'Win %',
+  'profile.findArena': 'Find Your First Arena',
+  'profile.profile': 'Profile',
+  'profile.profileSettings': 'Profile Settings',
+  'profile.clubIdentity': 'Club Identity',
+  'profile.logOut': 'Log Out',
+  'profile.myAccount': 'My Account',
 }
 
 export const translations: Record<Locale, Record<string, string>> = { tr, en }

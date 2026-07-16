@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Building, Sparkles, Trash2, BrainCircuit, Users2, Gavel } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Building, Sparkles, Trash2, BrainCircuit, Users2, Gavel, Layers } from "lucide-react"
 import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, deleteDoc, increment, updateDoc, setDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
 import { useI18n } from "@/i18n/I18nProvider"
@@ -407,11 +407,96 @@ export default function SchedulingPage() {
       console.error("Bracket generation failed:", e)
       toast({
         variant: "destructive",
-        title: "Bracket Generation Failed",
+        title: t('schedule.bracket.failed'),
         description: e.message || "Unknown error",
       })
     } finally {
       setIsGeneratingBracket(false)
+    }
+  }
+
+  /**
+   * CourtControl AI: Cross-day carryover (Sprint 7).
+   * Mevcut turnuvanın scheduled matches'lerini al, bitmemiş olanları tespit et
+   * (status !== "completed"), scheduledDate'lerini bir sonraki güne kaydır.
+   * Kullanım: 1. günün sonunda "Consolidate Remaining" butonuna tıkla.
+   */
+  const [isConsolidating, setIsConsolidating] = useState(false)
+
+  const handleConsolidateRemaining = async () => {
+    if (!db || !activeTournament || !clubId) return
+    setIsConsolidating(true)
+
+    try {
+      const matchesSnap = await getDocs(
+        query(collection(db, "matches"), where("tournamentId", "==", activeTournament.id))
+      )
+      const incomplete = matchesSnap.docs.filter(d => {
+        const m = d.data() as any
+        return m.status !== "completed" && m.scheduledDate
+      })
+
+      if (incomplete.length === 0) {
+        toast({
+          title: t('schedule.consolidateNone'),
+          description: t('schedule.consolidateNoneDesc'),
+        })
+        setIsConsolidating(false)
+        return
+      }
+
+      // Grup by scheduledDate, en yüksek date'i bul
+      const dateGroups: Record<string, string[]> = {}
+      for (const m of incomplete) {
+        const date = (m.data() as any).scheduledDate
+        if (!dateGroups[date]) dateGroups[date] = []
+        dateGroups[date].push(m.id)
+      }
+
+      // Son gün = max date, ondan önceki günlerin maçlarını sonraki güne kaydır
+      const sortedDates = Object.keys(dateGroups).sort()
+      if (sortedDates.length < 2) {
+        toast({
+          title: t('schedule.consolidateSingle'),
+          description: t('schedule.consolidateSingleDesc'),
+        })
+        setIsConsolidating(false)
+        return
+      }
+
+      // Her (date, sonrakiDate) çifti için: o günün bitmemiş maçlarını sonraki güne taşı
+      let movedCount = 0
+      const tournamentStartDate = activeTournament.startDate
+      const tournamentEndDate = activeTournament.endDate || tournamentStartDate
+
+      for (let i = 0; i < sortedDates.length - 1; i++) {
+        const currentDate = sortedDates[i]
+        const nextDate = sortedDates[i + 1]
+        const idsToMove = dateGroups[currentDate]
+
+        for (const id of idsToMove) {
+          await updateDoc(doc(db, "matches", id), {
+            scheduledDate: nextDate,
+            // startTime'i de güncelle: aynı saat, yeni gün
+            startTime: nextDate + 'T09:00:00',
+          })
+          movedCount++
+        }
+      }
+
+      toast({
+        title: t('schedule.consolidateDone'),
+        description: t('schedule.consolidateCount', { count: movedCount }),
+      })
+    } catch (e: any) {
+      console.error("Consolidate failed:", e)
+      toast({
+        variant: "destructive",
+        title: t('schedule.consolidateFailed'),
+        description: e.message || "Unknown error",
+      })
+    } finally {
+      setIsConsolidating(false)
     }
   }
 
@@ -448,6 +533,17 @@ export default function SchedulingPage() {
           >
             {isOptimizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
             {t('schedule.aiAutoSchedule')}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleConsolidateRemaining}
+            disabled={isConsolidating || !selectedTournamentId}
+            className="border-accent text-accent hover:bg-accent/10 shadow-lg shadow-accent/10"
+          >
+            {isConsolidating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Layers className="w-4 h-4 mr-2" />}
+            {t('schedule.consolidate')}
           </Button>
 
           <Popover>

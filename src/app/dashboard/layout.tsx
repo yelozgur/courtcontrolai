@@ -34,6 +34,7 @@ import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/fireb
 import { signOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 import { LocaleSwitcher } from '@/i18n/LocaleSwitcher';
+import { useI18n } from '@/i18n/I18nProvider';
 import {
   Sheet,
   SheetContent,
@@ -60,6 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const db = useFirestore();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const { t } = useI18n();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -93,13 +95,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'User Accounts', icon: Users2, href: '/dashboard/admin/users' },
     { name: 'Economics', icon: Calculator, href: '/dashboard/admin/costs' },
   ] : [
-    { name: 'Console', icon: LayoutDashboard, href: '/dashboard' },
-    { name: 'Tournaments', icon: Trophy, href: '/dashboard/tournaments' },
-    { name: 'Match Planner', icon: Calendar, href: '/dashboard/schedule' },
-    { name: 'Club Roster', icon: Users, href: '/dashboard/participants' },
-    { name: 'Venue Arrival', icon: QrCode, href: '/dashboard/check-in' },
-    { name: 'Partners', icon: Heart, href: '/dashboard/sponsors' },
-    { name: 'Settings', icon: Building, href: '/dashboard/club' },
+    { name: t('nav.console'), icon: LayoutDashboard, href: '/dashboard' },
+    { name: t('nav.tournaments'), icon: Trophy, href: '/dashboard/tournaments' },
+    { name: t('nav.matchPlanner'), icon: Calendar, href: '/dashboard/schedule' },
+    { name: t('nav.clubRoster'), icon: Users, href: '/dashboard/participants' },
+    { name: t('nav.venueArrival'), icon: QrCode, href: '/dashboard/check-in' },
+    { name: t('nav.partners'), icon: Heart, href: '/dashboard/sponsors' },
+    { name: t('nav.settings'), icon: Building, href: '/dashboard/club' },
   ];
 
   const SidebarContent = () => (
@@ -116,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       
       <ScrollArea className="flex-1 px-4">
         <div className="space-y-1 py-4">
-          <p className="px-4 pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-50">Main Menu</p>
+          <p className="px-4 pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-50">{t('nav.mainMenu')}</p>
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -213,12 +215,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                    </Button>
                  </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t('profile.myAccount')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>Profile Settings</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/dashboard/club')}>Club Identity</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>{t('profile.profileSettings')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/club')}>{t('profile.clubIdentity')}</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">Log Out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">{t('profile.logOut')}</DropdownMenuItem>
                 </DropdownMenuContent>
              </DropdownMenu>
           </div>

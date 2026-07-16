@@ -31,6 +31,7 @@ import {
 } from "lucide-react"
 import { collection, query, limit, where, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
+import { useI18n } from "@/i18n/I18nProvider"
 import {
   Dialog,
   DialogContent,
@@ -80,6 +81,7 @@ export default function ParticipantManagement() {
   const db = useFirestore()
   const { user } = useUser()
   const { toast } = useToast()
+  const { t } = useI18n()
   const [searchTerm, setSearchTerm] = useState("")
   const [isAdding, setIsAdding] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -148,7 +150,7 @@ export default function ParticipantManagement() {
     const participantsRef = collection(db, "participants")
     addDoc(participantsRef, playerData)
       .then(() => {
-        toast({ title: "Player Added", description: `${newPlayer.name} has been added to the roster.` })
+        toast({ title: t('roster.playerAdded'), description: t('roster.playerAddedDesc', { name: newPlayer.name }) })
         setNewPlayer({ name: "", email: "", skillLevel: "intermediate", telegramHandle: "" })
         setIsAdding(false)
         setIsDialogOpen(false)
@@ -224,32 +226,32 @@ export default function ParticipantManagement() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">Club Roster</h1>
+          <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">{t('roster.title')}</h1>
           <p className="text-muted-foreground">Grow and manage your player database.</p>
         </div>
         <div className="flex gap-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                <UserPlus className="mr-2 h-4 w-4" /> Manual Entry
+                <UserPlus className="mr-2 h-4 w-4" /> {t('roster.manualEntry')}
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Add New Player</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t('roster.addNew')}</DialogTitle></DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
+                  <Label>{t('roster.fullName')}</Label>
                   <Input placeholder="John Doe" value={newPlayer.name} onChange={(e) => setNewPlayer({...newPlayer, name: e.target.value})} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>{t('roster.email')}</Label>
                   <Input type="email" placeholder="john@example.com" value={newPlayer.email} onChange={(e) => setNewPlayer({...newPlayer, email: e.target.value})} />
                 </div>
               </div>
               <DialogFooter>
                 <Button onClick={handleAddPlayer} disabled={isAdding || !newPlayer.name || !newPlayer.email}>
                   {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Add to Roster
+                  {t('roster.addToRoster')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -378,7 +380,7 @@ export default function ParticipantManagement() {
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center py-32 opacity-20"><Users className="h-16 w-16 mx-auto mb-4" /><p className="text-xl font-bold uppercase tracking-tighter">Empty Roster</p></div>
+                <div className="text-center py-32 opacity-20"><Users className="h-16 w-16 mx-auto mb-4" /><p className="text-xl font-bold uppercase tracking-tighter">{t('roster.emptyRoster')}</p></div>
               )}
             </CardContent>
           </Card>
