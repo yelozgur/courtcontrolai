@@ -1,0 +1,180 @@
+// CourtControlAI — Multi-Tenant Prisma Schema
+// db-cargo (Vercel Postgres/Neon) — schema_courtcontrolai altında
+// NextAuth.js adapter için User/Account/Session modelleri dahil
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+// ===== Tournament Domain =====
+
+model Tournament {
+  id        String           @id @default(uuid())
+  name      String
+  slug      String           @unique
+  status    TournamentStatus @default(PLANNED)
+  startsAt  DateTime
+  endsAt    DateTime?
+  settings  Json?            // bracket type (single/double elim), max players, etc.
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  matches   Match[]
+  bracket   Bracket?
+
+  @@schema("courtcontrolai")
+  @@index([status, startsAt])
+}
+
+enum TournamentStatus {
+  PLANNED
+  REGISTRATION
+  RUNNING
+  COMPLETED
+  CANCELLED
+
+  @@schema("courtcontrolai")
+}
+
+model Match {
+  id           String      @id @default(uuid())
+  tournamentId String
+  round        Int
+  position     Int         // position within round
+  player1Id    String?
+  player2Id    String?
+  score1       Int         @default(0)
+  score2       Int         @default(0)
+  scheduledAt  DateTime?
+  playedAt     DateTime?
+  status       MatchStatus @default(SCHEDULED)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@schema("courtcontrolai")
+  @@index([tournamentId, round, position])
+}
+
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  WALKOVER
+  DISQUALIFIED
+
+  @@schema("courtcontrolai")
+}
+
+model Bracket {
+  id           String   @id @default(uuid())
+  tournamentId String   @unique
+  data         Json     // bracket tree structure
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@schema("courtcontrolai")
+}
+
+// ===== AI Flow Queue =====
+
+model AIQueue {
+  id           String         @id @default(uuid())
+  type         String         // 'bracket-flow', 'optimize-schedule', 'optimize-schedule-tsp'
+  status       AIQueueStatus  @default(PENDING)
+  input        Json
+  output       Json?
+  error        String?
+  attempts     Int            @default(0)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+
+  @@schema("courtcontrolai")
+  @@index([status, createdAt])
+}
+
+enum AIQueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@schema("courtcontrolai")
+}
+
+// ===== NextAuth.js Models =====
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  @@schema("courtcontrolai")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  TOURNAMENT_DIRECTOR
+
+  @@schema("courtcontrolai")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@schema("courtcontrolai")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("courtcontrolai")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@schema("courtcontrolai")
+}

@@ -117,5 +117,14 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
     }
+
+    // Marketing review queue — AI-generated captions waiting for admin approval.
+    // Writes are admin-only (approve/reject); the marketing bot writes via
+    // server-side route that uses admin credentials (planned).
+    match /marketing_queue/{queueId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }

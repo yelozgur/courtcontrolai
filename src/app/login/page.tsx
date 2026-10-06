@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, Globe, Trophy, Monitor, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Zap, LogIn, Loader2, Mail, Lock, Globe, Trophy, Monitor, ShieldCheck, CheckCircle2, ServerCrash } from 'lucide-react';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -33,7 +33,15 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !db) return;
+    if (!auth || !db) {
+      // Without Firebase the form cannot succeed. The previous behaviour was a
+      // silent no-op: the button stayed enabled, the user clicked, and nothing
+      // happened at all — no error, no spinner. Since the dashboard now
+      // redirects unauthenticated visitors here, that combined into a permanent
+      // lockout with no way out and no explanation.
+      setErrorType('config');
+      return;
+    }
     setIsSubmitting(true);
     setErrorType(null);
 
@@ -67,7 +75,10 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!auth || !db) return;
+    if (!auth || !db) {
+      setErrorType('config');
+      return;
+    }
     setIsSubmitting(true);
     const provider = new GoogleAuthProvider();
     try {
@@ -159,6 +170,19 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {(!auth || !db) && (
+            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+              <ServerCrash className="h-4 w-4" />
+              <AlertTitle className="font-bold">Sunucuya bağlanılamıyor</AlertTitle>
+              <AlertDescription className="mt-2 space-y-2">
+                <p className="text-xs">
+                  Kimlik doğrulama servisi şu anda kullanılamıyor, bu yüzden giriş yapılamıyor.
+                  Lütfen sayfayı yenileyin. Sorun devam ederse yöneticinize başvurun.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {errorType === 'domain' && (
             <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
               <Globe className="h-4 w-4" />
@@ -173,7 +197,7 @@ export default function LoginPage() {
             variant="outline" 
             className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-white"
             onClick={handleGoogleLogin}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !auth || !db}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -223,7 +247,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full h-11" disabled={isSubmitting}>
+            <Button type="submit" className="w-full h-11" disabled={isSubmitting || !auth || !db}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
               {t('auth.signIn.button')}
             </Button>

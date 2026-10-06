@@ -41,3 +41,22 @@ firestore-debug.log*
 test-*.cjs
 test-*.mjs
 
+
+# Playwright E2E
+/test-results/
+/playwright-report/
+/e2e/results.json
+/blob-report/
+
+# Runtime logs
+/logs/
+*.log
+
+# Model cache
+/mlx-runs/
+.env*
+
+# Python scheduler (2026-10-06)
+.venv*/
+__pycache__/
+*.py[cod]

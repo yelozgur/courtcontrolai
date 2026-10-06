@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "base_url": "http://127.0.0.1:9002",
+    "note": "Deterministic, scorable browser-only tasks. Model gets ONLY browser_* tools."
+  },
+  "tasks": [
+    {
+      "id": "T1-home-render",
+      "goal": "Open the app home page and report whether it rendered without a fatal error.",
+      "url": "/",
+      "steps": 3,
+      "checks": [
+        { "type": "status_ok", "value": true, "weight": 5 },
+        { "type": "selector_exists", "value": "body", "weight": 2 },
+        { "type": "no_text", "value": "Application error", "weight": 3 }
+      ]
+    },
+    {
+      "id": "T2-login-page",
+      "goal": "Open the login page and confirm a sign-in form is present.",
+      "url": "/login",
+      "steps": 3,
+      "checks": [
+        { "type": "status_ok", "value": true, "weight": 5 },
+        { "type": "no_text", "value": "Application error", "weight": 2 },
+        { "type": "has_input", "value": true, "weight": 3 }
+      ]
+    },
+    {
+      "id": "T3-signup-page",
+      "goal": "Open the signup page and confirm it renders.",
+      "url": "/signup",
+      "steps": 3,
+      "checks": [
+        { "type": "status_ok", "value": true, "weight": 5 },
+        { "type": "no_text", "value": "Application error", "weight": 5 }
+      ]
+    },
+    {
+      "id": "T4-tournaments-list",
+      "goal": "Open the public tournaments list and confirm it renders.",
+      "url": "/tournaments",
+      "steps": 4,
+      "checks": [
+        { "type": "status_ok", "value": true, "weight": 5 },
+        { "type": "no_text", "value": "Application error", "weight": 5 }
+      ]
+    },
+    {
+      "id": "T5-sponsors-page",
+      "goal": "Open the sponsors page and confirm it renders.",
+      "url": "/sponsors",
+      "steps": 4,
+      "checks": [
+        { "type": "status_ok", "value": true, "weight": 5 },
+        { "type": "no_text", "value": "Application error", "weight": 5 }
+      ]
+    },
+    {
+      "id": "T6-dashboard-guard",
+      "goal": "Open /dashboard without credentials. Determine whether it is protected or publicly readable.",
+      "url": "/dashboard",
+      "steps": 4,
+      "checks": [
+        { "type": "status_ok", "value": true, "weight": 4 },
+        { "type": "no_text", "value": "Application error", "weight": 4 },
+        { "type": "record_observation", "value": "guard", "weight": 2 }
+      ]
+    },
+    {
+      "id": "T7-marketing-queue-admin",
+      "goal": "Open the admin marketing queue page and report what renders or where it redirects.",
+      "url": "/dashboard/admin/marketing/queue",
+      "steps": 5,
+      "checks": [
+        { "type": "status_ok", "value": true, "weight": 4 },
+        { "type": "no_text", "value": "Application error", "weight": 3 },
+        { "type": "record_observation", "value": "queue", "weight": 3 }
+      ]
+    },
+    {
+      "id": "T8-health-api",
+      "goal": "Call the health API endpoint and report the returned HTTP status and payload keys.",
+      "url": "/api/health",
+      "steps": 4,
+      "expect_http": [200, 503],
+      "checks": [
+        { "type": "status_in", "value": "200,503", "weight": 4 },
+        { "type": "json_has_key", "value": "checks", "weight": 3 },
+        { "type": "json_has_key", "value": "uptime_s", "weight": 3 }
+      ]
+    }
+  ]
+}

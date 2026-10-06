@@ -30,7 +30,12 @@ const BracketInputSchema = z.object({
   participants: z.array(ParticipantInputSchema),
   startDate: z.string(),  // ISO date "YYYY-MM-DD"
   endDate: z.string().optional(),  // ISO date, multi-day için
-  format: z.enum(['Single Elimination', 'Double Elimination']).default('Single Elimination')
+  // Only single elimination is implemented. This was previously an enum
+  // accepting 'Double Elimination', which the generator silently ignored — a
+  // caller selecting it got a single-elimination bracket with no error. A
+  // narrower schema means the wrong request is rejected instead of quietly
+  // producing the wrong tournament structure.
+  format: z.literal('Single Elimination').default('Single Elimination')
 });
 
 const MatchDraftSchema = z.object({
@@ -112,6 +117,17 @@ export async function generateTournamentBracket(input: BracketInput): Promise<Br
 
   const totalRounds = calculateRounds(participants.length);
   const totalDays = calculateDays(startDate, endDate);
+
+  // Edge case: 0 or 1 participants → no bracket possible.
+  if (totalRounds === 0) {
+    return {
+      matches: [],
+      totalRounds: 0,
+      totalDays,
+      byePlayerIds: [],
+      summary: `${categoryName}: ${participants.length} player(s) — bracket requires at least 2.`,
+    };
+  }
 
   // Sort by rating (highest first) for seeding
   const sorted = [...participants].sort((a, b) => b.rating - a.rating);

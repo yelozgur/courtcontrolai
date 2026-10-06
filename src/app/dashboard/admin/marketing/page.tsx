@@ -22,8 +22,10 @@ import {
   Trophy,
   Handshake,
   Briefcase,
-  ExternalLink
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react';
+import Link from 'next/link';
 import { collection, query, limit, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -83,14 +85,22 @@ export default function MarketingCenter() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-4">
         <div>
           <h1 className="text-4xl font-headline font-bold text-white uppercase tracking-tighter">Marketing Command</h1>
           <p className="text-muted-foreground font-medium">Manage growth, promotions, and platform visibility.</p>
         </div>
-        <Badge variant="outline" className="border-accent text-accent bg-accent/5 px-4 h-8 uppercase tracking-widest font-bold">
-           Network Status: ACTIVE
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/admin/marketing/queue">
+            <Badge variant="outline" className="border-primary text-primary bg-primary/5 px-4 h-8 uppercase tracking-widest font-bold cursor-pointer hover:bg-primary/10">
+              <MessageSquare className="h-3 w-3 mr-1.5" />
+              Review Queue
+            </Badge>
+          </Link>
+          <Badge variant="outline" className="border-accent text-accent bg-accent/5 px-4 h-8 uppercase tracking-widest font-bold">
+             Network Status: ACTIVE
+          </Badge>
+        </div>
       </div>
 
       <Tabs defaultValue="campaigns" className="w-full">
@@ -206,7 +216,7 @@ export default function MarketingCenter() {
                                 <p className="font-mono text-xs font-bold text-accent">{p.code}</p>
                                 <p className="text-[9px] text-muted-foreground">{p.discountPercent}% Off Platform Fees</p>
                              </div>
-                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteDoc(doc(db, "promocodes", p.id))}>
+                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => db && deleteDoc(doc(db, "promocodes", p.id))}>
                                 <Trash2 className="h-3 w-3" />
                              </Button>
                           </div>

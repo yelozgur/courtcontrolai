@@ -6,9 +6,11 @@ import { Firestore } from 'firebase/firestore';
 import { Auth } from 'firebase/auth';
 
 interface FirebaseContextValue {
-  app: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
+  // Nullable throughout: the provider is mounted before Firebase resolves, so
+  // consumers must handle "not ready yet" explicitly rather than crashing.
+  app: FirebaseApp | null;
+  firestore: Firestore | null;
+  auth: Auth | null;
 }
 
 const FirebaseContext = createContext<FirebaseContextValue | null>(null);
@@ -20,33 +22,45 @@ export function FirebaseProvider({
   auth,
 }: {
   children: React.ReactNode;
-  app: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
+  /**
+   * Nullable on purpose. FirebaseClientProvider renders this component from
+   * the very first paint, before `initializeFirebase()` has resolved. Accepting
+   * null keeps the React tree shape constant; the alternative — rendering
+   * children without the provider until Firebase is ready — changes the root
+   * element type and remounts the entire app on every load.
+   */
+  app: FirebaseApp | null;
+  firestore: Firestore | null;
+  auth: Auth | null;
 }) {
-  return (
-    <FirebaseContext.Provider value={{ app, firestore, auth }}>
-      {children}
-    </FirebaseContext.Provider>
-  );
+  // A fresh object literal on every render invalidates the context and
+  // re-renders all ~33 useFirestore() consumers for no reason. The three
+  // values are stable references owned by the Firebase SDK, so the memo key
+  // never changes in practice.
+  const value = React.useMemo(() => ({ app, firestore, auth }), [app, firestore, auth]);
+
+  return <FirebaseContext.Provider value={value}>{children}</FirebaseContext.Provider>;
 }
 
-export function useFirebase() {
-  const context = useContext(FirebaseContext);
-  if (!context) {
-    throw new Error('useFirebase must be used within a FirebaseProvider');
-  }
-  return context;
+/**
+ * CourtControl AI: Offline fallback. Onceki implementasyon context yoksa
+ * throw ediyordu ve sayfa tamamen crash oluyordu. Simdi null donduruyor —
+ * hooks bunu "Firebase unavailable, logged out" olarak yorumluyor ve UI
+ * normal sekilde render ediyor. Gercek login denemesi basarisiz olur ama
+ * sayfa erisilebilir kalir.
+ */
+export function useFirebase(): FirebaseContextValue | null {
+  return useContext(FirebaseContext);
 }
 
-export function useFirebaseApp() {
-  return useFirebase().app;
+export function useFirebaseApp(): FirebaseApp | null {
+  return useFirebase()?.app ?? null;
 }
 
-export function useFirestore() {
-  return useFirebase().firestore;
+export function useFirestore(): Firestore | null {
+  return useFirebase()?.firestore ?? null;
 }
 
-export function useAuth() {
-  return useFirebase().auth;
+export function useAuth(): Auth | null {
+  return useFirebase()?.auth ?? null;
 }

@@ -3,29 +3,108 @@
 > Bu dosyayı local LLM/agent'ınız (Ollama qwen2.5:7b, llama3.1, vb.) dolduracak.
 > Browser automation yaptıktan sonra her test için PASS/FAIL/SKIP + notlar yazın.
 
-**Tarih:** [ISO timestamp]
-**Agent:** [model adı]
-**Toplam Süre:** [dakika]
-**Test Ortamı:** macOS, Node 20, Firebase Emulator 8080/9099/4000, Next.js 9002
+**Tarih:** 2026-10-01 (Sprint 8 revival başlangıcı)
+**Agent:** Mavis (MiniMax M3) + local Vitest
+**Toplam Süre:** ~25 dakika (build + 30 unit test + typecheck + lint)
+**Test Ortamı:** macOS 25.6.0, Node 26.0.0, Firebase Emulator 8080/9099/4000, Next.js 9002, M5 Air 32GB
 
-## Özet
+---
+
+## 🧪 Sprint 8 — Unit Tests (Vitest, 30/30 ✅)
+
+> Otomatik, lokal CI-friendly. `npm test` ile her an koşturulur. Bu sonuçlar
+> functional testlerden bağımsız; functional testler aşağıdaki A-K tablosunda.
+
+### Sprint 8 Özet Tablosu
+
+| Test Dosyası | Toplam | PASS | FAIL | Süre |
+|---|---|---|---|---|
+| `src/lib/__tests__/utils.test.ts` | 5 | 5 ✅ | 0 | 3ms |
+| `src/lib/__tests__/sports.test.ts` | 4 | 4 ✅ | 0 | 4ms |
+| `src/lib/__tests__/ratings.test.ts` | 7 | 7 ✅ | 0 | 2ms |
+| `src/lib/__tests__/telegram-service.test.ts` | 6 | 6 ✅ | 0 | 3ms |
+| `src/ai/flows/__tests__/bracket-flow.test.ts` | 8 | 8 ✅ | 0 | 2ms |
+| **TOPLAM** | **30** | **30** | **0** | **~14ms** |
+
+**Pass Rate:** 100%
+
+### Sprint 8 Bulgu & Fix Listesi
+
+| # | Bulgu | Severity | Fix |
+|---|---|---|---|
+| 1 | `next lint` 3 unescaped apostrophe (`'`) | low | `participants`, `tournaments`, `results/page.tsx` → `&apos;` |
+| 2 | `vitest` jsdom dependency missing | blocker | `npm i -D jsdom @testing-library/jest-dom` + `src/test/setup.ts` |
+| 3 | `bracket-flow.ts` 1-participant edge case (boş match üretiyordu) | medium (regression test caught it) | `if (totalRounds === 0)` early-return guard eklendi |
+
+### Sprint 8 Self-Healing Altyapısı (Yeni)
+
+| Bileşen | Dosya | Durum |
+|---|---|---|
+| Health endpoint | `src/app/api/health/route.ts` | ✅ build pass, typecheck pass |
+| Watchdog script | `scripts/watchdog.mjs` | ✅ syntax check pass |
+| Test seed | `test-seed.cjs` | ✅ oluşturuldu, idempotent |
+| Telegram alert | `scripts/watchdog.mjs` (integrated) | ✅ config: TELEGRAM_BOT_TOKEN + ADMIN_CHAT_ID |
+| npm scripts | `package.json` | ✅ `npm run watchdog`, `npm run test:seed` |
+
+**Production deploy için yapılacak:** `.env`'e `TELEGRAM_BOT_TOKEN` + `ADMIN_CHAT_ID` ekle, cron'a `*/5 * * * * cd /path && npm run watchdog` ekle.
+
+---
+
+## 📋 Functional Tests (Manuel/Playwright, henüz koşulmadı)
+
+**Durum:** Sprint 8 sonunda henüz koşulmadı. Functional testler için
+önce Firebase emulator kur + test seed çalıştır, ardından tarayıcıdan
+veya Playwright ile koştur.
+
+### Çalıştırma Sırası
+
+```bash
+# 1. Emulator başlat (terminal 1)
+firebase login  # bir kez
+npm run emulator  # auth :9099 + firestore :8080 + UI :4000
+
+# 2. Test seed (terminal 2)
+npm run test:seed
+
+# 3. Dev server (terminal 3)
+npm run dev  # :9002
+
+# 4. Health check
+curl http://localhost:9002/api/health
+
+# 5. Manual functional test (browser)
+open http://localhost:9002/login
+# Email: club@cca.local, Password: test1234
+# Yukarıdaki A-K testlerini koştur
+```
+
+### Functional Özet (Henüz Boş — Doldurulacak)
 
 | Kategori | Toplam | PASS | FAIL | SKIP | PARTIAL |
 |----------|--------|------|------|------|---------|
-| A. Auth | 5 | | | | |
-| B. Dashboard | 3 | | | | |
-| C. Tournaments | 10 | | | | |
-| D. Schedule | 8 | | | | |
-| E. Roster | 5 | | | | |
-| F. Referee | 6 | | | | |
-| G. Public | 5 | | | | |
-| H. API | 4 | | | | |
-| I. Security | 3 | | | | |
-| J. i18n | 4 | | | | |
-| K. Performance | 3 | | | | |
-| **TOPLAM** | **60** | | | | |
+| A. Auth | 5 | 0 | 0 | 5 | 0 |
+| B. Dashboard | 3 | 0 | 0 | 3 | 0 |
+| C. Tournaments | 10 | 0 | 0 | 10 | 0 |
+| D. Schedule | 8 | 0 | 0 | 8 | 0 |
+| E. Roster | 5 | 0 | 0 | 5 | 0 |
+| F. Referee | 6 | 0 | 0 | 6 | 0 |
+| G. Public | 5 | 0 | 0 | 5 | 0 |
+| H. API | 4 | 0 | 0 | 4 | 0 |
+| I. Security | 3 | 0 | 0 | 3 | 0 |
+| J. i18n | 4 | 0 | 0 | 4 | 0 |
+| K. Performance | 3 | 0 | 0 | 3 | 0 |
+| **TOPLAM** | **60** | **0** | **0** | **60** | **0** |
 
-**Pass Rate:** ___%
+**Pass Rate:** 0% (henüz koşulmadı)
+
+> **Not:** Functional testler Sprint 11'de Playwright ile otomatize edilecek.
+> Şimdilik tarayıcıdan manuel koşturarak bu tabloyu doldurabilirsin.
+
+## Detaylı Sonuçlar
+
+### A. AUTH
+
+#### A1. Login - Club Owner
 
 ## Detaylı Sonuçlar
 
