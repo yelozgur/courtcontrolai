@@ -12,7 +12,6 @@ function getProcessHealth() {
     rss_mb: Math.round(mem.rss / 1024 / 1024),
     heap_used_mb: Math.round(mem.heapUsed / 1024 / 1024),
     heap_total_mb: Math.round(mem.heapTotal / 1024 / 1024),
-    heap_limit_mb: Math.round(mem.heapUsedLimit / 1024 / 1024),
   };
 }
 
