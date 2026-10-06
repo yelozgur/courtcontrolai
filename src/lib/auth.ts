@@ -1,19 +1,22 @@
 // NextAuth.js v5 (Auth.js) — CourtControlAI
-// Google OAuth provider, JWT session (database adapter sonra eklenebilir)
+// Google OAuth provider + PrismaAdapter (Neon Postgres)
 // Hibrit pattern: Firebase Auth paralel, identity unification email match ile
 
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "./prisma";
+import { getFirebaseAdmin } from "./firebase-admin";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(prisma),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      // Scope: email + profile (default)
       authorization: {
         params: {
-          prompt: "select_account", // hesap seçtirme zorunluluğu
+          prompt: "select_account",
         },
       },
     }),
@@ -24,14 +27,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: "/login",
   },
 
-  // JWT session (default — database adapter eklenene kadar)
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 gün
+    maxAge: 30 * 24 * 60 * 60,
   },
 
   callbacks: {
-    // JWT'ye user bilgisi ekle
+    async signIn({ user, account }) {
+      if (account?.provider === 'google' && user.email) {
+        try {
+          const adminAuth = getFirebaseAdmin();
+          try {
+            await adminAuth.getUserByEmail(user.email);
+          } catch (error: any) {
+            if (error.code === 'auth/user-not-found') {
+              await adminAuth.createUser({
+                email: user.email,
+                emailVerified: true,
+                displayName: user.name || undefined,
+                photoURL: user.image || undefined,
+              });
+            } else {
+              throw error;
+            }
+          }
+        } catch (error) {
+          console.error('Firebase bridge failed:', error);
+          return false;
+        }
+      }
+      return true;
+    },
+
     async jwt({ token, user, account }) {
       if (user) {
         token.userId = user.id;
@@ -40,13 +67,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account) {
         token.provider = account.provider;
       }
+      if (token.email) {
+        try {
+          const adminAuth = getFirebaseAdmin();
+          const firebaseUser = await adminAuth.getUserByEmail(token.email as string);
+          token.firebaseUid = firebaseUser.uid;
+        } catch (error) {
+          console.error('Failed to get Firebase UID for JWT:', error);
+        }
+      }
       return token;
     },
 
-    // Session'a user ID ekle
     async session({ session, token }) {
       if (session.user && token.userId) {
         session.user.id = token.userId as string;
+      }
+      if (session.user && token.firebaseUid) {
+        session.user.firebaseUid = token.firebaseUid as string;
       }
       return session;
     },
@@ -72,9 +110,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true, // Vercel preview deployment'lar için
 });
 
-/**
- * TypeScript module augmentation — session.user'a id eklemek için
- */
 declare module "next-auth" {
   interface Session {
     user: {
@@ -82,6 +117,7 @@ declare module "next-auth" {
       email?: string | null;
       name?: string | null;
       image?: string | null;
+      firebaseUid?: string | null;
     };
   }
 }

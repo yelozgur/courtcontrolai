@@ -4,6 +4,7 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { I18nProvider } from '@/i18n/I18nProvider';
+import { NextAuthSessionProvider } from '@/components/NextAuthSessionProvider';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -35,12 +36,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased bg-background text-foreground`} suppressHydrationWarning>
-        <FirebaseClientProvider>
-          <I18nProvider>
-            {children}
-            <Toaster />
-          </I18nProvider>
-        </FirebaseClientProvider>
+        <NextAuthSessionProvider>
+          <FirebaseClientProvider>
+            <I18nProvider>
+              {children}
+              <Toaster />
+            </I18nProvider>
+          </FirebaseClientProvider>
+        </NextAuthSessionProvider>
       </body>
     </html>
   );

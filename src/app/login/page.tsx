@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Zap, LogIn, Loader2, Mail, Lock, Globe, Trophy, Monitor, ShieldCheck, CheckCircle2, ServerCrash } from 'lucide-react';
 import { useAuth, useUser, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithCustomToken } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Separator } from '@/components/ui/separator';
+import { signIn, useSession } from 'next-auth/react';
 
 export default function LoginPage() {
   const { loading } = useUser();
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { data: session, status } = useSession();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,6 +32,56 @@ export default function LoginPage() {
   const [authSuccess, setAuthSuccess] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | 'domain' | null>(null);
+  const [bridging, setBridging] = useState(false);
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.email && auth && !bridging) {
+      const bridgeToFirebase = async () => {
+        setBridging(true);
+        try {
+          const response = await fetch('/api/firebase-bridge-token');
+          if (!response.ok) {
+            throw new Error('Failed to get Firebase bridge token');
+          }
+          const { token } = await response.json();
+          await signInWithCustomToken(auth, token);
+
+          const isAdminEmail = session.user.email?.toLowerCase() === 'admin@deneme.com';
+          setIsAdminUser(isAdminEmail);
+
+          if (db) {
+            const userRef = doc(db, 'users', session.user.firebaseUid || session.user.id);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+              await setDoc(userRef, {
+                email: session.user.email,
+                displayName: session.user.name || (session.user.email ? session.user.email.split('@')[0] : 'user'),
+                photoURL: session.user.image,
+                role: isAdminEmail ? 'admin' : 'club_owner',
+                createdAt: serverTimestamp(),
+              });
+            } else if (isAdminEmail && userSnap.data().role !== 'admin') {
+              await setDoc(userRef, { role: 'admin' }, { merge: true });
+            }
+          }
+
+          setAuthSuccess(true);
+        } catch (error) {
+          console.error('Firebase bridge failed:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Bridge Failed',
+            description: 'Failed to sync with Firebase Auth',
+          });
+        } finally {
+          setBridging(false);
+        }
+      };
+
+      bridgeToFirebase();
+    }
+  }, [status, session, auth, db, bridging, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,42 +127,16 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!auth || !db) {
-      setErrorType('config');
-      return;
-    }
     setIsSubmitting(true);
-    const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const isAdminEmail = user.email?.toLowerCase() === 'admin@deneme.com';
-      setIsAdminUser(isAdminEmail);
-
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          role: isAdminEmail ? 'admin' : 'club_owner',
-          createdAt: serverTimestamp(),
-        });
-      } else if (isAdminEmail && userSnap.data().role !== 'admin') {
-        await setDoc(userRef, { role: 'admin' }, { merge: true });
-      }
-
-      setAuthSuccess(true);
+      await signIn('google', { callbackUrl: '/login' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Google Login Failed', description: error.message });
-    } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (loading || bridging) {
     return <div className="min-h-screen flex items-center justify-center bg-[#0F172A]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
@@ -197,7 +223,7 @@ export default function LoginPage() {
             variant="outline" 
             className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-white"
             onClick={handleGoogleLogin}
-            disabled={isSubmitting || !auth || !db}
+            disabled={isSubmitting}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
