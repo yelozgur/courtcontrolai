@@ -80,7 +80,7 @@ export default function DashboardTournaments() {
           <p className="text-sm font-bold text-primary uppercase tracking-[0.2em]">Management Console</p>
           <h1 className="text-4xl font-headline font-bold uppercase tracking-tighter leading-none">Your Tournaments</h1>
           <p className="text-muted-foreground font-medium mt-1">
-            Manage your club's competitive events and registrations.
+            Manage your club&apos;s competitive events and registrations.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">

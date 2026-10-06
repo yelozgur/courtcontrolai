@@ -450,7 +450,7 @@ export default function ParticipantManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {removingPlayer?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the player from your club roster. Their tournament registrations and match history will remain intact, but they will no longer appear in your club's player database.
+              This will remove the player from your club roster. Their tournament registrations and match history will remain intact, but they will no longer appear in your club&apos;s player database.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

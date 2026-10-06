@@ -315,7 +315,7 @@ export default function TournamentResults() {
             <CardContent className="p-12 text-center">
               <Trophy className="h-16 w-16 mx-auto text-muted-foreground opacity-30 mb-4" />
               <h3 className="text-2xl font-headline font-bold mb-2">{t('results.noMatches')}</h3>
-              <p className="text-muted-foreground">The bracket hasn't been generated for this tournament.</p>
+              <p className="text-muted-foreground">The bracket hasn&apos;t been generated for this tournament.</p>
               <Button asChild className="mt-6">
                 <Link href={`/tournaments/${id}`}>View Tournament</Link>
               </Button>
