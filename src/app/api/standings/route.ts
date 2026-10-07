@@ -108,7 +108,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('GET /api/standings error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch standings', details: (error as Error).message },
+      { error: 'Failed to fetch standings' },
       { status: 500 }
     );
   }

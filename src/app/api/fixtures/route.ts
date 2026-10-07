@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('GET /api/fixtures error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch fixtures', details: (error as Error).message },
+      { error: 'Failed to fetch fixtures' },
       { status: 500 }
     );
   }
@@ -150,7 +150,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'Failed to call scheduler service',
-          details: (schedulerError as Error).message,
         },
         { status: 503 }
       );
@@ -158,7 +157,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/fixtures error:', error);
     return NextResponse.json(
-      { error: 'Failed to generate fixtures', details: (error as Error).message },
+      { error: 'Failed to generate fixtures' },
       { status: 500 }
     );
   }

@@ -22,7 +22,7 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/clubs error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch clubs', details: (error as Error).message },
+      { error: 'Failed to fetch clubs' },
       { status: 500 }
     );
   }
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/clubs error:', error);
     return NextResponse.json(
-      { error: 'Failed to create club', details: (error as Error).message },
+      { error: 'Failed to create club' },
       { status: 500 }
     );
   }

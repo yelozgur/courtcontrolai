@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('GET /api/results error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch results', details: (error as Error).message },
+      { error: 'Failed to fetch results' },
       { status: 500 }
     );
   }
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/results error:', error);
     return NextResponse.json(
-      { error: 'Failed to update match result', details: (error as Error).message },
+      { error: 'Failed to update match result' },
       { status: 500 }
     );
   }
