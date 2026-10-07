@@ -11,10 +11,10 @@
 
 | Category | Routes | Auth | Notes |
 |----------|--------|------|-------|
-| Public (no auth) | `/api/health`, `/api/ai/status`, `/api/standings`, `/api/clubs` GET, `/api/tournaments` GET, `/api/fixtures` GET, `/api/teams` GET, `/api/results` GET | None | Intentionally public — tournament data is spectator-facing |
-| Auth required | `/api/venues`, `/api/venues/[id]`, `/api/clubs` POST, `/api/tournaments` POST, `/api/teams` POST, `/api/results` POST, `/api/fixtures` POST, `/api/checkin` POST, `/api/scheduler/solve` POST, `/api/firebase-bridge-token` | `auth()` + club ownership | Write operations scoped to club admin |
+| Public (no auth) | `/api/health`, `/api/ai/status`, `/api/clubs` GET, `/api/tournaments` GET, `/api/fixtures` GET, `/api/teams` GET, `/api/results` GET | None | Intentionally public — tournament data is spectator-facing |
+| Auth required | `/api/venues`, `/api/venues/[id]`, `/api/clubs` POST, `/api/tournaments` POST, `/api/teams` POST, `/api/results` POST, `/api/fixtures` POST, `/api/checkin` POST, `/api/scheduler/solve` POST, `/api/firebase-bridge-token`, `/api/standings` GET, `/api/telegram/test` | `auth()` + club ownership | Write operations scoped to club admin; standings scoped to tournament's club |
 | Dev-only | `/api/firestore/[...path]` | None (dev only) | Disabled in production, allowlisted collections only |
-| External proxy | `/api/telegram/send`, `/api/telegram/test` | None | Token redaction in place; no auth — see Finding 5 |
+| External proxy | `/api/telegram/send` | None | Token redaction in place; no auth — see Finding 5 |
 
 ---
 
@@ -76,7 +76,7 @@
 |----------|----------------|-----------|
 | `/api/clubs` | **No** | Club directory (name, slug, logo) — no sensitive data. Public by design for discovery. |
 | `/api/tournaments` | **No** | Tournament listing (name, dates, club name) — no sensitive data. Public by design for discovery. |
-| `/api/standings` | **No** | Aggregate statistics (team names, win/loss records) — no personal data. Matches public `/leaderboard` page. |
+| `/api/standings` | **Yes** (SEL-81) | Exposes `playerIds` via `tournament.teams` and tournament-scoped match data. Scoped to club owner/admin. |
 | `/api/teams` | **Yes** | Exposes `playerIds` (internal user identifiers). Multi-tenant leak if unauthenticated. |
 | `/api/fixtures` | **Yes** | Exposes `player1Id`, `player2Id`, `scheduledAt`. Player identifiers + scheduling data. |
 | `/api/results` | **Yes** | Exposes `player1Id`, `player2Id`, scores, `playedAt`. Player identifiers + match history. |
@@ -144,15 +144,13 @@
 
 ## Finding 5 — Telegram routes have no authentication (LOW)
 
-**Status:** Noted, not fixed (requires product decision).
+**Status:** Partially fixed. `/api/telegram/test` now requires `auth()`. `/api/telegram/send` remains open (requires product decision on club-level token override model).
 
 **Routes:** `/api/telegram/send`, `/api/telegram/test`
 
-**Analysis:** These routes accept a `botToken` in the request body or fall back to `TELEGRAM_BOT_TOKEN` env var. The `send` route redacts tokens from error responses. The `test` route validates tokens against Telegram API.
+**Fix (SEL-81):** `/api/telegram/test` POST and GET now require `auth()`. The body-supplied `botToken` field is no longer honoured — only the server-side `TELEGRAM_BOT_TOKEN` env var is used. This prevents unauthenticated callers from making the server issue Telegram API calls with arbitrary tokens.
 
-**Risk:** An attacker could use the server as a proxy to send Telegram messages via arbitrary bot tokens, or probe whether a token is valid. The server's `TELEGRAM_BOT_TOKEN` is never exposed (redacted in errors), but the endpoint could be abused for sending spam.
-
-**Recommendation:** Add `auth()` check to both routes, restricting to club admins. Alternatively, rate-limit the endpoint.
+**Remaining:** `/api/telegram/send` still accepts a `botToken` from the request body (club-level override). Token redaction is in place. Requires product decision on whether club-level token override is a feature.
 
 ---
 
@@ -194,7 +192,7 @@
 |----------|--------|
 | `/api/health` | Uptime probe — returns status, version, latency only |
 | `/api/ai/status` | Feature flag probe — returns enabled/disabled only |
-| `/api/standings` GET | Public leaderboard — aggregate statistics, no personal data |
+| `/api/standings` GET | ~~Public~~ — now requires auth (SEL-81). Exposes `playerIds` via team data. |
 | `/api/clubs` GET | Public directory — club name/slug/logo only, no ownerId |
 | `/api/tournaments` GET | Public tournament listing — name/dates/club only |
 
@@ -205,6 +203,31 @@
 | `/api/teams` GET | `playerIds` (user identifiers) | Multi-tenant leak — exposes member IDs across clubs |
 | `/api/fixtures` GET | `player1Id`, `player2Id`, `scheduledAt` | Player identifiers + scheduling data |
 | `/api/results` GET | `player1Id`, `player2Id`, scores, `playedAt` | Player identifiers + match history |
+| `/api/standings` GET | `teamId`, `clubId`, `playerIds` (via teams), scores | Tournament data scoped to club owner/admin (SEL-81) |
+| `/api/telegram/test` POST | Bot metadata, optional message send result | Server-side Telegram proxy — auth prevents abuse (SEL-81) |
+
+---
+
+## Finding 8 — Client-exposed auth bypass via `NEXT_PUBLIC_AUTH_TEST_ENABLED` (HIGH)
+
+**Status:** Fixed in SEL-81.
+
+**Precondition:** `NEXT_PUBLIC_AUTH_TEST_ENABLED=true` set in environment (was present in `.env.local`).
+
+**Root cause:** `src/app/dashboard/layout.tsx` (a `'use client'` component) read `process.env.NEXT_PUBLIC_AUTH_TEST_ENABLED` and, when true together with a NextAuth session, skipped the Firebase auth gate and the `/login` redirect. Two problems:
+
+1. `NEXT_PUBLIC_` values are inlined into the client bundle at build time. If this flag were ever set in Vercel production, it would change shipped client behaviour — the bypass would be compiled into the JS sent to every user's browser.
+2. The flag was set to `true` in `.env.local` with nothing preventing that file from being used as a template.
+
+**Impact:** If armed in production, any user with a NextAuth session (including a stale or revoked one) could bypass Firebase auth entirely and access the dashboard without valid Firebase credentials.
+
+**Fix:**
+- Created `src/app/api/auth/test-mode/route.ts` — a server-only endpoint that returns `{ enabled: boolean }`. It hard-refuses to return `true` when `NODE_ENV === 'production'`, regardless of any env var.
+- `layout.tsx` now fetches `/api/auth/test-mode` on mount instead of reading a `NEXT_PUBLIC_` env var.
+- Removed `NEXT_PUBLIC_AUTH_TEST_ENABLED` from `.env.local`.
+- The existing server-only `AUTH_TEST_ENABLED` (no `NEXT_PUBLIC_` prefix) is reused — it already gates the test-session provider in `auth.ts`.
+
+**Naming rationale:** No new variable was created. The existing `AUTH_TEST_ENABLED` is already server-only. The new `/api/auth/test-mode` endpoint adds the `NODE_ENV !== 'production'` hard guard that the client component cannot bypass.
 
 ---
 
