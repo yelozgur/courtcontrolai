@@ -45,7 +45,7 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/venues error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch venues', details: (error as Error).message },
+      { error: 'Failed to fetch venues' },
       { status: 500 }
     );
   }
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/venues error:', error);
     return NextResponse.json(
-      { error: 'Failed to create venue', details: (error as Error).message },
+      { error: 'Failed to create venue' },
       { status: 500 }
     );
   }

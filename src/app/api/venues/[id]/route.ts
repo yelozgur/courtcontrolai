@@ -136,7 +136,7 @@ export async function PATCH(
   } catch (error) {
     console.error('PATCH /api/venues/[id] error:', error);
     return NextResponse.json(
-      { error: 'Failed to update venue', details: (error as Error).message },
+      { error: 'Failed to update venue' },
       { status: 500 }
     );
   }
@@ -167,7 +167,7 @@ export async function DELETE(
   } catch (error) {
     console.error('DELETE /api/venues/[id] error:', error);
     return NextResponse.json(
-      { error: 'Failed to delete venue', details: (error as Error).message },
+      { error: 'Failed to delete venue' },
       { status: 500 }
     );
   }
