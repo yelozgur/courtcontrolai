@@ -83,58 +83,77 @@ iki kez yaşandı.
 ### CourtControlAI
 
 ```
-A1 typecheck        EXIT 0   ✓
+A1 typecheck        EXIT 0   ✓ yeniden ölçüldü 01:25
 A2 build            EXIT 0   ✓
 A3 lint             —        yapılandırılmamış
 B1 test             EXIT 0   ✓ 13/13 scheduler kontrat testi
-B2 smoke            EXIT 1   ✗ e2e/results.json'da D01 bayat
-C1 sürüm kontrolü   ✓ 29 commit, origin/fix-sel57 push edildi
-C2 çalışma ağacı    ✗ güvenlik ajanı canlı çalışıyor
-D1 yazma uçları     ✓ production'da 401 doğrulandı
-D2 okuma uçları     ✗ 6 GET auth'suz, /api/clubs anonim 200
+C1 sürüm kontrolü   ✓ push edildi
+C2 çalışma ağacı    ✗ güvenlik ajanı canlı çalışıyor (2 dosya)
+D1 yazma uçları     ✓ 401 doğrulandı
+D2 okuma uçları     ~ düzeltiliyor: teams/fixtures/results auth()=1,
+                             clubs/tournaments/standings hâlâ açık
 D3 kiracı izolasyonu ? güvenlik ajanı inceliyor
-D4 sır sızdırma     ✓ 0a8144e ile 15 catch bloğu düzeltildi
-D5 kimlik tutarlılığı ✗ firebaseUid/cuid uyuşmazlığı — kulüp sahibi 403
-E  demo yolu        ✗ Venue UI hiç render olmadı (SEL-68)
+D4 sır sızdırma     ✓ 0a8144e
+D5 kimlik tutarlılığı ✗ SEL-71'de inceleniyor
+E  demo yolu        ✓ SEL-68 TAMAMLANDI — aşağıya bak
 F1 production       ✓ 6 uç canlı
-F3 veri             ✗ tenant boş, demo ekranları boş
+F3 veri             ~ tenant artık dolu (Main Arena + 3 salon)
 F4 şifre rotasyonu  ✗ bekliyor (belgelendi)
 ```
 
-**Sonuç: demo-ready değil.** İki engel var: güvenlik (D2, D5) ve
-görsel doğrulanmamış arayüz (E). İkisi de SEL-71 ve SEL-68'de.
+### Venue UI — görsel doğrulama tamamlandı (SEL-68, commit 5e88097)
+
+Önceki iki capture login sayfasıydı. Yeniden alınan görüntüler **gerçek ekranı
+gösteriyor** ve orkestrator tarafından açılıp incelendi:
+
+- `venues-list-2026-10-08.png` — "Mekanlar", 1 şaha, Main Arena, 3 salon
+  etiketi, gün bazlı saat satırı (fri 08:00-16:00; mon 09:00-12:00, 14:00-20:00;
+  sat 14:00-20:00 …), session'lı "Club Manager".
+- `venues-detail-2026-10-08.png` — "Mekanı Düzenle", **Açılış Saatleri** sekmesi
+  çalışıyor: gün seçimi ("Özel saatler"), Pazartesi için iki ayrı aralık
+  (09:00–12:00, 14:00–20:00), "Aralık Ekle", silme kontrolü, Kaydet.
+- `venues-reorder-2026-10-08.png` — salon sıralama kontrolü.
+
+Yani üç durum korunuyor: `null` (bilgi yok → "Özel saatler"), `[]` (kapalı),
+aralık listesi. Hepsi Türkçe.
+
+**Sonuç: görsel engel kapandı.** Kalan tek engel güvenlik (D2, D5).
 
 ### geolease-src
 
 ```
-A1 typecheck        EXIT 2   ✗ 4 hata
+A1 typecheck        EXIT 0   ✓ DÜZELDİ (başlangıçta EXIT 2, 4 hata)
 A2 build            EXIT 0   ✓
-B1 test             EXIT 1   ✗ 7/25 başarısız
+B1 test             EXIT 0   ✓ DÜZELDİ (başlangıçta 7/25 fail → 23/23 pass)
 B2 smoke            yok
-C1 sürüm kontrolü   ✓ bu seansta baseline kuruldu (2e10db5)
-C2 çalışma ağacı    ✗ ajan çalışıyor
+C1 sürüm kontrolü   ✓ baseline 2e10db5
+C2 çalışma ağacı    ✗ ajan henüz commit etmedi
 D*                  değerlendirilmedi
-E  demo yolu        ✗ doğrulanmadı
+E  demo yolu        ? SEL-73'te
 F1 production       ✓ Vercel'de
 ```
 
-**Sonuç: demo-ready değil.** 4 tip hatası ve 7 kırık test var; derleme
-yeşil olduğu için bunlar müşteri karşısında çıkmaz.
+**Sonuç: teknik borç kapandı, kanıt eksik.** Ajan 4 tip hatasını ve 7 testi
+düzeltmiş; yeniden ölçümde typecheck EXIT 0, test 23/23. Ancak değişiklikler
+henüz commit edilmediği için C2 temiz değil — ve demo yolu (E) henüz
+doğrulanmadı. Commit + ekran görüntüsü bekleniyor.
 
 ### idaim-web
 
 ```
 A1 typecheck        EXIT 0   ✓
 A2 build            EXIT 0   ✓
-B1 test             yok      birim test altyapısı yok
-B2 smoke            EXIT 1   ✗ src/lib/sheets modülü yok
+B1 test             yok      birim test altyapısı yok (kabul edildi)
+B2 smoke            EXIT 0   ✓ DÜZELDİ (başlangıçta EXIT 1)
 B3 yazma kontratı   EXIT 0   ✓ sheet şeması ve enum'lar bozulmamış
 C1 sürüm kontrolü   ✓ 16 commit (remote yok)
-C2 çalışma ağacı    ✓ temiz
-E  demo yolu        ? SEL-74'te doğrulanıyor
+C2 çalışma ağacı    ✗ 3 dosya, ajan henüz commit etmedi
+E  demo yolu        ? SEL-74'te
 F1 production       ✓ 307 → /login (giriş duvarı, doğru davranış)
-F3 veri             ? canlı Google Sheet
+F3 veri             ✓ canlı sheet'ten okundu: 2 trap check, lab sonuçları
 ```
 
-**Sonuç: en sağlıklı proje**, ancak tek birim testi yok ve tek smoke
-scripti bozuk — yani mevcut tek uçtan uca koruma çalışmıyor.
+**Sonuç: üç projede de tip ve smoke borcu kapandı.** `smoke:sheets` artık
+canlı sheet'i okuyor (başlangıçta `ERR_MODULE_NOT_FOUND`). Kalan eksikler
+B1 (birim testi yok — kabul edildi, inşa etmek demo için gerekli değil),
+C2 (commit bekleniyor) ve E (ekran kanıtı).
