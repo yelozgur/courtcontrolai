@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -6,16 +7,22 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const tournamentId = searchParams.get('tournamentId');
 
     if (!tournamentId) {
-      return NextResponse.json([], { status: 200 });
+      return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 });
     }
 
     const tournament = await prisma.tournament.findUnique({
       where: { id: tournamentId },
       include: {
+        club: true,
         teams: true,
         matches: {
           where: { status: 'COMPLETED' },
@@ -25,6 +32,14 @@ export async function GET(request: Request) {
 
     if (!tournament) {
       return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
+    }
+
+    const isClubAdmin =
+      tournament.club.ownerId === session.user.id ||
+      tournament.club.adminIds.includes(session.user.id);
+
+    if (!isClubAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const playerToTeam = new Map<string, string>();

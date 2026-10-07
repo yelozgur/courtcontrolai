@@ -67,8 +67,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const { t } = useI18n();
   
-  const isTestMode = process.env.NEXT_PUBLIC_AUTH_TEST_ENABLED === 'true';
+  const [isTestMode, setIsTestMode] = React.useState(false);
   const hasNextAuthSession = sessionStatus === 'authenticated' && session?.user;
+
+  React.useEffect(() => {
+    fetch('/api/auth/test-mode')
+      .then((r) => r.json())
+      .then((d) => setIsTestMode(!!d.enabled))
+      .catch(() => {});
+  }, []);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
