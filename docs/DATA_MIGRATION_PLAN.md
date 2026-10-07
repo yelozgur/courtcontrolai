@@ -48,6 +48,34 @@ Models that exist and are already wired to an endpoint: `Club`, `Tournament`, `T
 | Tables on Neon | Done, via `prisma db push` in the Vercel build |
 | Deploy live, all endpoints answering 200 | Done |
 
+## Changing the schema
+
+Local Postgres 17 (Homebrew) plus committed SQL, applied to Neon from the Vercel build.
+Neon is unreachable from developer machines and the client's IP is dynamic, so IP
+allowlisting is not an option — this is the working arrangement.
+
+```bash
+# one-time
+brew install postgresql@17 && brew services start postgresql@17
+createdb ccai && psql -d ccai -c "CREATE SCHEMA IF NOT EXISTS schema_courtcontrolai;"
+
+# per change
+export POSTGRES_PRISMA_URL="postgresql://$(whoami)@localhost:5432/ccai"
+export POSTGRES_URL_NON_POOLING="$POSTGRES_PRISMA_URL"
+npx prisma migrate dev --name describe_the_change   # develops + applies locally
+git add prisma/migrations && git commit
+
+# then deploy — vercel.json runs: prisma generate && prisma migrate deploy && next build
+```
+
+`vercel.json` must keep running `migrate deploy`, **not** `db push`. `db push` mutates
+schema from a build with no review and no record of what it did; `migrate deploy` applies
+committed SQL that was tested locally.
+
+Neon holds three other schemas belonging to other client projects (`neon_auth`, `public`,
+`schema_geolease`, `schema_idaim`). Never `prisma migrate reset` — it resets the whole
+database, not one schema. Never `DROP SCHEMA`.
+
 ## Phase 1 — the onboarding spine
 
 **Goal:** a club can be created, a tournament built, players registered, and check-in run —
