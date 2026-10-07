@@ -30,51 +30,63 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
     }
 
-    const standings = tournament.teams.map((team) => {
-      const teamMatches = tournament.matches.filter(
-        (match) => match.player1Id === team.id || match.player2Id === team.id
-      );
-
-      let wins = 0;
-      let losses = 0;
-      let draws = 0;
-      let pointsFor = 0;
-      let pointsAgainst = 0;
-
-      for (const match of teamMatches) {
-        const isPlayer1 = match.player1Id === team.id;
-        const teamScore = isPlayer1 ? match.score1 : match.score2;
-        const opponentScore = isPlayer1 ? match.score2 : match.score1;
-
-        pointsFor += teamScore;
-        pointsAgainst += opponentScore;
-
-        if (teamScore > opponentScore) {
-          wins++;
-        } else if (teamScore < opponentScore) {
-          losses++;
-        } else {
-          draws++;
-        }
+    const playerToTeam = new Map<string, string>();
+    for (const t of tournament.teams) {
+      for (const pid of t.playerIds) {
+        playerToTeam.set(pid, t.id);
       }
+    }
 
-      const points = wins * 2 + draws * 1;
-      const matchesPlayed = wins + losses + draws;
+    const standings = tournament.teams.map(
+      (team: { id: string; name: string; clubId: string; playerIds: string[] }) => {
+        const teamMatches = tournament.matches.filter((match) => {
+          const t1 = match.player1Id ? playerToTeam.get(match.player1Id) : undefined;
+          const t2 = match.player2Id ? playerToTeam.get(match.player2Id) : undefined;
+          return t1 === team.id || t2 === team.id;
+        });
 
-      return {
-        teamId: team.id,
-        teamName: team.name,
-        clubId: team.clubId,
-        matchesPlayed,
-        wins,
-        losses,
-        draws,
-        pointsFor,
-        pointsAgainst,
-        pointsDifference: pointsFor - pointsAgainst,
-        points,
-      };
-    });
+        let wins = 0;
+        let losses = 0;
+        let draws = 0;
+        let pointsFor = 0;
+        let pointsAgainst = 0;
+
+        for (const match of teamMatches) {
+          const team1Id = match.player1Id ? playerToTeam.get(match.player1Id) : undefined;
+          const isPlayer1 = team1Id === team.id;
+          const teamScore = isPlayer1 ? match.score1 : match.score2;
+          const opponentScore = isPlayer1 ? match.score2 : match.score1;
+
+          pointsFor += teamScore;
+          pointsAgainst += opponentScore;
+
+          if (teamScore > opponentScore) {
+            wins++;
+          } else if (teamScore < opponentScore) {
+            losses++;
+          } else {
+            draws++;
+          }
+        }
+
+        const points = wins * 2 + draws * 1;
+        const matchesPlayed = wins + losses + draws;
+
+        return {
+          teamId: team.id,
+          teamName: team.name,
+          clubId: team.clubId,
+          matchesPlayed,
+          wins,
+          losses,
+          draws,
+          pointsFor,
+          pointsAgainst,
+          pointsDifference: pointsFor - pointsAgainst,
+          points,
+        };
+      }
+    );
 
     standings.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
