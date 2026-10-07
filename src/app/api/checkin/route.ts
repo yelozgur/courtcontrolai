@@ -62,7 +62,14 @@ export async function POST(request: Request) {
 
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
-      select: { id: true },
+      select: {
+        id: true,
+        tournament: {
+          select: {
+            club: { select: { ownerId: true, adminIds: true } },
+          },
+        },
+      },
     });
 
     if (!registration) {
@@ -70,6 +77,12 @@ export async function POST(request: Request) {
         { error: 'Registration not found' },
         { status: 404 }
       );
+    }
+
+    const userId = session.user.id;
+    const club = registration.tournament.club;
+    if (club.ownerId !== userId && !club.adminIds.includes(userId)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const existing = await prisma.checkIn.findFirst({

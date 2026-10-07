@@ -79,11 +79,11 @@ export async function POST(request: NextRequest) {
       message: messageResult,
       timestamp: new Date().toISOString(),
     });
-  } catch (e: any) {
+  } catch (e) {
+    console.error('[telegram/test] error:', e instanceof Error ? e.message : 'unknown');
     return NextResponse.json({
       ok: false,
       error: 'Internal error',
-      message: e.message,
     }, { status: 500 });
   }
 }

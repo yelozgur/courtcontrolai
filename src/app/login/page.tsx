@@ -49,8 +49,8 @@ export default function LoginPage() {
           const isAdminEmail = session.user.email?.toLowerCase() === 'admin@deneme.com';
           setIsAdminUser(isAdminEmail);
 
-          if (db) {
-            const userRef = doc(db, 'users', session.user.firebaseUid || session.user.id);
+          if (db && session.user.firebaseUid) {
+            const userRef = doc(db, 'users', session.user.firebaseUid);
             const userSnap = await getDoc(userRef);
 
             if (!userSnap.exists()) {

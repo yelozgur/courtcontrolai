@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
     position: number;
     player1Id: string | null;
     player2Id: string | null;
+    category: { matchMinutes: number } | null;
   }> = [];
 
   try {
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
     matches = await prisma.match.findMany({
       where: { tournamentId },
       orderBy: [{ round: 'asc' }, { position: 'asc' }],
-      select: { id: true, round: true, position: true, player1Id: true, player2Id: true },
+      select: { id: true, round: true, position: true, player1Id: true, player2Id: true, category: { select: { matchMinutes: true } } },
     });
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
@@ -209,7 +210,7 @@ export async function POST(req: NextRequest) {
       if (m.player2Id) playerIds.push(m.player2Id);
       return {
         match_id: m.id,
-        duration_minutes: 60, // Phase 1: per-round duration; default 60 until then
+        duration_minutes: m.category?.matchMinutes ?? 60,
         player_ids: playerIds,
       };
     }),
@@ -239,9 +240,9 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const errBody = await res.text();
+      await res.text();
       return NextResponse.json(
-        { error: 'scheduler_failed', status: res.status, detail: errBody.slice(0, 300) },
+        { error: 'scheduler_failed' },
         { status: 502 }
       );
     }
@@ -251,15 +252,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ...data,
       source: 'scheduler',
-      scheduler_url: SCHEDULER_URL,
     });
   } catch (e) {
+    console.error('[scheduler/solve] scheduler unreachable:', (e as Error).message);
     return NextResponse.json(
       {
         error: 'scheduler_unreachable',
-        scheduler_url: SCHEDULER_URL,
-        detail: (e as Error).message,
-        hint: 'Make sure OR-Tools scheduler is running: cd services/scheduler && uv run uvicorn app.main:app --port 8500',
       },
       { status: 503 }
     );
