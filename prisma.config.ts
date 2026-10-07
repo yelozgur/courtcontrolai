@@ -6,4 +6,7 @@ export default defineConfig({
   datasource: {
     url: env('POSTGRES_URL_NON_POOLING'),
   },
+  migrations: {
+    seed: 'node prisma/seed.mjs',
+  },
 })
