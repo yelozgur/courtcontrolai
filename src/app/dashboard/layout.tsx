@@ -37,6 +37,7 @@ import { signOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 import { LocaleSwitcher } from '@/i18n/LocaleSwitcher';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useSession } from 'next-auth/react';
 import {
   Sheet,
   SheetContent,
@@ -59,11 +60,15 @@ import { Input } from '@/components/ui/input';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading: authLoading, authUnavailable } = useUser();
+  const { data: session, status: sessionStatus } = useSession();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const { t } = useI18n();
+  
+  const isTestMode = process.env.NEXT_PUBLIC_AUTH_TEST_ENABLED === 'true';
+  const hasNextAuthSession = sessionStatus === 'authenticated' && session?.user;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -94,12 +99,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // React anti-pattern that throws "Cannot update a component while rendering a
   // different component".
   React.useEffect(() => {
+    if (sessionStatus === 'loading') return;
+    if (isTestMode && hasNextAuthSession) {
+      return;
+    }
     if (!authUnavailable && !authLoading && !user) {
       router.replace('/login');
     }
-  }, [authUnavailable, authLoading, user, router]);
+  }, [authUnavailable, authLoading, user, router, isTestMode, hasNextAuthSession, sessionStatus]);
 
-  if (authUnavailable && !user) {
+  if (authUnavailable && !user && !(isTestMode && hasNextAuthSession)) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-4 px-6 text-center">
         <ServerCrash className="h-10 w-10 text-destructive" />
@@ -111,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (authLoading || (user && profileLoading)) {
+  if ((authLoading || (user && profileLoading)) && !(isTestMode && hasNextAuthSession)) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -120,7 +129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!user) {
+  if (!user && !(isTestMode && hasNextAuthSession)) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
