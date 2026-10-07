@@ -48,11 +48,17 @@ export async function POST(request: Request) {
         teams: true,
         matches: true,
         bracket: true,
+        club: { select: { ownerId: true, adminIds: true } },
       },
     });
 
     if (!tournament) {
       return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
+    }
+
+    const userId = session.user.id;
+    if (tournament.club.ownerId !== userId && !tournament.club.adminIds.includes(userId)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const teams = tournament.teams;
@@ -92,7 +98,6 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error: 'Scheduler service returned an error',
-            details: errorText,
           },
           { status: 502 }
         );

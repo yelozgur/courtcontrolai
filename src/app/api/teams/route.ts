@@ -63,10 +63,8 @@ export async function POST(request: Request) {
     }
 
     const isClubAdmin =
-      tournament.club.ownerId === session.user.firebaseUid ||
       tournament.club.ownerId === session.user.id ||
-      tournament.club.adminIds.includes(session.user.firebaseUid || '') ||
-      tournament.club.adminIds.includes(session.user.id || '');
+      tournament.club.adminIds.includes(session.user.id);
 
     if (!isClubAdmin) {
       return NextResponse.json(

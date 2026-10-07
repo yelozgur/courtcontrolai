@@ -27,7 +27,7 @@ export async function GET(
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const userId = session.user.firebaseUid || session.user.id;
+  const userId = session.user.id;
 
   const { id } = await params;
   const venue = await getVenueWithClub(id);
@@ -50,7 +50,7 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const userId = session.user.firebaseUid || session.user.id;
+  const userId = session.user.id;
 
   const { id } = await params;
   const venue = await getVenueWithClub(id);
@@ -150,7 +150,7 @@ export async function DELETE(
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const userId = session.user.firebaseUid || session.user.id;
+  const userId = session.user.id;
 
   const { id } = await params;
   const venue = await getVenueWithClub(id);

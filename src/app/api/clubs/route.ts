@@ -57,8 +57,8 @@ export async function POST(request: Request) {
       data: {
         name,
         slug,
-        ownerId: session.user.firebaseUid || session.user.id,
-        adminIds: [session.user.firebaseUid || session.user.id],
+        ownerId: session.user.id,
+        adminIds: [session.user.id],
         description,
         logoUrl,
       },
