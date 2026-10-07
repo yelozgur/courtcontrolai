@@ -10,10 +10,7 @@ export async function GET(request: Request) {
     const tournamentId = searchParams.get('tournamentId');
 
     if (!tournamentId) {
-      return NextResponse.json(
-        { error: 'Missing required query parameter: tournamentId' },
-        { status: 400 }
-      );
+      return NextResponse.json([], { status: 200 });
     }
 
     const tournament = await prisma.tournament.findUnique({

@@ -10,15 +10,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const tournamentId = searchParams.get('tournamentId');
 
-    if (!tournamentId) {
-      return NextResponse.json(
-        { error: 'Missing required query parameter: tournamentId' },
-        { status: 400 }
-      );
-    }
-
     const teams = await prisma.team.findMany({
-      where: { tournamentId },
+      where: tournamentId ? { tournamentId } : undefined,
       orderBy: { createdAt: 'asc' },
       include: {
         club: {

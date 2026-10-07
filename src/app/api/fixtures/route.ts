@@ -5,6 +5,26 @@ import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const tournamentId = searchParams.get('tournamentId');
+
+    const matches = await prisma.match.findMany({
+      where: tournamentId ? { tournamentId } : undefined,
+      orderBy: [{ round: 'asc' }, { position: 'asc' }],
+    });
+
+    return NextResponse.json(matches, { status: 200 });
+  } catch (error) {
+    console.error('GET /api/fixtures error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch fixtures', details: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
