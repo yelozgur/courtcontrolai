@@ -8,16 +8,20 @@ The orchestrator opened every PNG in this directory and read the rendered conten
 |---|---|---|
 | `home-2026-10-07.png` | Landing page | Yes |
 | `tournaments-public-2026-10-07.png` | Public tournament list | Yes |
-| `venues-list-2026-10-07.png` | **Login page** | **No** |
-| `venues-detail-2026-10-07.png` | **Login page** | **No** |
+| `venues-list-2026-10-07.png` | **Login page** (stale, pre-fix) | **No** |
+| `venues-detail-2026-10-07.png` | **Login page** (stale, pre-fix) | **No** |
+| `venues-list-2026-10-08.png` | Venue list — "Main Arena" with 3 courts + openHours | Yes |
+| `venues-detail-2026-10-08.png` | Açılış Saatleri editor — Pazartesi 09:00–12:00, 14:00–20:00 | Yes |
+| `venues-reorder-2026-10-08.png` | Court reorder — Court B moved to #1, Court A to #2 | Yes |
 
-The two `venues-*` captures were taken without an authenticated session, so the
-middleware redirected to `/login` and the venue screens never rendered. An earlier
-report described `venues-list` as showing the venue list page. That was wrong: it
-is byte-for-byte the same login screen as `venues-detail`.
+The two `venues-*-2026-10-07.png` captures were taken without an authenticated session,
+so the middleware redirected to `/login` and the venue screens never rendered. An earlier
+report described `venues-list` as showing the venue list page. That was wrong: it is
+byte-for-byte the same login screen as `venues-detail`. They are kept as the record of
+what went wrong.
 
-**Consequence:** the Venue UI in PR #2 has no visual verification. The openHours
-editor, court reordering and the venue-delete cascade warning are unproven.
+The `venues-*-2026-10-08.png` captures were taken with an authenticated test session
+(`AUTH_TEST_ENABLED=true` locally) and show the Venue UI rendering correctly.
 
 ## How to capture an authenticated screen
 
