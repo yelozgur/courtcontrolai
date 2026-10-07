@@ -28,8 +28,10 @@ from pydantic import BaseModel, Field, field_validator
 from app.solver import (
     CourtInput,
     MatchInput,
+    PlayerInput,
     ScheduleRequest,
     ScheduleResult,
+    VenueInput,
     result_to_dict,
     solve,
 )
@@ -46,10 +48,31 @@ SERVICE_VERSION = "0.1.0"
 # ---- Pydantic request/response models ----
 
 
+class PlayerPayload(BaseModel):
+    """A player with stated unavailability.
+
+    Absolute ISO datetimes. A player who cannot play Tuesday evening cannot be
+    scheduled into Tuesday evening — this is a feasibility constraint, not a
+    preference the optimiser may trade away.
+    """
+
+    player_id: str
+    unavailable: list[dict[str, str]] = Field(default_factory=list)
+
+
 class MatchPayload(BaseModel):
     match_id: str
     duration_minutes: int = Field(gt=0, le=240)
     player_ids: list[str] = Field(default_factory=list)
+
+    # Referee's manual grid edit — must survive every later re-solve.
+    locked_court_id: str | None = None
+    locked_start_time_iso: str | None = None
+    locked_by: str | None = None
+
+    # Tournament-day attendance outcome.
+    skipped: bool = False
+    skip_reason: str | None = None
 
     @field_validator("player_ids")
     @classmethod
@@ -60,6 +83,19 @@ class MatchPayload(BaseModel):
 class CourtPayload(BaseModel):
     court_id: str
     name: str = ""
+    venue_id: str | None = None
+
+
+class VenuePayload(BaseModel):
+    """A venue owning courts, with opening hours.
+
+    An empty range list means closed that weekday; a missing weekday key means
+    no information. Those are different states.
+    """
+
+    venue_id: str
+    courts: list[str] = Field(default_factory=list)
+    open_hours: dict[str, list[list[str]]] = Field(default_factory=dict)
 
 
 class SchedulePayload(BaseModel):
@@ -68,6 +104,11 @@ class SchedulePayload(BaseModel):
     matches: list[MatchPayload]
     courts: list[CourtPayload]
     margin_minutes: int = Field(default=30, ge=0, le=240)
+    players: list[PlayerPayload] = Field(default_factory=list)
+    venues: list[VenuePayload] = Field(default_factory=list)
+    end_time_iso: str | None = None
+    revision: int = Field(default=1, ge=1)
+    objectives: dict[str, bool] = Field(default_factory=dict)
 
 
 # ---- FastAPI app ----
@@ -121,6 +162,11 @@ async def schedule(payload: SchedulePayload) -> dict[str, Any]:
             matches=[MatchInput(**m.model_dump()) for m in payload.matches],
             courts=[CourtInput(**c.model_dump()) for c in payload.courts],
             margin_minutes=payload.margin_minutes,
+            players=[PlayerInput(**p.model_dump()) for p in payload.players],
+            venues=[VenueInput(**v.model_dump()) for v in payload.venues],
+            end_time_iso=payload.end_time_iso,
+            revision=payload.revision,
+            objectives=payload.objectives,
         )
         result: ScheduleResult = solve(req)
         return result_to_dict(result)

@@ -8,9 +8,12 @@ The first test asserts optimality against a hand-computed lower bound rather
 than just "it returned something".
 """
 
+import dataclasses
 import datetime as dt
 
-from app.solver import CourtInput, MatchInput, ScheduleRequest, solve
+replace = dataclasses.replace
+
+from app.solver import CourtInput, MatchInput, PlayerInput, ScheduleRequest, solve
 
 SLOT = 5
 MARGIN = 30
@@ -126,3 +129,132 @@ def test_every_match_is_assigned_exactly_once():
     result = solve(req)
     assert {a.match_id for a in result.assignments} == {m.match_id for m in req.matches}
     assert len(result.assignments) == len(req.matches)
+
+
+# ---------------------------------------------------------------------------
+# Repeat solves — the referee workflow
+#
+# From docs/SCHEDULING_MODEL.md: after registration closes we solve, a referee
+# edits the grid by hand, and then we re-solve when something changes. A re-solve
+# that silently moves a locked match destroys the referee's work, and nobody
+# notices until tournament day.
+# ---------------------------------------------------------------------------
+
+
+def test_locked_match_keeps_its_court_and_slot_across_a_resolve():
+    req = _request(
+        matches=[
+            {"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"]},
+            {"match_id": "m2", "duration_minutes": 60, "player_ids": ["p3", "p4"]},
+            {"match_id": "m3", "duration_minutes": 60, "player_ids": ["p5", "p6"]},
+        ],
+        courts=[{"court_id": "c1"}, {"court_id": "c2"}],
+    )
+    # First solve: referee pins m2 to court 2 at 09:00.
+    req.matches[1].locked_court_id = "c2"
+    req.matches[1].locked_start_time_iso = START
+    req.matches[1].locked_by = "referee:ahmet"
+    req.revision = 1
+
+    first = solve(req)
+    assert first.status == "OPTIMAL"
+    locked = {a.match_id: a for a in first.assignments}["m2"]
+    assert locked.court_id == "c2"
+    assert locked.start_time_iso == START
+    assert locked.locked is True
+
+    # Re-solve with different input: m4 joins, m3 is gone. The lock must hold.
+    req.revision = 2
+    req.matches = [
+        replace(req.matches[0]),
+        replace(req.matches[1]),              # still locked
+        MatchInput(match_id="m4", duration_minutes=60, player_ids=["p5", "p6", "p7"]),
+    ]
+
+    second = solve(req)
+    assert second.status == "OPTIMAL"
+    assert second.revision == 2
+    again = {a.match_id: a for a in second.assignments}["m2"]
+    assert again.court_id == "c2", "re-solve moved a referee-locked match"
+    assert again.start_time_iso == START, "re-solve moved a referee-locked match"
+
+
+def test_lock_to_an_unknown_court_is_reported_not_silently_dropped():
+    req = _request(
+        matches=[{"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"]}],
+        courts=[{"court_id": "c1"}],
+    )
+    req.matches[0].locked_court_id = "c99"   # court the venue no longer has
+    req.matches[0].locked_start_time_iso = START
+
+    result = solve(req)
+    assert result.status == "INFEASIBLE"
+    assert result.conflicting_locks == ["m1"], "the referee must be told which lock broke"
+
+
+def test_skipped_match_is_dropped_from_the_model_but_still_reported():
+    req = _request(
+        matches=[
+            {"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"]},
+            {"match_id": "m2", "duration_minutes": 60, "player_ids": ["p1", "p3"],
+             "skipped": True, "skip_reason": "no_show"},
+            {"match_id": "m3", "duration_minutes": 60, "player_ids": ["p4", "p5"]},
+        ],
+        courts=[{"court_id": "c1"}, {"court_id": "c2"}],
+    )
+    result = solve(req)
+
+    assert result.status == "OPTIMAL"
+    assert result.skipped_matches == ["m2"]
+    reported = {a.match_id: a for a in result.assignments}
+    assert reported["m2"].skipped is True
+    assert reported["m2"].skip_reason == "no_show"
+    assert reported["m2"].court_id == ""
+    # It must not consume a court slot.
+    assert reported["m1"].court_id and reported["m3"].court_id
+
+
+def test_skipping_relaxes_rest_for_the_remaining_matches():
+    """m2 is skipped, so p1's only other match no longer needs rest spacing."""
+    req = _request(
+        matches=[
+            {"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"]},
+            {"match_id": "m2", "duration_minutes": 60, "player_ids": ["p1", "p3"],
+             "skipped": True, "skip_reason": "withdrawn"},
+        ],
+        courts=[{"court_id": "c1"}],
+    )
+    result = solve(req)
+    assert result.status == "OPTIMAL"
+    assert result.makespan_minutes == 60, "a skipped match still forced rest spacing"
+
+
+def test_player_unavailability_blocks_that_window():
+    req = _request(
+        matches=[
+            {"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"]},
+            {"match_id": "m2", "duration_minutes": 60, "player_ids": ["p3", "p4"]},
+        ],
+        courts=[{"court_id": "c1"}],
+    )
+    # p1 cannot play for the whole window -> m1 has nowhere legal to go.
+    req.players = [
+        PlayerInput(
+            player_id="p1",
+            unavailable=[{"from": START, "to": "2026-10-13T09:00:00+03:00"}],
+        )
+    ]
+    result = solve(req)
+    assert result.status == "INFEASIBLE", "an unavailable player was scheduled anyway"
+
+    # A partial window still leaves room after it.
+    req.players = [
+        PlayerInput(
+            player_id="p1",
+            unavailable=[{"from": START, "to": "2026-10-12T10:00:00+03:00"}],
+        )
+    ]
+    partial = solve(req)
+    assert partial.status == "OPTIMAL"
+    m1 = {a.match_id: a for a in partial.assignments}["m1"]
+    assert m1.start_time_iso >= "2026-10-12T10:00:00+03:00"
