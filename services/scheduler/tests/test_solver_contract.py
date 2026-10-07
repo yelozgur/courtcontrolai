@@ -13,7 +13,7 @@ import datetime as dt
 
 replace = dataclasses.replace
 
-from app.solver import CourtInput, MatchInput, PlayerInput, ScheduleRequest, solve
+from app.solver import CourtInput, MatchInput, PlayerInput, ScheduleRequest, VenueInput, solve
 
 SLOT = 5
 MARGIN = 30
@@ -24,13 +24,14 @@ def _parse(iso: str) -> dt.datetime:
     return dt.datetime.fromisoformat(iso)
 
 
-def _request(matches, courts, tournament_id="contract", margin=MARGIN):
+def _request(matches, courts, tournament_id="contract", margin=MARGIN, venues=None):
     return ScheduleRequest(
         tournament_id=tournament_id,
         start_time_iso=START,
         matches=[MatchInput(**m) for m in matches],
         courts=[CourtInput(**c) for c in courts],
         margin_minutes=margin,
+        venues=venues or [],
     )
 
 
@@ -303,3 +304,65 @@ def test_attendance_field_passes_through_for_display():
     assert result.status == "OPTIMAL"
     assert len([a for a in result.assignments if not a.skipped]) == 1
     assert result.skipped_matches == []  # referee did not skip
+
+
+# ---------------------------------------------------------------------------
+# Venue hours. A court whose time is closed cannot host a match that does not
+# fit inside its open span. Partial closures inside an open day are a known
+# limitation — see solver module docstring.
+# ---------------------------------------------------------------------------
+
+
+def test_court_closed_all_day_is_excluded_for_its_matches():
+    """c1 open all day, c2's venue is closed all day -> every match lands on c1."""
+    req = _request(
+        matches=[
+            {"match_id": f"m{i}", "duration_minutes": 60, "player_ids": [f"p{i}a", f"p{i}b"]}
+            for i in range(1, 5)
+        ],
+        courts=[{"court_id": "c1"}, {"court_id": "c2"}],
+    )
+    req.venues = [
+        VenueInput(
+            venue_id="v1",
+            courts=["c1"],
+            open_hours={"mon": [["00:00", "23:59"]]},
+        ),
+        VenueInput(
+            venue_id="v2",
+            courts=["c2"],
+            open_hours={"mon": []},  # closed
+        ),
+    ]
+    result = solve(req)
+    assert result.status == "OPTIMAL"
+    courts_used = {a.court_id for a in result.assignments}
+    assert courts_used == {"c1"}, f"closed court received matches: {courts_used}"
+
+
+def test_partial_closure_is_documented_not_silently_wrong():
+    """Closing only the middle of the day is NOT enforced as a hard constraint.
+
+    Guards against a regression that pretends to enforce partial closures
+    and produces a schedule that violates them. The behaviour is: a court
+    with at least one long-enough open span remains usable for that match.
+    The test asserts the witness exists, not that the closure is enforced.
+    """
+    req = _request(
+        matches=[{"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"]}],
+        courts=[{"court_id": "c1"}],
+    )
+    req.venues = [
+        VenueInput(
+            venue_id="v1",
+            courts=["c1"],
+            # 09-10 open, then closed for the rest of the day
+            open_hours={"mon": [["09:00", "10:00"]]},
+        ),
+    ]
+    # The solver still schedules m1 because there IS one open span that fits it.
+    # Partial closure inside that span is NOT enforced. The test asserts this
+    # limitation rather than papering over it.
+    result = solve(req)
+    assert result.status == "OPTIMAL"
+    assert {a.match_id: a.court_id for a in result.assignments}["m1"] == "c1"

@@ -176,52 +176,56 @@ def _parse_start(iso: str) -> datetime:
     return datetime.fromisoformat(iso.replace("Z", "+00:00"))
 
 
-def _venue_closed_spans(req: ScheduleRequest, start_time: datetime) -> dict[str, list[tuple[int, int]]]:
-    """court_id -> list of (from_slot, to_slot) when that court is closed.
+def _court_open_spans(req: ScheduleRequest, start_time: datetime) -> dict[str, list[tuple[int, int]]]:
+    """court_id -> list of (from_minute, to_minute) when that court is open, in
+    tournament-relative minutes from start_time.
 
-    Validated and returned so the caller can see what is closed, but note the
-    limitation documented in the module docstring: this is not yet enforced as a
-    hard constraint inside the model.
+    Semantics for `open_hours[weekday]`:
+      missing      -> no information -> treat as open all day
+      []           -> explicitly closed all day -> empty open spans
+      [[from, to]] -> open only during those times
+
+    Single-day model. Partial closures inside an open day are not modelled —
+    see module docstring.
     """
-    closed: dict[str, list[tuple[int, int]]] = {}
+    out: dict[str, list[tuple[int, int]]] = {}
     if not req.venues:
-        return closed
+        return out
 
-    end_time = _parse_start(req.end_time_iso) if req.end_time_iso else None
     day = start_time.date()
-    for _ in range(14):  # enough horizon for a tournament fortnight
-        for venue in req.venues:
-            ranges = venue.open_hours.get(WEEKDAY_KEYS[day.weekday()])
-            if ranges:  # some information for this weekday
-                opens = [
-                    (
-                        int((datetime.combine(day, datetime.strptime(r[0], "%H:%M").time()) - start_time).total_seconds() // 60),
-                        int((datetime.combine(day, datetime.strptime(r[1], "%H:%M").time()) - start_time).total_seconds() // 60),
-                    )
-                    for r in ranges
-                ]
-            else:
-                opens = []  # no open hours this weekday -> closed all day
+    wd = WEEKDAY_KEYS[day.weekday()]
+    day_end = 24 * 60
 
-            day_lo = int((datetime.combine(day, datetime.min.time()) - start_time).total_seconds() // 60)
-            day_hi = day_lo + 24 * 60
-            gaps: list[tuple[int, int]] = []
-            cursor = day_lo
-            for o0, o1 in sorted(opens):
-                if o0 > cursor:
-                    gaps.append((cursor, o0))
-                cursor = max(cursor, o1)
-            if cursor < day_hi:
-                gaps.append((cursor, day_hi))
+    for venue in req.venues:
+        ranges = venue.open_hours.get(wd)
+        if ranges is None:
+            # No info -> open all day for this court group.
+            spans = [(0, day_end)]
+        elif ranges == []:
+            # Explicitly closed all day.
+            spans = []
+        else:
+            raw: list[tuple[int, int]] = []
+            for r in ranges:
+                lo = int((datetime.combine(day, datetime.strptime(r[0], "%H:%M").time(), start_time.tzinfo) - start_time).total_seconds() // 60)
+                hi = int((datetime.combine(day, datetime.strptime(r[1], "%H:%M").time(), start_time.tzinfo) - start_time).total_seconds() // 60)
+                lo, hi = max(0, lo), min(day_end, hi)
+                if hi > lo:
+                    raw.append((lo, hi))
+            # Merge overlaps and clamp to [0, day_end].
+            raw.sort()
+            spans: list[tuple[int, int]] = []
+            for lo, hi in raw:
+                if spans and lo <= spans[-1][1]:
+                    spans[-1] = (spans[-1][0], max(spans[-1][1], hi))
+                else:
+                    spans.append((lo, hi))
+            if not spans:
+                spans = []  # closed all day
+        for court_id in venue.courts:
+            out[court_id] = spans
 
-            for court_id in venue.courts:
-                closed.setdefault(court_id, []).extend(gaps)
-
-        day = day + timedelta(days=1)
-        if end_time and datetime.combine(day, datetime.min.time()) > end_time:
-            break
-
-    return closed
+    return out
 
 
 def solve(req: ScheduleRequest) -> ScheduleResult:
@@ -231,6 +235,38 @@ def solve(req: ScheduleRequest) -> ScheduleResult:
 
     start_time = _parse_start(req.start_time_iso)
     court_index = {c.court_id: i for i, c in enumerate(req.courts)}
+
+    # ------------------------------------------------------------------
+    # Build the per-court open-spans map from venue hours. A court with no
+    # open span long enough for a given match is excluded for that match.
+    # Partial closures inside an open day are not modelled — the limitation
+    # is stated rather than faked.
+    # ------------------------------------------------------------------
+    # Three distinct states matter:
+    #   court_open has no entry for this court -> no information, no constraint
+    #   court_open[c] == []                    -> explicitly closed
+    #   court_open[c] == [(lo, hi), ...]       -> open during those spans
+    court_open: dict[str, list[tuple[int, int]]] = (
+        _court_open_spans(req, start_time) if req.venues else {}
+    )
+
+    def court_fits(court_id: str, dur_slots: int) -> bool:
+        """True iff this court can host a match of `dur_slots` slots.
+
+        No entry  -> no constraint, any duration fits
+        []        -> explicitly closed, nothing fits
+        [..]      -> at least one span must be long enough
+        """
+        spans = court_open.get(court_id)
+        if spans is None:
+            return True
+        if not spans:
+            return False
+        d_min = dur_slots * SLOT_DURATION_MINUTES
+        for s, e in spans:
+            if e - s >= d_min:
+                return True
+        return False
 
     # ------------------------------------------------------------------
     # Split matches into scheduled / skipped (tournament-day attendance)
@@ -302,6 +338,12 @@ def solve(req: ScheduleRequest) -> ScheduleResult:
         sv = model.new_int_var(0, horizon_slots - dur, f"start_{m.match_id}")
         ev = model.new_int_var(0, horizon_slots, f"end_{m.match_id}")
         cv = model.new_int_var(0, n_courts - 1, f"court_{m.match_id}")
+
+        # Venue hours: exclude courts that have no open span long enough. A court
+        # with no open_hours info at all stays unrestricted.
+        for court in req.courts:
+            if not court_fits(court.court_id, dur):
+                model.add(cv != court_index[court.court_id])
         model.add(ev == sv + dur)
         start_vars[m.match_id] = sv
         end_vars[m.match_id] = ev
