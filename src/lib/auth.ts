@@ -72,6 +72,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google' && user.email) {
+        // Firebase bridge is best-effort. Vercel doesn't carry FIREBASE_ADMIN_*,
+        // so the bridge must degrade to a no-op rather than blocking sign-in.
         try {
           const adminAuth = getFirebaseAdmin();
           try {
@@ -89,8 +91,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           }
         } catch (error) {
-          console.error('Firebase bridge failed:', error);
-          return false;
+          console.warn(
+            '[auth] Firebase bridge unavailable, sign-in continues without Firebase UID sync:',
+            error instanceof Error ? error.message : error
+          );
         }
       }
       return true;
@@ -105,12 +109,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.provider = account.provider;
       }
       if (token.email && token.provider === "google") {
+        // Same graceful-degradation contract as signIn: missing FIREBASE_ADMIN_*
+        // must not poison every Google session.
         try {
           const adminAuth = getFirebaseAdmin();
           const firebaseUser = await adminAuth.getUserByEmail(token.email as string);
           token.firebaseUid = firebaseUser.uid;
         } catch (error) {
-          console.error('Failed to get Firebase UID for JWT:', error);
+          if (!token.firebaseUid) {
+            console.warn(
+              '[auth] Firebase UID sync skipped (admin SDK unavailable):',
+              error instanceof Error ? error.message : error
+            );
+          }
         }
       }
       return token;

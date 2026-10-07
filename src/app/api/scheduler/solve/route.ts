@@ -1,11 +1,15 @@
 /**
- * /api/scheduler/solve — OR-Tools CP-SAT solver bridge
+ * /api/scheduler/solve — OR-Tools CP-SAT solver bridge (Prisma + NextAuth)
  *
- * Reads a tournament's matches + courts from Firestore, calls the standalone
- * scheduler service (default: http://127.0.0.1:8500/schedule, override with
+ * Reads a tournament's matches + teams from Neon (via Prisma), authenticates
+ * the caller against the tournament's club, calls the standalone scheduler
+ * service (default: http://127.0.0.1:8500/schedule, override with
  * SCHEDULER_URL env), and returns optimal court+time assignments.
  *
- * This is a server-side route. Auth required: club owner or admin.
+ * Phase 0/1 migration: this route used to read from Firestore via the
+ * client SDK. ADR-001 retires Firestore, so reads now go through Prisma.
+ * The Court model is still pending Phase 1; for now the route synthesises
+ * two courts if `tournament.settings.courts` is empty.
  *
  * POST /api/scheduler/solve
  * body: { tournamentId: string, marginMinutes?: number }
@@ -13,9 +17,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { firebaseConfig } from '@/firebase/config';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,33 +41,26 @@ interface SchedulerResponse {
   solve_time_seconds: number;
 }
 
-// Lazy-init server-side Firebase client (the @/firebase/client SDK is browser-only;
-// we need a server-side admin path. For now, use the same config — in prod this
-// route should switch to firebase-admin SDK for proper auth.)
-function getDb() {
-  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-  return getFirestore(app);
+type AuthorisationError = { error: string; message: string; status: 401 | 403 | 404 | 503 };
+
+function unauthorised(message: string): NextResponse<AuthorisationError> {
+  return NextResponse.json({ error: 'unauthorised', message, status: 401 }, { status: 401 });
 }
 
-/**
- * Known Firebase initialisation failures. These are CONFIGURATION problems
- * (missing/placeholder projectId or apiKey), not bugs in the request, so they
- * must not surface as a 500 with the raw SDK message attached.
- */
-const FIREBASE_CONFIG_ERROR_PATTERNS = [
-  /not provided in firebase\.initializeApp/i,
-  /invalid-api-key/i,
-  /api key not valid/i,
-  /invalid project id/i,
-  /permission-denied/i,
-];
+function forbidden(message: string): NextResponse<AuthorisationError> {
+  return NextResponse.json({ error: 'forbidden', message, status: 403 }, { status: 403 });
+}
 
-function isFirebaseConfigError(message: string): boolean {
-  return FIREBASE_CONFIG_ERROR_PATTERNS.some((re) => re.test(message));
+function notFound(message: string): NextResponse<AuthorisationError> {
+  return NextResponse.json({ error: 'not_found', message, status: 404 }, { status: 404 });
+}
+
+function serviceUnavailable(error: string, message: string): NextResponse<AuthorisationError> {
+  return NextResponse.json({ error, message, status: 503 }, { status: 503 });
 }
 
 export async function POST(req: NextRequest) {
-  // Malformed / empty body is a client error. D05: POST {} must be 400, not 500.
+  // ---- Body parsing ---------------------------------------------------------
   let body: unknown;
   try {
     body = await req.json();
@@ -87,79 +83,80 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Pre-flight: an incomplete config never reaches the SDK at all.
-  if (!firebaseConfig.projectId || !firebaseConfig.apiKey) {
-    // eslint-disable-next-line no-console
-    console.error('[scheduler] Firebase config incomplete: projectId/apiKey missing');
-    return NextResponse.json(
-      {
-        error: 'firebase_not_configured',
-        message: 'Veritabani yapilandirmasi eksik. Firestore yapilandirmasini kontrol edin.',
-      },
-      { status: 503 }
-    );
+  // ---- Auth ----------------------------------------------------------------
+  const session = await auth();
+  if (!session?.user?.id) {
+    return unauthorised('Oturum açmanız gerekiyor.');
   }
+  const userId = session.user.id;
 
-  // 1. Read tournament + subcollections (matches, courts) from Firestore
-  let tournamentDoc;
-  let matches: Array<{ id: string; data: Record<string, unknown> }> = [];
-  let courts: Array<{ id: string; data: Record<string, unknown> }> = [];
+  // ---- Read tournament + matches from Prisma -------------------------------
+  let tournament: {
+    id: string;
+    clubId: string;
+    startsAt: Date;
+    settings: unknown;
+    club: { ownerId: string; adminIds: string[] };
+  } | null;
+  let matches: Array<{
+    id: string;
+    round: number;
+    position: number;
+    player1Id: string | null;
+    player2Id: string | null;
+  }> = [];
 
   try {
-    const db = getDb();
-    const { doc, getDoc, collection, getDocs } = await import('firebase/firestore');
-    tournamentDoc = await getDoc(doc(db, 'tournaments', tournamentId));
-    if (!tournamentDoc.exists()) {
-      return NextResponse.json({ error: `tournament ${tournamentId} not found` }, { status: 404 });
+    tournament = await prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: { club: { select: { ownerId: true, adminIds: true } } },
+    });
+
+    if (!tournament) {
+      return notFound(`Tournament ${tournamentId} not found.`);
     }
-    const matchesSnap = await getDocs(collection(db, 'tournaments', tournamentId, 'matches'));
-    matches = matchesSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
-    const courtsSnap = await getDocs(collection(db, 'tournaments', tournamentId, 'courts'));
-    courts = courtsSnap.docs.map((d) => ({ id: d.id, data: d.data() }));
+
+    matches = await prisma.match.findMany({
+      where: { tournamentId },
+      orderBy: [{ round: 'asc' }, { position: 'asc' }],
+      select: { id: true, round: true, position: true, player1Id: true, player2Id: true },
+    });
   } catch (e) {
-    // Server-side only: the raw SDK message is logged, never returned. It can
-    // contain config details the client has no use for.
     const detail = e instanceof Error ? e.message : String(e);
-    // eslint-disable-next-line no-console
-    console.error('[scheduler] Firestore read failed:', detail);
-
-    if (isFirebaseConfigError(detail)) {
-      return NextResponse.json(
-        {
-          error: 'firebase_not_configured',
-          message: 'Firestore yapilandirmasi eksik veya gecersiz. Yoneticinizle iletisime gecin.',
-        },
-        { status: 503 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error: 'firestore_read_failed',
-        message: 'Turnuva verileri okunamadi. Lütfen tekrar deneyin.',
-      },
-      { status: 503 }
-    );
+    console.error('[scheduler] Prisma read failed:', detail);
+    return serviceUnavailable('database_unavailable', 'Turnuva verileri okunamadı. Lütfen tekrar deneyin.');
   }
 
-  // 2. Convert to scheduler JSON
-  const tData = tournamentDoc.data();
-  const startTimeIso = (tData.startDate as string) || new Date().toISOString();
-  // startDate is YYYY-MM-DD; scheduler needs ISO datetime. Default 09:00 local.
-  const startTimeFull = startTimeIso.includes('T') ? startTimeIso : `${startTimeIso}T09:00:00+03:00`;
+  // ---- AuthZ: caller must own, administer, or direct the tournament's club --
+  const isOwner = tournament.club.ownerId === userId;
+  const isAdmin = tournament.club.adminIds.includes(userId);
+  if (!isOwner && !isAdmin) {
+    // Phase 1 will add a per-tournament director relation; until then, only
+    // club-level owner/admin can solve. This is the safest default.
+    return forbidden('Bu turnuvayı çözümleme yetkiniz yok.');
+  }
+
+  // ---- Build scheduler payload --------------------------------------------
+  const settings = (tournament.settings ?? {}) as { courts?: Array<{ court_id: string; name?: string }> };
+  const courts =
+    Array.isArray(settings.courts) && settings.courts.length > 0
+      ? settings.courts.map((c) => ({ court_id: c.court_id, name: c.name ?? c.court_id }))
+      : [{ court_id: 'c1', name: 'Court 1' }, { court_id: 'c2', name: 'Court 2' }];
 
   const payload = {
     tournament_id: tournamentId,
-    start_time_iso: startTimeFull,
-    matches: matches.map((m) => ({
-      match_id: m.id,
-      duration_minutes: Number(m.data.durationMinutes || 60),
-      player_ids: extractPlayerIds(m.data),
-    })),
-    courts: courts.length > 0
-      ? courts.map((c) => ({ court_id: c.id, name: (c.data.name as string) || c.id }))
-      : // Fallback: synthesize 2 courts if none defined (tournament may not have its own courts)
-        [{ court_id: 'c1', name: 'Court 1' }, { court_id: 'c2', name: 'Court 2' }],
+    start_time_iso: tournament.startsAt.toISOString(),
+    matches: matches.map((m) => {
+      const playerIds: string[] = [];
+      if (m.player1Id) playerIds.push(m.player1Id);
+      if (m.player2Id) playerIds.push(m.player2Id);
+      return {
+        match_id: m.id,
+        duration_minutes: 60, // Phase 1: per-round duration; default 60 until then
+        player_ids: playerIds,
+      };
+    }),
+    courts,
     margin_minutes: marginMinutes,
   };
 
@@ -174,7 +171,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 3. Call OR-Tools scheduler
+  // ---- Call OR-Tools scheduler ---------------------------------------------
   try {
     const res = await fetch(`${SCHEDULER_URL}/schedule`, {
       method: 'POST',
@@ -209,24 +206,4 @@ export async function POST(req: NextRequest) {
       { status: 503 }
     );
   }
-}
-
-/**
- * Extract player IDs from a match document.
- * Match docs may use teamA/teamB (object) or playerIds (array). Handle both.
- */
-function extractPlayerIds(data: Record<string, unknown>): string[] {
-  const ids: string[] = [];
-  // Pattern 1: playerIds array
-  if (Array.isArray(data.playerIds)) {
-    ids.push(...(data.playerIds as string[]));
-  }
-  // Pattern 2: teamA.playerId, teamB.playerId
-  const teamA = data.teamA as { playerIds?: string[]; playerId?: string } | undefined;
-  const teamB = data.teamB as { playerIds?: string[]; playerId?: string } | undefined;
-  if (teamA?.playerIds) ids.push(...teamA.playerIds);
-  if (teamB?.playerIds) ids.push(...teamB.playerIds);
-  if (teamA?.playerId) ids.push(teamA.playerId);
-  if (teamB?.playerId) ids.push(teamB.playerId);
-  return [...new Set(ids)];
 }
