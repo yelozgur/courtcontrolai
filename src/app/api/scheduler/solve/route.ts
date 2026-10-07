@@ -96,7 +96,16 @@ export async function POST(req: NextRequest) {
     clubId: string;
     startsAt: Date;
     settings: unknown;
-    club: { ownerId: string; adminIds: string[] };
+    club: {
+      ownerId: string;
+      adminIds: string[];
+      venues: Array<{
+        id: string;
+        name: string;
+        openHours: unknown;
+        courts: Array<{ id: string; name: string; order: number }>;
+      }>;
+    };
   } | null;
   let matches: Array<{
     id: string;
@@ -109,7 +118,26 @@ export async function POST(req: NextRequest) {
   try {
     tournament = await prisma.tournament.findUnique({
       where: { id: tournamentId },
-      include: { club: { select: { ownerId: true, adminIds: true } } },
+      include: {
+        club: {
+          select: {
+            ownerId: true,
+            adminIds: true,
+            venues: {
+              orderBy: { name: 'asc' },
+              select: {
+                id: true,
+                name: true,
+                openHours: true,
+                courts: {
+                  orderBy: { order: 'asc' },
+                  select: { id: true, name: true, order: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!tournament) {
@@ -137,11 +165,40 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- Build scheduler payload --------------------------------------------
+  // Phase 1: prefer real Venue/Court rows; fall back to the legacy
+  // settings.courts JSON for tournaments that pre-date the migration. If
+  // neither source has any courts, synthesise two placeholders so the
+  // solver can still be exercised end-to-end.
   const settings = (tournament.settings ?? {}) as { courts?: Array<{ court_id: string; name?: string }> };
-  const courts =
+  const dbCourts = tournament.club.venues.flatMap((v) =>
+    v.courts.map((c) => ({
+      court_id: c.id,
+      name: c.name,
+      venue_id: v.id,
+    }))
+  );
+  const settingsCourts =
     Array.isArray(settings.courts) && settings.courts.length > 0
-      ? settings.courts.map((c) => ({ court_id: c.court_id, name: c.name ?? c.court_id }))
-      : [{ court_id: 'c1', name: 'Court 1' }, { court_id: 'c2', name: 'Court 2' }];
+      ? settings.courts.map((c) => ({ court_id: c.court_id, name: c.name ?? c.court_id, venue_id: c.court_id }))
+      : [];
+  const courts = dbCourts.length > 0 ? dbCourts : settingsCourts.length > 0 ? settingsCourts : [
+    { court_id: 'c1', name: 'Court 1', venue_id: 'c1' },
+    { court_id: 'c2', name: 'Court 2', venue_id: 'c2' },
+  ];
+
+  // Venues for the solver's open_hours enforcement. Same fallback chain as
+  // courts: DB rows first, then settings.courts as nameless venues with no
+  // hours, then the synthesised pair.
+  const dbVenues = tournament.club.venues
+    .filter((v) => v.courts.length > 0)
+    .map((v) => ({
+      venue_id: v.id,
+      courts: v.courts.map((c) => c.id),
+      open_hours: (v.openHours as Record<string, string[][]> | null) ?? undefined,
+    }));
+  const venues = dbVenues.length > 0
+    ? dbVenues
+    : courts.map((c) => ({ venue_id: c.venue_id ?? c.court_id, courts: [c.court_id] }));
 
   const payload = {
     tournament_id: tournamentId,
@@ -157,6 +214,7 @@ export async function POST(req: NextRequest) {
       };
     }),
     courts,
+    venues,
     margin_minutes: marginMinutes,
   };
 

@@ -26,6 +26,7 @@ model Club {
 
   tournaments Tournament[]
   teams       Team[]
+  venues      Venue[]
 
   @@schema("schema_courtcontrolai")
 }
@@ -44,6 +45,37 @@ model Team {
 
   @@schema("schema_courtcontrolai")
   @@index([tournamentId])
+}
+
+// ===== Phase 1: Physical resources =====
+
+model Venue {
+  id        String     @id @default(uuid())
+  clubId    String
+  name      String
+  openHours Json?      // {"mon":[["HH:MM","HH:MM"]], ...}; null = no info / open all day
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  club   Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  courts Court[]
+
+  @@schema("schema_courtcontrolai")
+  @@index([clubId])
+}
+
+model Court {
+  id        String   @id @default(uuid())
+  venueId   String
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@schema("schema_courtcontrolai")
+  @@index([venueId])
 }
 
 model Tournament {
