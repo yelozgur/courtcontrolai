@@ -1,3 +1,3 @@
 {
-  "buildCommand": "npx prisma generate && npx prisma db push && NODE_ENV=production next build"
+  "buildCommand": "npx prisma generate && NODE_ENV=production next build"
 }
