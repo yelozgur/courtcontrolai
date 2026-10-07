@@ -19,13 +19,13 @@ test.describe('D01-D03 — GET /api/health', () => {
   test('D01: /api/health returns JSON with the documented top-level keys', async ({ page }) => {
     const p = await probe(page, '/api/health');
 
-    expect(p.status, `/api/health: HTTP status (got "${p.visibleText.slice(0, 120)}")`).toBe(503);
+    expect(p.status, `/api/health: HTTP status (got "${p.visibleText.slice(0, 120)}")`).toBe(200);
 
     expect(p.jsonBody, '/api/health: body must be valid JSON').not.toBeNull();
     const body = p.jsonBody as Record<string, unknown>;
 
     // Contract keys. Note: there is intentionally NO top-level "status" key.
-    for (const key of ['ok', 'timestamp', 'version', 'checks', 'uptime_s']) {
+    for (const key of ['ok', 'timestamp', 'version', 'checks', 'uptime_s', 'capabilities']) {
       expect(Object.keys(body), `/api/health: missing top-level key "${key}"`).toContain(key);
     }
 
