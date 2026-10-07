@@ -9,11 +9,13 @@ import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Monitor, Bui
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { useAiEnabled } from '@/hooks/use-ai-enabled';
 
 export default function HomePage() {
   const { user, loading } = useUser();
   const db = useFirestore();
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-tournament');
+  const aiEnabled = useAiEnabled();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -90,7 +92,9 @@ export default function HomePage() {
                   Dominate Your <span className="text-primary drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Arena</span>
                 </h1>
                 <p className="mx-auto max-w-[800px] text-muted-foreground md:text-xl lg:text-2xl leading-relaxed font-medium">
-                  The elite sports management hub. Automate complex schedules with Genkit AI, broadcast live scores, and grow your player community.
+                  {aiEnabled
+                    ? 'The elite sports management hub. Automate complex schedules with Genkit AI, broadcast live scores, and grow your player community.'
+                    : 'The elite sports management hub. Automate complex schedules, broadcast live scores, and grow your player community.'}
                 </p>
               </div>
 
@@ -131,6 +135,7 @@ export default function HomePage() {
         <section className="w-full py-24 bg-card/50 border-y border-white/5">
           <div className="container px-4 md:px-6 mx-auto">
             <div className="grid gap-12 lg:grid-cols-3">
+              {aiEnabled && (
               <div className="flex flex-col items-center space-y-4 text-center p-8 bg-secondary/20 rounded-[2.5rem] border border-white/5 backdrop-blur-sm transition-all hover:border-primary/30 group">
                 <div className="p-5 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Sparkles className="h-10 w-10 text-primary" />
@@ -140,6 +145,7 @@ export default function HomePage() {
                   Eliminate manual planning. Our Tournament Director AI handles court allocations and recovery times with Genkit intelligence.
                 </p>
               </div>
+              )}
               <div className="flex flex-col items-center space-y-4 text-center p-8 bg-secondary/20 rounded-[2.5rem] border border-white/5 backdrop-blur-sm transition-all hover:border-accent/30 group">
                 <div className="p-5 bg-accent/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Monitor className="h-10 w-10 text-accent" />

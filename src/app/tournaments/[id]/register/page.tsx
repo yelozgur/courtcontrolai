@@ -13,6 +13,7 @@ import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useI18n } from '@/i18n/I18nProvider';
 import Image from 'next/image';
 
 export default function TournamentRegistration() {
@@ -21,6 +22,7 @@ export default function TournamentRegistration() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { t } = useI18n();
   
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -250,7 +252,7 @@ export default function TournamentRegistration() {
               )}
 
               <Button type="submit" className="w-full h-16 text-xl font-bold bg-primary uppercase tracking-[0.2em] shadow-xl shadow-primary/20">
-                Continue to Payment
+                {t('pack.continueToPayment')}
               </Button>
             </form>
           </CardContent>
