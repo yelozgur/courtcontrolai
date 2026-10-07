@@ -176,14 +176,31 @@ its input so it can be tested and reasoned about without a billing system in the
 
 ---
 
-## Open questions for the owner
+## Decisions
 
-1. **Does a locked match ever get overridden?** If a venue closes on tournament day, the
-   answer cannot be "never" — the solve has to be able to report which locks it could not
-   honour. Proposed: never silently override; fail with `INFEASIBLE` and name the locked
-   matches, then let the referee release the lock.
-2. **Who sees skipped matches?** A skipped match leaves a hole in the bracket. Proposal:
-   visible with its reason, so a player can see they were recorded as absent.
-3. **Is attendance per player or per match?** The description says both "no-show" and
-   "does not show to court", which are different events. Proposal: attendance is per player
-   per session; "no court show" is a per-match referee decision.
+1. **A locked match is never overridden.** If a venue closes on tournament day, the
+   solver returns `INFEASIBLE` with `conflicting_locks` listing the locked matches by id.
+   The referee decides which lock to release; the system never moves a locked match on
+   its own.
+
+2. **Skipped matches are visible in the bracket**, never hidden. `skip_reason` is shown
+   so the player can see they were recorded as absent rather than guessing at an empty slot.
+
+3. **Attendance is two-tier.** The QR scan at the venue entrance is a **per-player**
+   *existence proof*: it marks whether the player physically arrived. After that, the
+   referee decides per match: a player present at the venue but not at the court is a
+   separate, human decision. The two reasons are distinct:
+
+   ```jsonc
+   "skip_reason": "no_show"        // player never QR'd in -> the schedule can stop waiting
+   "skip_reason": "no_court_show" // player was present -> referee gave up on the match
+   ```
+
+   Concretely:
+   - `attendance: { player_id: present }` is recorded at the venue gate.
+   - The referee reviews that against the bracket and either:
+     - skips matches whose players are all absent, with reason `no_show`,
+     - or skips a match because the player was there but did not take the court,
+       with reason `no_court_show`.
+   - The solver receives the referee's decisions, not the raw attendance — the
+     referee is the single point of truth for which matches play.

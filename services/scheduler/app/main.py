@@ -109,6 +109,9 @@ class SchedulePayload(BaseModel):
     end_time_iso: str | None = None
     revision: int = Field(default=1, ge=1)
     objectives: dict[str, bool] = Field(default_factory=dict)
+    # Per-player QR presence at the venue. The referee translates this into
+    # `matches[].skipped` with skip_reason; the solver does not act on it.
+    attendance: dict[str, bool] = Field(default_factory=dict)
 
 
 # ---- FastAPI app ----
@@ -167,6 +170,7 @@ async def schedule(payload: SchedulePayload) -> dict[str, Any]:
             end_time_iso=payload.end_time_iso,
             revision=payload.revision,
             objectives=payload.objectives,
+            attendance=payload.attendance,
         )
         result: ScheduleResult = solve(req)
         return result_to_dict(result)

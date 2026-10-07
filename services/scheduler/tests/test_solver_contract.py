@@ -258,3 +258,48 @@ def test_player_unavailability_blocks_that_window():
     assert partial.status == "OPTIMAL"
     m1 = {a.match_id: a for a in partial.assignments}["m1"]
     assert m1.start_time_iso >= "2026-10-12T10:00:00+03:00"
+
+
+# ---------------------------------------------------------------------------
+# Attendance is a per-player existence proof; skip decisions remain the
+# referee's. Both skip reasons stay distinct so the bracket can show the real
+# reason, not a generic "absent".
+# ---------------------------------------------------------------------------
+
+
+def test_both_skip_reasons_are_preserved_distinctly():
+    no_show = _request(
+        matches=[
+            {"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"],
+             "skipped": True, "skip_reason": "no_show"},
+        ],
+        courts=[{"court_id": "c1"}],
+    )
+    no_court_show = _request(
+        matches=[
+            {"match_id": "m1", "duration_minutes": 60, "player_ids": ["p3", "p4"],
+             "skipped": True, "skip_reason": "no_court_show"},
+        ],
+        courts=[{"court_id": "c1"}],
+    )
+    a = solve(no_show).assignments[0]
+    b = solve(no_court_show).assignments[0]
+    assert a.skip_reason == "no_show"
+    assert b.skip_reason == "no_court_show"
+    assert a.skip_reason != b.skip_reason
+
+
+def test_attendance_field_passes_through_for_display():
+    """Attendance is recorded for the bracket UI but the solver does not auto-skip
+    from it — the referee decides. The solver's result is unaffected by it.
+    """
+    req = _request(
+        matches=[{"match_id": "m1", "duration_minutes": 60, "player_ids": ["p1", "p2"]}],
+        courts=[{"court_id": "c1"}],
+    )
+    req.attendance = {"p1": True, "p2": False}   # p2 absent but match still scheduled
+
+    result = solve(req)
+    assert result.status == "OPTIMAL"
+    assert len([a for a in result.assignments if not a.skipped]) == 1
+    assert result.skipped_matches == []  # referee did not skip

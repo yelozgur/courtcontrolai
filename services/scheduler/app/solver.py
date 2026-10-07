@@ -81,6 +81,11 @@ class MatchInput:
     # --- tournament-day attendance ---------------------------------------------------
     # A no-show drops the match out of the model. It is still reported, with its
     # reason, so a hole in the bracket is explained rather than looking like a bug.
+    #
+    # skip_reason is one of two canonical values (see docs/SCHEDULING_MODEL.md):
+    #   "no_show"       - the player(s) never arrived at the venue (QR absent)
+    #   "no_court_show" - the player(s) were present at the venue but did not
+    #                     take the court; this is a referee decision
     skipped: bool = False
     skip_reason: str | None = None
 
@@ -126,6 +131,11 @@ class ScheduleRequest:
     end_time_iso: str | None = None
     revision: int = 1
     objectives: dict[str, bool] = field(default_factory=dict)
+
+    # Per-player venue check-in (QR scan at the entrance). The referee is the one
+    # who translates attendance into skipped matches; the solver does not act on
+    # this directly, but it is recorded so the bracket can display it.
+    attendance: dict[str, bool] = field(default_factory=dict)
 
 
 @dataclass
@@ -229,9 +239,21 @@ def solve(req: ScheduleRequest) -> ScheduleResult:
     active = [m for m in req.matches if not m.skipped]
 
     if not active:
+        # Still report every skipped match so the bracket can show why it is empty.
+        all_skipped: list[ScheduleAssignment] = [
+            ScheduleAssignment(
+                match_id=m.match_id,
+                court_id="",
+                start_time_iso="",
+                position=0,
+                skipped=True,
+                skip_reason=m.skip_reason,
+            )
+            for m in skipped_matches
+        ]
         return ScheduleResult(
             tournament_id=req.tournament_id,
-            assignments=[],
+            assignments=all_skipped,
             makespan_minutes=0,
             status="OPTIMAL",
             solve_time_seconds=0.0,
