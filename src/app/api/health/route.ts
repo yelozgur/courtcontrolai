@@ -177,10 +177,14 @@ export async function GET() {
   } else {
     capabilities.ai = 'enabled';
   }
-  if (scheduler.mode === 'dev' || !scheduler.ok) {
+  if (scheduler.mode === 'dev') {
     capabilities.scheduler = 'dev';
-  } else {
+  } else if (scheduler.ok) {
     capabilities.scheduler = 'remote';
+  } else {
+    // SCHEDULER_URL is configured but the probe failed. This is a real outage and must
+    // not be reported as "dev", which would hide it behind the deliberate-off label.
+    capabilities.scheduler = 'unreachable';
   }
 
   return NextResponse.json(
