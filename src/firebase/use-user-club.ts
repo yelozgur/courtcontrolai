@@ -6,11 +6,8 @@ import { useFirestore, useUser, useCollection, useMemoFirebase } from './index';
 /**
  * CourtControl AI: Kullanıcının kulübünü getirir.
  *
- * NOT (2026-07-12): Firestore client SDK + emulator'da `where("ownerId", "==", user.uid)`
- * 0 doc dönüyor (REST API aynı query ile 1 doc dönüyor). Geçici çözüm:
- * tüm clubs'ı çek, client-side filter yap.
- *
- * TODO: Firestore emulator + WHERE clause bug fix'ini bekle.
+ * Returns null when no club matches the user's ownerId.
+ * No fallback to another club — that would be a multi-tenant scoping bug.
  */
 export function useUserClub() {
   const db = useFirestore();
@@ -25,7 +22,7 @@ export function useUserClub() {
 
   const userClub = useMemo(() => {
     if (!allClubs || !user) return null;
-    return allClubs.find(c => c.ownerId === user.uid) || allClubs[0] || null;
+    return allClubs.find(c => c.ownerId === user.uid) ?? null;
   }, [allClubs, user]);
 
   return { club: userClub, clubId: userClub?.id, loading, error };

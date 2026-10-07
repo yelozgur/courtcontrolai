@@ -5,9 +5,10 @@ import { useState } from "react"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { QrCode, ExternalLink, Copy, Check, Trophy, MapPin, Smartphone, Zap } from "lucide-react"
+import { QrCode, ExternalLink, Copy, Check, Trophy, MapPin, Smartphone, Zap, Users, Plus, Loader2 } from "lucide-react"
 import { collection, query, where, limit } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
+import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 
@@ -18,8 +19,7 @@ export default function CheckInPage() {
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Club resolution (client-side filter workaround)
-  const { clubId } = useUserClub()
+  const { club, clubId, loading: clubLoading } = useUserClub()
 
   const { data: tournaments, loading: toursLoading } = useFilteredCollection<any>(
     "tournaments",
@@ -39,6 +39,31 @@ export default function CheckInPage() {
     setCopied(true);
     toast({ title: "Link Copied", description: "Venue check-in URL has been copied." });
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (clubLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!club) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+        <Users className="h-12 w-12 text-muted-foreground/30" />
+        <h3 className="text-2xl font-headline font-bold">No Club Found</h3>
+        <p className="text-muted-foreground max-w-md">
+          Your account is not associated with a club. Create a club first to manage check-ins.
+        </p>
+        <Button asChild className="h-12 px-8 rounded-xl">
+          <Link href="/dashboard/club">
+            <Plus className="mr-2 h-4 w-4" /> Create Club
+          </Link>
+        </Button>
+      </div>
+    )
   }
 
   return (

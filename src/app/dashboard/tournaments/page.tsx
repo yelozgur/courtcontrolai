@@ -23,8 +23,7 @@ export default function DashboardTournaments() {
   const { user } = useUser()
   const [search, setSearch] = useState("")
 
-  // 1. Resolve current user's clubId (client-side filter workaround for emulator WHERE bug)
-  const { clubId } = useUserClub()
+  const { club, clubId, loading: clubLoading } = useUserClub()
 
   // 2. Fetch all tournaments for this club (admin icin: tum) — client-side filter
   const { data: tournaments, loading, error } = useFilteredCollection<any>(
@@ -53,13 +52,30 @@ export default function DashboardTournaments() {
     }
   }, [tournaments])
 
-  if (loading) {
+  if (loading || clubLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Loading Tournaments</p>
         </div>
+      </div>
+    )
+  }
+
+  if (!club) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+        <Users className="h-12 w-12 text-muted-foreground/30" />
+        <h3 className="text-2xl font-headline font-bold">No Club Found</h3>
+        <p className="text-muted-foreground max-w-md">
+          Your account is not associated with a club. Create a club first to manage tournaments.
+        </p>
+        <Button asChild className="h-12 px-8 rounded-xl">
+          <Link href="/dashboard/club">
+            <Plus className="mr-2 h-4 w-4" /> Create Club
+          </Link>
+        </Button>
       </div>
     )
   }
