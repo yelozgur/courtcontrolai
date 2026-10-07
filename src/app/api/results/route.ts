@@ -7,6 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const tournamentId = searchParams.get('tournamentId');
 
@@ -16,6 +21,7 @@ export async function GET(request: Request) {
         status: { in: ['COMPLETED', 'WALKOVER', 'DISQUALIFIED'] },
       },
       orderBy: { playedAt: 'desc' },
+      take: 200,
     });
 
     return NextResponse.json(matches, { status: 200 });

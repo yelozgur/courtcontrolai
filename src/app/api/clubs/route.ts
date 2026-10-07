@@ -9,6 +9,7 @@ export async function GET() {
   try {
     const clubs = await prisma.club.findMany({
       orderBy: { createdAt: 'desc' },
+      take: 50,
       select: {
         id: true,
         name: true,
