@@ -1,8 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E config — assumes the Next.js dev server is ALREADY running on :9002.
- * Never start a webServer: the app takes ~30s to boot and manages its own lifecycle.
+ * E2E config — Playwright starts the Next.js dev server automatically.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -24,4 +23,10 @@ export default defineConfig({
     trace: 'off',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://127.0.0.1:9002',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });

@@ -7,17 +7,50 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  provider = "postgresql"
+  schemas  = ["schema_courtcontrolai"]
 }
 
 // ===== Tournament Domain =====
+
+model Club {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  ownerId     String
+  adminIds    String[]
+  description String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tournaments Tournament[]
+  teams       Team[]
+
+  @@schema("schema_courtcontrolai")
+}
+
+model Team {
+  id           String     @id @default(uuid())
+  name         String
+  tournamentId String
+  clubId       String
+  playerIds    String[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  club       Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@schema("schema_courtcontrolai")
+  @@index([tournamentId])
+}
 
 model Tournament {
   id        String           @id @default(uuid())
   name      String
   slug      String           @unique
+  clubId    String
   status    TournamentStatus @default(PLANNED)
   startsAt  DateTime
   endsAt    DateTime?
@@ -25,10 +58,12 @@ model Tournament {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
+  club      Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
   matches   Match[]
   bracket   Bracket?
+  teams     Team[]
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
   @@index([status, startsAt])
 }
 
@@ -39,7 +74,7 @@ enum TournamentStatus {
   COMPLETED
   CANCELLED
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 model Match {
@@ -59,7 +94,7 @@ model Match {
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
   @@index([tournamentId, round, position])
 }
 
@@ -70,7 +105,7 @@ enum MatchStatus {
   WALKOVER
   DISQUALIFIED
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 model Bracket {
@@ -83,7 +118,7 @@ model Bracket {
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 // ===== AI Flow Queue =====
@@ -100,7 +135,7 @@ model AIQueue {
   completedAt  DateTime?
   createdAt    DateTime       @default(now())
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
   @@index([status, createdAt])
 }
 
@@ -110,7 +145,7 @@ enum AIQueueStatus {
   COMPLETED
   FAILED
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 // ===== NextAuth.js Models =====
@@ -128,7 +163,7 @@ model User {
   accounts Account[]
   sessions Session[]
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 enum UserRole {
@@ -136,7 +171,7 @@ enum UserRole {
   ADMIN
   TOURNAMENT_DIRECTOR
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 model Account {
@@ -156,7 +191,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 model Session {
@@ -167,7 +202,7 @@ model Session {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
 
 model VerificationToken {
@@ -176,5 +211,5 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-  @@schema("courtcontrolai")
+  @@schema("schema_courtcontrolai")
 }
