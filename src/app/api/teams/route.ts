@@ -7,12 +7,18 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const tournamentId = searchParams.get('tournamentId');
 
     const teams = await prisma.team.findMany({
       where: tournamentId ? { tournamentId } : undefined,
       orderBy: { createdAt: 'asc' },
+      take: 100,
       include: {
         club: {
           select: { id: true, name: true, slug: true },

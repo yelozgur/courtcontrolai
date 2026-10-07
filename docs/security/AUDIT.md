@@ -49,13 +49,65 @@
 
 ---
 
-## Finding 2 — `/api/standings` has no authentication (DECIDED: intentionally public)
+## Finding 2 — Unauthenticated GET handlers expose tenant data (CRITICAL)
 
-**Status:** No fix needed. Documented as intentional.
+**Status:** Fixed in this commit. Three endpoints now require auth; three remain public by design.
 
-**Analysis:** The middleware in `src/lib/auth.ts` explicitly allows `/leaderboard` as a public path. Standings data (tournament name, team names, win/loss records) is inherently spectator-facing. No personal data (emails, phone numbers) is exposed — only internal `playerIds` and aggregate statistics.
+**Precondition:** None — anonymous HTTP requests.
 
-**Decision:** This is a public leaderboard API. The lack of authentication is intentional, matching the public `/leaderboard` page route.
+**Root cause:** Six GET endpoints had no `auth()` check. The middleware allows `/`, `/arena`, `/tournaments` as public pages, but the API routes were not aligned with this design.
+
+**Impact:**
+- `/api/teams` exposed `playerIds` (internal user identifiers) for all teams across all tournaments
+- `/api/fixtures` exposed `player1Id`, `player2Id`, `scheduledAt` for all matches
+- `/api/results` exposed `player1Id`, `player2Id`, scores, `playedAt` for all completed matches
+- `/api/clubs` exposed club directory (name, slug, logo) — no sensitive data
+- `/api/tournaments` exposed tournament listing — no sensitive data
+- `/api/standings` exposed aggregate statistics — no personal data
+
+**Fix:**
+- **Added auth to:** `/api/teams`, `/api/fixtures`, `/api/results` — these expose player identifiers
+- **Kept public:** `/api/clubs`, `/api/tournaments`, `/api/standings` — directory and spectator data only
+- **Added pagination:** All six endpoints now have `take` limits (50-200) to prevent unbounded queries
+
+### Public vs. Private — Explicit Decisions
+
+| Endpoint | Auth Required? | Reasoning |
+|----------|----------------|-----------|
+| `/api/clubs` | **No** | Club directory (name, slug, logo) — no sensitive data. Public by design for discovery. |
+| `/api/tournaments` | **No** | Tournament listing (name, dates, club name) — no sensitive data. Public by design for discovery. |
+| `/api/standings` | **No** | Aggregate statistics (team names, win/loss records) — no personal data. Matches public `/leaderboard` page. |
+| `/api/teams` | **Yes** | Exposes `playerIds` (internal user identifiers). Multi-tenant leak if unauthenticated. |
+| `/api/fixtures` | **Yes** | Exposes `player1Id`, `player2Id`, `scheduledAt`. Player identifiers + scheduling data. |
+| `/api/results` | **Yes** | Exposes `player1Id`, `player2Id`, scores, `playedAt`. Player identifiers + match history. |
+
+### Cross-Tenant Leakage
+
+**Before fix:** Any anonymous user could enumerate all teams and their `playerIds` across all tournaments. This is a multi-tenant data leak — Club A's member identifiers exposed to Club B's competitors.
+
+**After fix:** Only authenticated users can access team/fixture/result data. The `playerIds` are still exposed to authenticated users, but this is acceptable because:
+1. Authentication establishes a relationship (user is a club admin or participant)
+2. Tournament participants expect their match history to be visible to other participants
+3. The product is a tournament management system — match data is shared among participants
+
+**Remaining risk:** An authenticated user of Club A can still see Club B's team data if they know the `tournamentId`. This is a product design question: should tournaments be isolated to a single club, or are multi-club tournaments a feature? The current schema allows multi-club tournaments (Team has `clubId`, but Match has `player1Id`/`player2Id` without club scoping). **This requires a product decision** — see Recommendations below.
+
+### Rate Limiting and Pagination
+
+**Before fix:** All endpoints returned unlimited results. An attacker could:
+1. Enumerate all data by making repeated requests
+2. Cause database load spikes with unbounded queries
+3. Exfiltrate the entire dataset with a simple script
+
+**After fix:** All endpoints have `take` limits:
+- `/api/clubs`: 50 clubs
+- `/api/tournaments`: 100 tournaments
+- `/api/teams`: 100 teams
+- `/api/fixtures`: 200 matches
+- `/api/results`: 200 matches
+- `/api/standings`: No limit (aggregate data, bounded by tournament size)
+
+**Remaining risk:** No rate limiting per IP/user. An attacker can still make many requests over time. **Recommendation:** Add Vercel Edge rate limiting or a middleware rate limiter. See Recommendations below.
 
 ---
 
@@ -142,12 +194,17 @@
 |----------|--------|
 | `/api/health` | Uptime probe — returns status, version, latency only |
 | `/api/ai/status` | Feature flag probe — returns enabled/disabled only |
-| `/api/standings` | Public leaderboard — tournament results are spectator data |
-| `/api/clubs` GET | Public directory — no sensitive fields (no ownerId exposed) |
-| `/api/tournaments` GET | Public tournament listing |
-| `/api/fixtures` GET | Public match schedule |
-| `/api/teams` GET | Public team listing |
-| `/api/results` GET | Public match results |
+| `/api/standings` GET | Public leaderboard — aggregate statistics, no personal data |
+| `/api/clubs` GET | Public directory — club name/slug/logo only, no ownerId |
+| `/api/tournaments` GET | Public tournament listing — name/dates/club only |
+
+## Authenticated Endpoints (Fixed in this commit)
+
+| Endpoint | Data Exposed | Why Auth Required |
+|----------|--------------|-------------------|
+| `/api/teams` GET | `playerIds` (user identifiers) | Multi-tenant leak — exposes member IDs across clubs |
+| `/api/fixtures` GET | `player1Id`, `player2Id`, `scheduledAt` | Player identifiers + scheduling data |
+| `/api/results` GET | `player1Id`, `player2Id`, scores, `playedAt` | Player identifiers + match history |
 
 ---
 
@@ -158,6 +215,11 @@
 3. **Add request body size limits** — explicit `Content-Length` check before parsing
 4. **Document the public API contract** — make it clear which endpoints are intentionally unauthenticated
 5. **Enable `FIREBASE_ADMIN_*` in Vercel** — now safe after Finding 1 fix
+6. **Add rate limiting** — Vercel Edge middleware or per-IP rate limiter to prevent enumeration attacks on public endpoints
+7. **Decide multi-club tournament isolation** — currently an authenticated user of Club A can see Club B's team/player data if they know the `tournamentId`. Either:
+   - Restrict tournaments to single-club (add club scope to queries), or
+   - Accept that multi-club tournaments expose participant data to all participating clubs (document this as a product decision)
+8. **Add pagination cursors** — current `take` limits prevent unbounded queries but don't support pagination. Add `cursor`/`skip` parameters for legitimate large datasets.
 
 ---
 
