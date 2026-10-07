@@ -31,6 +31,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { optimizeTournamentSchedule } from "@/ai/dev"
 import { generateTournamentBracket, type BracketOutput } from "@/ai/flows/bracket-flow"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertTriangle } from "lucide-react"
 
 export default function SchedulingPage() {
   const db = useFirestore()
@@ -257,7 +259,11 @@ export default function SchedulingPage() {
       if (result.scheduledMatches.length > 0) setSelectedDate(new Date(result.scheduledMatches[0].startTime))
 
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('common.error') + ': ' + t('schedule.optimize') })
+      if (e?.message === 'ai_not_configured') {
+        toast({ variant: "destructive", title: t('schedule.aiDisabledBanner') })
+      } else {
+        toast({ variant: "destructive", title: t('common.error') + ': ' + t('schedule.optimize') })
+      }
     } finally {
       setIsOptimizing(false)
     }
@@ -422,6 +428,15 @@ export default function SchedulingPage() {
    * Kullanım: 1. günün sonunda "Consolidate Remaining" butonuna tıkla.
    */
   const [isConsolidating, setIsConsolidating] = useState(false)
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    fetch('/api/ai/status')
+      .then(res => {
+        setAiEnabled(res.ok)
+      })
+      .catch(() => setAiEnabled(false))
+  }, [])
 
   const handleConsolidateRemaining = async () => {
     if (!db || !activeTournament || !clubId) return
@@ -502,6 +517,13 @@ export default function SchedulingPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {aiEnabled === false && (
+        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{t('schedule.aiDisabledBanner')}</AlertTitle>
+          <AlertDescription>{t('schedule.aiDisabledAction')}</AlertDescription>
+        </Alert>
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">{t('schedule.title')}</h1>
@@ -527,7 +549,13 @@ export default function SchedulingPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowOptimizationSettings(true)}
+            onClick={() => {
+              if (aiEnabled === false) {
+                toast({ variant: "destructive", title: t('schedule.aiDisabledBanner') })
+                return
+              }
+              setShowOptimizationSettings(true)
+            }}
             disabled={isOptimizing || !selectedTournamentId}
             className="border-primary text-primary hover:bg-primary/10 shadow-lg shadow-primary/10"
           >

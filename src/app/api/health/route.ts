@@ -134,7 +134,7 @@ async function checkScheduler(): Promise<CheckResult> {
   // In dev/local, we don't enforce; in prod, this probes the M2 endpoint.
   const schedulerUrl = process.env.SCHEDULER_URL; // e.g. http://m2-mac.tail-xyz.ts.net:8500
   if (!schedulerUrl) {
-    return { ok: true, mode: 'dev', note: 'SCHEDULER_URL not set (dev mode)' };
+    return { ok: false, mode: 'dev', error: 'SCHEDULER_URL not set — scheduler is not running' };
   }
   const start = Date.now();
   try {
