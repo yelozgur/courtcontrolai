@@ -168,17 +168,30 @@ export async function GET() {
     Promise.resolve(checkAIQuota()),
   ]);
 
-  const checks = { process: process_check, env, scheduler, ai_quota };
-  const allOk = Object.values(checks).every((c) => c.ok);
+  const requiredChecks = { process: process_check, env };
+  const requiredOk = Object.values(requiredChecks).every((c) => c.ok);
+
+  const capabilities: Record<string, string> = {};
+  if (!ai_quota.ok) {
+    capabilities.ai = 'disabled';
+  } else {
+    capabilities.ai = 'enabled';
+  }
+  if (scheduler.mode === 'dev' || !scheduler.ok) {
+    capabilities.scheduler = 'dev';
+  } else {
+    capabilities.scheduler = 'remote';
+  }
 
   return NextResponse.json(
     {
-      ok: allOk,
+      ok: requiredOk,
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || '1.0.0',
-      checks,
+      checks: { process: process_check, env, scheduler, ai_quota },
+      capabilities,
       uptime_s: Math.round((Date.now() - START_TIME) / 1000),
     },
-    { status: allOk ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
+    { status: requiredOk ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
   );
 }

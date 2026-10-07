@@ -7,6 +7,7 @@
  */
 
 import { ai, isAiEnabled } from '@/ai/genkit';
+import { AiNotConfiguredError } from '@/ai/errors';
 import { z } from 'genkit';
 
 const CategorySchema = z.object({
@@ -57,13 +58,6 @@ const ScheduleOutputSchema = z.object({
 });
 
 export type ScheduleOutput = z.infer<typeof ScheduleOutputSchema>;
-
-export class AiNotConfiguredError extends Error {
-  constructor() {
-    super('ai_not_configured');
-    this.name = 'AiNotConfiguredError';
-  }
-}
 
 function getFlow() {
   if (!ai) {

@@ -1,0 +1,4 @@
+{
+  "_comment": "TEMPORARY: prisma db push runs schema migration from Vercel build because Neon is unreachable from dev machines. Remove once tables exist in schema_courtcontrolai — follow-up issue will strip this back to plain next build.",
+  "buildCommand": "npx prisma generate && npx prisma db push && NODE_ENV=production next build"
+}
