@@ -134,6 +134,8 @@ const tr = {
   'schedule.consolidateSingle': 'Tek Günlük Turnuva',
   'schedule.consolidateSingleDesc': 'Çapraz gün aktarımı multi-day turnuvalar için.',
   'schedule.consolidateFailed': 'Birleştirme Başarısız',
+  'schedule.aiDisabledBanner': 'AI özelliği şu anda kapalı — GOOGLE_GENAI_API_KEY tanımlı değil.',
+  'schedule.aiDisabledAction': 'AI Optimizasyon ve AI destekli özellikler kullanılamaz.',
 
   // Bracket
   'bracket.title': 'Bracket Ağacı',
@@ -428,6 +430,8 @@ const en = {
   'schedule.consolidateSingle': 'Single Day Tournament',
   'schedule.consolidateSingleDesc': 'Cross-day carryover applies to multi-day tournaments.',
   'schedule.consolidateFailed': 'Consolidate Failed',
+  'schedule.aiDisabledBanner': 'AI features are currently disabled — GOOGLE_GENAI_API_KEY is not configured.',
+  'schedule.aiDisabledAction': 'AI Optimization and AI-powered features are unavailable.',
 
   // Bracket
   'bracket.title': 'Bracket Tree',
