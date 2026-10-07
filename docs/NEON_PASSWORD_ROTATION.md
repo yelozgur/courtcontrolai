@@ -4,6 +4,12 @@
 provisioned in this environment, so the rotation cannot be scripted from
 the agent.
 
+**Repo state as of 2026-10-08:** all 28 commits are pushed to
+`fix/sel57-test-auth-provider` and open as PR #2 (`MERGEABLE`, main
+untouched at `1fa576b`). Rotating the password does not depend on the PR —
+but do it **after** any Neon-affecting deploy finishes, so a mid-build
+credential change cannot fail a `migrate deploy`.
+
 **Why:** The current `npg_WrmJEMbk2AC4` password has been in use since the
 Neon project was created. It is the only credential that can DROP tables,
 run `prisma migrate reset`, and read other tenants (`schema_geolease`,
