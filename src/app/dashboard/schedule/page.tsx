@@ -219,6 +219,27 @@ export default function SchedulingPage() {
         return
       }
 
+      if (data.status === 'INFEASIBLE' || data.status === 'MODEL_INVALID') {
+        toast({
+          variant: "destructive",
+          title: t('schedule.optimize') + ': ' + data.status,
+          description: data.infeasibilityExplanation || 'The solver could not find a valid schedule.',
+        })
+        setIsOptimizing(false)
+        return
+      }
+
+      if (data.verification && !data.verification.valid) {
+        const violationSummary = data.verification.violations?.slice(0, 3).map((v: any) => v.detail).join('; ') || 'Unknown violations'
+        toast({
+          variant: "destructive",
+          title: t('schedule.verificationFailed') || 'Schedule verification failed',
+          description: `${data.verification.blocking_constraint || 'Constraint violation'}. ${violationSummary}`,
+        })
+        setIsOptimizing(false)
+        return
+      }
+
       const count = data.assignments?.length ?? 0
       toast({ title: t('schedule.director.success'), description: `${count} ${t('results.totalMatches').toLowerCase()}.` })
       if (count > 0 && data.assignments[0]?.start_time_iso) {

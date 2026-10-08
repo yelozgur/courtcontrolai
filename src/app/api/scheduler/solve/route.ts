@@ -322,6 +322,79 @@ export async function POST(req: NextRequest) {
 
     const data = (await res.json()) as SchedulerResponse;
 
+    const solverOk = data.status === 'OPTIMAL' || data.status === 'FEASIBLE';
+
+    let verification: { valid: boolean; violations: any[]; blocking_constraint?: string } | undefined;
+    let verifiedStatus: 'PENDING' | 'PASSED' | 'FAILED' = 'PENDING';
+
+    if (solverOk && data.assignments.length > 0) {
+      const matchMap = new Map(payload.matches.map((m) => [m.match_id, m]));
+      const verifierMatches: VerifierMatch[] = data.assignments.map((a) => {
+        const src = matchMap.get(a.match_id);
+        return {
+          match_id: a.match_id,
+          court_id: a.court_id,
+          start_time_iso: a.start_time_iso,
+          duration_minutes: src?.duration_minutes ?? 60,
+          player_ids: src?.player_ids ?? [],
+          category_match_minutes: src?.duration_minutes,
+        };
+      });
+
+      const verifierInput: VerifierInput = {
+        tournament_start_iso: payload.start_time_iso,
+        margin_minutes: payload.margin_minutes,
+        matches: verifierMatches,
+        courts: payload.courts.map((c) => ({ court_id: c.court_id, venue_id: c.venue_id })),
+        venues: payload.venues.map((v) => ({
+          venue_id: v.venue_id,
+          courts: v.courts,
+          open_hours: v.open_hours ?? {},
+        })),
+      };
+
+      verification = verifySchedule(verifierInput);
+      verifiedStatus = verification.valid ? 'PASSED' : 'FAILED';
+    }
+
+    try {
+      await prisma.scheduleRun.create({
+        data: {
+          tournamentId,
+          solverStatus: data.status,
+          verifiedStatus,
+          violations: verification?.violations ?? undefined,
+          makespanMinutes: data.makespan_minutes,
+          assignmentCount: data.assignments.length,
+        },
+      });
+    } catch (e) {
+      console.error('[scheduler] ScheduleRun persist failed:', (e as Error).message);
+    }
+
+    if (!solverOk) {
+      const explanation = explainInfeasibility(data, payload as any, matches);
+      return NextResponse.json({
+        ...data,
+        source: 'scheduler',
+        preferences: prefs,
+        preferencesSource: prefsSource,
+        ...(prefsRejectionReason ? { preferencesRejectionReason: prefsRejectionReason } : {}),
+        infeasibilityExplanation: explanation,
+      });
+    }
+
+    if (verification && !verification.valid) {
+      return NextResponse.json({
+        ...data,
+        source: 'scheduler',
+        preferences: prefs,
+        preferencesSource: prefsSource,
+        verification: { valid: false, violations: verification.violations, blocking_constraint: verification.blocking_constraint },
+        assignmentsApplied: false,
+      });
+    }
+
     if (applyAssignments && data.assignments.length > 0) {
       try {
         await prisma.$transaction([
@@ -352,6 +425,8 @@ export async function POST(req: NextRequest) {
       preferences: prefs,
       preferencesSource: prefsSource,
       ...(prefsRejectionReason ? { preferencesRejectionReason: prefsRejectionReason } : {}),
+      verification: verification ?? { valid: true, violations: [] },
+      assignmentsApplied: applyAssignments && data.assignments.length > 0,
     });
   } catch (e) {
     console.error('[scheduler/solve] scheduler unreachable:', (e as Error).message);
