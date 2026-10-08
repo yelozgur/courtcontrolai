@@ -7,6 +7,14 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // This route imported `auth` but never called it, so the club list stayed
+    // readable by anyone. Measured on production: anonymous GET returned two
+    // clubs by name. Other routes in this app already guard with this shape.
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const clubs = await prisma.club.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,

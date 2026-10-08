@@ -7,6 +7,13 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // Same gap as /api/clubs: the GET half of this file had no session check
+    // even though POST did, so anonymous callers could list every tournament.
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const tournaments = await prisma.tournament.findMany({
       orderBy: { createdAt: 'desc' },
       take: 100,
