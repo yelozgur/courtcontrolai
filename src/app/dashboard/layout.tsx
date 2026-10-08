@@ -16,26 +16,23 @@ import {
   Heart,
   ShieldCheck,
   Building,
-  Gavel,
   User,
   Calculator,
   Users2,
   Megaphone,
   Menu,
-  ChevronLeft,
-  Bell,
-  ServerCrash
+  Bell
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { signOut as firebaseSignOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 import { LocaleSwitcher } from '@/i18n/LocaleSwitcher';
 import { useI18n } from '@/i18n/I18nProvider';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 import {
   Sheet,
   SheetContent,
@@ -55,7 +52,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, loading: authLoading, authUnavailable } = useUser();
+  const { user } = useUser();
   const { data: session, status: sessionStatus } = useSession();
   const auth = useAuth();
   const db = useFirestore();
@@ -86,35 +83,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleSignOut = () => {
     setIsMobileMenuOpen(false);
-    if (auth) signOut(auth).then(() => router.push('/'));
+    if (auth) firebaseSignOut(auth).catch(() => {});
+    nextAuthSignOut({ callbackUrl: '/' });
   };
 
-  // Unauthenticated visitors must be redirected OUT of the dashboard, not left
-  // on a blank page. Three distinct states must not be conflated:
+  // SEL-96: The authoritative identity is the NextAuth session, not Firebase Auth.
   //
-  //  1. Firebase has not resolved yet (or failed). useUser() reports
-  //     `authUnavailable`; `loading` stays true. Redirecting here would bounce
-  //     a real signed-in user to /login on every hard refresh, because
-  //     FirebaseClientProvider mounts the tree before onAuthStateChanged runs.
-  //  2. Firebase resolved and there is genuinely no user → redirect.
-  //  3. Firebase is unavailable for good → show the backend error, because
-  //     presenting an outage as "your session expired" is misleading.
+  // Phase 1 moved the data layer to Prisma/Neon. All API routes gate on
+  // `auth()` from NextAuth. In production, `FIREBASE_ADMIN_*` is not set, so
+  // the Firebase bridge cannot establish a client-side Firebase Auth session.
+  // Gating the dashboard on Firebase `useUser()` therefore created a permanent
+  // redirect loop: NextAuth sign-in succeeds → dashboard mounts → Firebase
+  // user is null → redirect to /login → repeat.
   //
-  // The redirect runs in an effect: calling router.replace() during render is a
-  // React anti-pattern that throws "Cannot update a component while rendering a
-  // different component".
+  // The redirect guard now checks the NextAuth session. Firebase Auth is still
+  // used for Firestore reads (profile, club data), but its absence does not
+  // block dashboard access — the UI renders with fallback values.
+  //
+  // Three states:
+  //  1. NextAuth session is still resolving → wait (do not redirect).
+  //  2. NextAuth session is authenticated → allow access, regardless of
+  //     Firebase state. Firestore reads may return null; that is handled by
+  //     the existing fallback rendering.
+  //  3. NextAuth session is unauthenticated → redirect to /login.
   React.useEffect(() => {
     if (sessionStatus === 'loading') return;
     if (testModeLoading) return;
-    if (isTestMode && hasNextAuthSession) {
-      return;
-    }
-    if (!authUnavailable && !authLoading && !user) {
-      router.replace('/login');
-    }
-  }, [authUnavailable, authLoading, user, router, isTestMode, hasNextAuthSession, sessionStatus, testModeLoading]);
+    if (hasNextAuthSession) return;
+    router.replace('/login');
+  }, [hasNextAuthSession, router, sessionStatus, testModeLoading]);
 
-  if (testModeLoading) {
+  if (testModeLoading || sessionStatus === 'loading') {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -123,28 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (authUnavailable && !user && !(isTestMode && hasNextAuthSession)) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4 px-6 text-center">
-        <ServerCrash className="h-10 w-10 text-destructive" />
-        <p className="text-sm font-bold uppercase tracking-widest">Sunucuya bağlanılamıyor</p>
-        <p className="text-xs text-muted-foreground max-w-sm">
-          Kimlik doğrulama servisi yanıt vermiyor. Giriş yapılamıyor — lütfen sayfayı yenileyin.
-        </p>
-      </div>
-    );
-  }
-
-  if ((authLoading || (user && profileLoading)) && !(isTestMode && hasNextAuthSession)) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">{t('common.syncingConsole')}</p>
-      </div>
-    );
-  }
-
-  if (!user && !(isTestMode && hasNextAuthSession)) {
+  if (!hasNextAuthSession) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

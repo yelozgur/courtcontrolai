@@ -18,6 +18,97 @@
 
 ---
 
+## Finding 9 — Google sign-in redirect loop (CRITICAL) — SEL-96
+
+**Status:** Fixed.
+
+**Precondition:** User signs in via Google OAuth in production (where `FIREBASE_ADMIN_*` env vars are not set).
+
+**Reproduction:** Code-reviewed, not executed (requires a live Google OAuth flow against production). The attack surface is the redirect loop itself — no data exposure, but complete denial of authenticated access.
+
+**Root cause:** `src/app/dashboard/layout.tsx` gated dashboard access on the Firebase client-side auth state (`useUser()` from `src/firebase/auth/use-user.tsx`). After a successful NextAuth/Google sign-in:
+
+1. NextAuth creates a session in Neon/Prisma (confirmed by `schema_courtcontrolai.Account` and `schema_courtcontrolai.User` rows).
+2. The `jwt` callback in `src/lib/auth.ts` attempts to sync the Firebase UID via `getFirebaseAdmin()`, but `FIREBASE_ADMIN_CLIENT_EMAIL` and `FIREBASE_ADMIN_PRIVATE_KEY` are not set in Vercel production → the bridge degrades gracefully with a `console.warn`.
+3. `token.firebaseUid` is never set → `session.user.firebaseUid` is null.
+4. The login page's bridge attempt (`/api/firebase-bridge-token`) returns 400 because `firebaseUid` is missing → `signInWithCustomToken` never fires → Firebase client auth has no user.
+5. `useUser()` returns `user: null` → the layout's `useEffect` calls `router.replace('/login')` → permanent redirect loop.
+
+**Impact:** Complete denial of service for all Google sign-in users. The dashboard is unreachable after authentication. This is the most demo-blocking defect in the project.
+
+**Architecture decision:** Gate on NextAuth session instead of Firebase Auth.
+
+**Rationale:**
+- Phase 1 already moved the authoritative data layer to Prisma/Neon. All API routes use `auth()` from NextAuth.
+- `FIREBASE_ADMIN_*` is not set in production and enabling it is a separate approved step.
+- The Firebase client SDK is still used for Firestore reads (profile, club data), but its absence should not block dashboard access — the UI renders with fallback values.
+- Two identity systems where one is never established in production is untenable. The authoritative system (NextAuth/Prisma) must be the gate.
+
+**What changed:**
+- `src/app/dashboard/layout.tsx`:
+  - Redirect guard now checks `sessionStatus === 'authenticated' && session?.user` (NextAuth) instead of `!authLoading && !user` (Firebase).
+  - Removed the `authUnavailable` error screen — Firebase being unavailable no longer blocks dashboard access.
+  - Sign-out now calls both `firebaseSignOut(auth)` (best-effort) and `nextAuthSignOut()` (authoritative).
+  - Removed unused imports: `ServerCrash`, `Gavel`, `ChevronLeft`.
+
+**What stays:**
+- Firebase client SDK for Firestore reads (clubs, tournaments, profiles).
+- The Firebase bridge code in `auth.ts` (best-effort, degrades gracefully).
+- The login page's bridge attempt (will fail without `FIREBASE_ADMIN_*`, but that's acceptable).
+
+**What becomes unnecessary after this fix:**
+- The `authUnavailable` error screen in the dashboard layout.
+- The dependency on Firebase Auth for dashboard access.
+
+**What still requires `FIREBASE_ADMIN_*` in production:**
+- Firestore reads in the dashboard (profile data, club data via `useUserClub`).
+- The Firebase bridge token endpoint (`/api/firebase-bridge-token`).
+- Without these env vars, the dashboard renders with fallback values (no profile photo, no admin role detection, no club data from Firestore).
+
+**Regression test:** `src/app/dashboard/__tests__/layout-auth.test.tsx` — 6 tests verifying:
+1. OLD logic redirects when NextAuth session is valid but Firebase user is null (THE BUG).
+2. NEW logic does NOT redirect in that case (THE FIX).
+3. NEW logic still redirects when NextAuth session is unauthenticated.
+4. NEW logic does NOT redirect while NextAuth session is loading.
+5. NEW logic does NOT redirect when Firebase is unavailable but NextAuth session is valid.
+6. NEW logic does NOT redirect when both NextAuth and Firebase are valid.
+
+---
+
+## Auth-state consumer audit (SEL-96 requirement)
+
+Every site that reads auth state, with whether it agrees with the decision to gate on NextAuth:
+
+| File | Hook/Function | Auth Source | Agrees with decision? | Notes |
+|------|--------------|-------------|----------------------|-------|
+| `src/app/dashboard/layout.tsx` | `useSession()` | NextAuth | **Yes** | Redirect guard — FIXED in this commit |
+| `src/app/dashboard/layout.tsx` | `useUser()` | Firebase | **Yes** | Firestore profile read only; null is handled by fallback rendering |
+| `src/app/login/page.tsx` | `useSession()` | NextAuth | **Yes** | Triggers Firebase bridge after NextAuth sign-in |
+| `src/app/login/page.tsx` | `useUser()` | Firebase | **Yes** | Loading state for login page; does not gate access |
+| `src/app/login/page.tsx` | `useAuth()` | Firebase | **Yes** | Firebase email/password sign-in; needs Firebase auth |
+| `src/app/signup/page.tsx` | `useUser()` | Firebase | **Yes** | Loading state; does not gate access |
+| `src/app/signup/page.tsx` | `useAuth()` | Firebase | **Yes** | Firebase sign-up; needs Firebase auth |
+| `src/app/page.tsx` | `useUser()` | Firebase | **Yes** | Public page; controls UI (show/hide dashboard link) |
+| `src/app/dashboard/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/tournaments/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/schedule/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/participants/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/club/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/profile/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/sponsors/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/check-in/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/tournaments/new/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/admin/costs/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/dashboard/admin/users/page.tsx` | `useUser()` | Firebase | **Yes** | Child of layout; Firestore data queries |
+| `src/app/tournaments/new/page.tsx` | `useUser()` | Firebase | **Yes** | Public route; Firestore data queries |
+| `src/app/tournaments/[id]/register/page.tsx` | `useUser()` | Firebase | **Yes** | Public route; Firestore data queries |
+| `src/firebase/use-user-club.ts` | `useUser()` | Firebase | **Yes** | Returns null when no user; no cross-tenant leak |
+| All API routes (`src/app/api/**`) | `auth()` | NextAuth | **Yes** | Server-side; all use `session.user.id` for authorization |
+
+**Conclusion:** All auth-state consumers agree with the decision. The dashboard layout is the only site that was gating access on Firebase Auth; all other sites either use NextAuth correctly (API routes, login page bridge) or use Firebase Auth for data reads without gating access (child pages of dashboard, public pages).
+
+---
+
 ## Finding 1 — Identity mismatch breaks authorisation (CRITICAL)
 
 **Status:** Fixed in this commit.
