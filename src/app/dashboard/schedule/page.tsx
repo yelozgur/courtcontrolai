@@ -4,8 +4,8 @@
 import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2, Plus, LayoutGrid, List, Trophy, Building, Sparkles, Trash2, BrainCircuit, Users2, Gavel, Layers } from "lucide-react"
-import { collection, query, where, limit, addDoc, getDocs, writeBatch, doc, deleteDoc, increment, updateDoc, setDoc } from "firebase/firestore"
+import { Calendar as CalendarIcon, Clock, Loader2, Plus, LayoutGrid, List, Trophy, Sparkles, Trash2, Layers } from "lucide-react"
+import { collection, query, where, limit, addDoc, getDocs, doc, deleteDoc, updateDoc, setDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
 import { useI18n } from "@/i18n/I18nProvider"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -29,10 +28,8 @@ import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
-import { optimizeTournamentSchedule } from "@/ai/dev"
 import { generateTournamentBracket, type BracketOutput } from "@/ai/flows/bracket-flow"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle } from "lucide-react"
+
 
 export default function SchedulingPage() {
   const db = useFirestore()
@@ -46,9 +43,6 @@ export default function SchedulingPage() {
   const [isAddingMatch, setIsAddingMatch] = useState(false)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [isGeneratingBracket, setIsGeneratingBracket] = useState(false)
-  const [showOptimizationSettings, setShowOptimizationSettings] = useState(false)
-  const [aiInstructions, setAiInstructions] = useState("")
-  const [participantsCount, setParticipantsCount] = useState(0)
   
   const [newMatch, setNewMatch] = useState({
     teamA: "",
@@ -80,11 +74,7 @@ export default function SchedulingPage() {
 
   const activeTournament = tournaments?.find(t => t.id === selectedTournamentId)
 
-  useEffect(() => {
-    if (!db || !selectedTournamentId) return
-    const pQuery = query(collection(db, "participants"), where("tournamentId", "==", selectedTournamentId))
-    getDocs(pQuery).then(snap => setParticipantsCount(snap.size))
-  }, [db, selectedTournamentId])
+
 
   // Matches resolution (client-side filter workaround)
   const { data: rawMatches, loading: matchesLoading } = useFilteredCollection<any>(
@@ -191,79 +181,49 @@ export default function SchedulingPage() {
   }
 
   const handleAutoSchedule = async () => {
-    if (!db || !activeTournament || !clubId) return
-
-    // Quota check: 3 ücretsiz AI call (Sprint 4 — quota enforcement)
-    const FREE_TIER_LIMIT = 3
-    if (aiUsage >= FREE_TIER_LIMIT) {
-      toast({
-        variant: "destructive",
-        title: t('schedule.quotaReached'),
-        description: t('schedule.quotaReachedDesc'),
-      })
-      setIsOptimizing(false)
-      setShowOptimizationSettings(false)
-      return
-    }
+    if (!activeTournament) return
 
     setIsOptimizing(true)
-    setShowOptimizationSettings(false)
 
     try {
-      const pSnap = await getDocs(query(collection(db, "participants"), where("tournamentId", "==", activeTournament.id)))
-      const participants = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
+      const res = await fetch('/api/scheduler/solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournamentId: activeTournament.id,
+          applyAssignments: true,
+        }),
+      })
 
-      if (participants.length < 2) {
-        toast({ variant: "destructive", title: t('schedule.emptyRoster'), description: t('schedule.emptyRosterDesc') })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        if (res.status === 503 && (err as any).error === 'scheduler_unreachable') {
+          toast({ variant: "destructive", title: "Solver unavailable", description: "The scheduling service is not running." })
+        } else if (res.status === 400) {
+          toast({ variant: "destructive", title: "Cannot optimize", description: (err as any).message || "Tournament has no matches. Generate a bracket first." })
+        } else {
+          toast({ variant: "destructive", title: t('common.error') + ': ' + t('schedule.optimize') })
+        }
         setIsOptimizing(false)
         return
       }
 
-      const input = {
-        tournamentName: activeTournament.name,
-        startDate: activeTournament.startDate,
-        endDate: activeTournament.endDate,
-        matchDuration: activeTournament.matchDuration || 60,
-        recoveryTime: activeTournament.recoveryTime || 15,
-        locations: activeTournament.locations || [{ name: "Main Venue", numCourts: 1 }],
-        categories: activeTournament.categories || [],
-        participants: participants.map((p: any) => ({ id: p.id, name: p.name, categoryId: p.categoryId || "default" })),
-        userInstructions: aiInstructions
+      const data = await res.json()
+
+      if (data.status === 'NO_MATCHES') {
+        toast({ variant: "destructive", title: "No matches", description: "Generate a bracket first, then optimize the schedule." })
+        setIsOptimizing(false)
+        return
       }
 
-      const result = await optimizeTournamentSchedule(input)
-      const batch = writeBatch(db)
-      const matchesColl = collection(db, "matches")
-      
-      result.scheduledMatches.forEach(m => {
-        const matchRef = doc(matchesColl)
-        batch.set(matchRef, {
-          clubId,
-          tournamentId: activeTournament.id,
-          status: "scheduled",
-          court: m.court,
-          startTime: m.startTime,
-          teamA: { name: m.teamA.name, score: 0, setsWon: 0 },
-          teamB: { name: m.teamB.name, score: 0, setsWon: 0 },
-          category: m.category,
-          categoryId: m.categoryId,
-          location: m.location
-        })
-      })
-
-      const clubRef = doc(db, "clubs", clubId)
-      batch.update(clubRef, { aiUsageCount: increment(1) })
-
-      await batch.commit()
-      toast({ title: t('schedule.director.success'), description: `${result.scheduledMatches.length} ${t('results.totalMatches').toLowerCase()}.` })
-      if (result.scheduledMatches.length > 0) setSelectedDate(new Date(result.scheduledMatches[0].startTime))
+      const count = data.assignments?.length ?? 0
+      toast({ title: t('schedule.director.success'), description: `${count} ${t('results.totalMatches').toLowerCase()}.` })
+      if (count > 0 && data.assignments[0]?.start_time_iso) {
+        setSelectedDate(new Date(data.assignments[0].start_time_iso))
+      }
 
     } catch (e: any) {
-      if (e?.message === 'ai_not_configured') {
-        toast({ variant: "destructive", title: t('schedule.aiDisabledBanner') })
-      } else {
-        toast({ variant: "destructive", title: t('common.error') + ': ' + t('schedule.optimize') })
-      }
+      toast({ variant: "destructive", title: t('common.error') + ': ' + t('schedule.optimize') })
     } finally {
       setIsOptimizing(false)
     }
@@ -428,15 +388,6 @@ export default function SchedulingPage() {
    * Kullanım: 1. günün sonunda "Consolidate Remaining" butonuna tıkla.
    */
   const [isConsolidating, setIsConsolidating] = useState(false)
-  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    fetch('/api/ai/status')
-      .then(res => {
-        setAiEnabled(res.ok)
-      })
-      .catch(() => setAiEnabled(false))
-  }, [])
 
   const handleConsolidateRemaining = async () => {
     if (!db || !activeTournament || !clubId) return
@@ -517,13 +468,6 @@ export default function SchedulingPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {aiEnabled === false && (
-        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{t('schedule.aiDisabledBanner')}</AlertTitle>
-          <AlertDescription>{t('schedule.aiDisabledAction')}</AlertDescription>
-        </Alert>
-      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-headline font-bold text-white uppercase tracking-tighter">{t('schedule.title')}</h1>
@@ -549,13 +493,7 @@ export default function SchedulingPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              if (aiEnabled === false) {
-                toast({ variant: "destructive", title: t('schedule.aiDisabledBanner') })
-                return
-              }
-              setShowOptimizationSettings(true)
-            }}
+            onClick={handleAutoSchedule}
             disabled={isOptimizing || !selectedTournamentId}
             className="border-primary text-primary hover:bg-primary/10 shadow-lg shadow-primary/10"
           >
@@ -592,40 +530,6 @@ export default function SchedulingPage() {
           <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary"><Plus className="w-4 h-4 mr-2" /> {t('schedule.manualMatch')}</Button>
         </div>
       </div>
-
-      <Dialog open={showOptimizationSettings} onOpenChange={setShowOptimizationSettings}>
-        <DialogContent className="bg-card border-white/10 max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-headline text-2xl uppercase">{t('schedule.director.setup')}</DialogTitle>
-            <DialogDescription>Optimize your bracket logic across all venues.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-4">
-             <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Total Players</p>
-                   <p className="text-xl font-bold">{participantsCount}</p>
-                </div>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Venue Scope</p>
-                   <p className="text-xl font-bold uppercase text-accent">{allCourts.length} Courts</p>
-                </div>
-             </div>
-             <div className="space-y-2">
-                <Label className="text-xs uppercase font-bold text-muted-foreground">Strategic Goals</Label>
-                <Textarea 
-                  placeholder="e.g. 'Prioritize Location A for finals', 'Finish all junior matches by 12:00'..."
-                  className="min-h-[120px] bg-background/50 border-white/10"
-                  value={aiInstructions}
-                  onChange={(e) => setAiInstructions(e.target.value)}
-                />
-             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowOptimizationSettings(false)}>Cancel</Button>
-            <Button onClick={handleAutoSchedule} className="bg-primary">Launch Optimizer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Tabs value={view} onValueChange={(v: any) => setView(v)}>
         <div className="flex justify-between items-center mb-6">

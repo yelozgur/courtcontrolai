@@ -71,9 +71,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { tournamentId, marginMinutes = 30 } = (body ?? {}) as {
+  const { tournamentId, marginMinutes = 30, applyAssignments = false } = (body ?? {}) as {
     tournamentId?: string;
     marginMinutes?: number;
+    applyAssignments?: boolean;
   };
 
   if (!tournamentId || typeof tournamentId !== 'string') {
@@ -248,6 +249,26 @@ export async function POST(req: NextRequest) {
     }
 
     const data = (await res.json()) as SchedulerResponse;
+
+    if (applyAssignments && data.assignments.length > 0) {
+      try {
+        await prisma.$transaction(
+          data.assignments.map((a) =>
+            prisma.match.update({
+              where: { id: a.match_id },
+              data: {
+                scheduledAt: new Date(a.start_time_iso),
+                courtId: a.court_id,
+              },
+            })
+          )
+        );
+      } catch (e) {
+        const detail = e instanceof Error ? e.message : String(e);
+        console.error('[scheduler] apply assignments failed:', detail);
+        return serviceUnavailable('assignment_write_failed', 'Çözüm bulundu ancak maçlara uygulanamadı.');
+      }
+    }
 
     return NextResponse.json({
       ...data,

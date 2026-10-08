@@ -18,10 +18,34 @@ export async function GET(request: Request) {
     const matches = await prisma.match.findMany({
       where: tournamentId ? { tournamentId } : undefined,
       orderBy: [{ round: 'asc' }, { position: 'asc' }],
+      include: {
+        court: {
+          select: { id: true, name: true, venue: { select: { id: true, name: true } } },
+        },
+        category: {
+          select: { id: true, name: true },
+        },
+      },
       take: 200,
     });
 
-    return NextResponse.json(matches, { status: 200 });
+    const playerIds = [...new Set(matches.flatMap((m) => [m.player1Id, m.player2Id]).filter((id): id is string => id !== null))];
+    const players = playerIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: playerIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
+    const playerMap = new Map(players.map((p) => [p.id, p.name || p.email || 'Player']));
+
+    const enrichedMatches = matches.map((m) => ({
+      ...m,
+      player1Name: m.player1Id ? playerMap.get(m.player1Id) || 'Player 1' : null,
+      player2Name: m.player2Id ? playerMap.get(m.player2Id) || 'Player 2' : null,
+      location: m.court?.venue?.name || null,
+    }));
+
+    return NextResponse.json(enrichedMatches, { status: 200 });
   } catch (error) {
     console.error('GET /api/fixtures error:', error);
     return NextResponse.json(
