@@ -133,6 +133,20 @@ export default function VenuesPage() {
       if (!slots || slots.length === 0) return closedLabel
       return slots.map((r) => r.join("–")).join(", ")
     })
+    const allSame = dayStrings.every((h) => h === dayStrings[0])
+    if (allSame) {
+      const everyDayLabel = loc === "en" ? "Every day" : "Her gün"
+      return `${everyDayLabel} ${dayStrings[0]}`
+    }
+    const weekdayHours = dayStrings.slice(0, 5)
+    const weekendHours = dayStrings.slice(5)
+    const weekdaySame = weekdayHours.every((h) => h === weekdayHours[0])
+    const weekendSame = weekendHours.every((h) => h === weekendHours[0])
+    if (weekdaySame && weekendSame && weekdayHours[0] !== weekendHours[0]) {
+      const weekdayLabel = loc === "en" ? "Weekdays" : "Hafta içi"
+      const weekendLabel = loc === "en" ? "Weekend" : "Hafta sonu"
+      return `${weekdayLabel} ${weekdayHours[0]}, ${weekendLabel} ${weekendHours[0]}`
+    }
     type Group = { start: number; end: number; hours: string }
     const groups: Group[] = []
     for (let i = 0; i < 7; i++) {
@@ -143,9 +157,9 @@ export default function VenuesPage() {
         groups.push({ start: i, end: i, hours: h })
       }
     }
+    const shortKey = loc === "en" ? "enShort" : "trShort"
     return groups
       .map((g) => {
-        const shortKey = loc === "en" ? "enShort" : "trShort"
         const startLabel = WEEKDAY_LABELS[WEEKDAYS[g.start]][shortKey]
         const endLabel = WEEKDAY_LABELS[WEEKDAYS[g.end]][shortKey]
         const dayPart = g.start === g.end ? startLabel : `${startLabel}–${endLabel}`
@@ -200,16 +214,14 @@ export default function VenuesPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-1">
                       <MapPin className="h-5 w-5 text-primary shrink-0" />
                       <h3 className="text-lg font-bold truncate">{venue.name}</h3>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <Badge variant="outline" className="whitespace-nowrap shrink-0">
-                        {venue.courts.length} {t("venue.court")}
+                      <Badge variant="outline" className="shrink-0">
+                        <span className="whitespace-nowrap">{venue.courts.length} {t("venue.court")}</span>
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       {formatOpenHoursCompact(venue.openHours)}
                     </p>
                     {venue.courts.length > 0 && (

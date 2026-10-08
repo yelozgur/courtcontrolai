@@ -157,6 +157,10 @@ const tr = {
   'schedule.consolidateFailed': 'Birleştirme Başarısız',
   'schedule.aiDisabledBanner': 'AI özelliği şu anda kapalı — GOOGLE_GENAI_API_KEY tanımlı değil.',
   'schedule.aiDisabledAction': 'AI Optimizasyon ve AI destekli özellikler kullanılamaz.',
+  'schedule.preferences': 'Tercihler',
+  'schedule.preferencesHint': 'Planlama tercihlerinizi doğal dilde yazın. Örnek: "Önemli maçları 1. sahaya koy, Cuma gününe sığdır."',
+  'schedule.preferencesPlaceholder': 'Örn: "Önemli maçları 1. sahaya koy, kategoriler arası 45 dakika dinlenme ver"...',
+  'schedule.verificationFailed': 'Plan doğrulanamadı',
 
   // Bracket
   'bracket.title': 'Bracket Ağacı',
@@ -532,6 +536,10 @@ const en = {
   'schedule.consolidateFailed': 'Consolidate Failed',
   'schedule.aiDisabledBanner': 'AI features are currently disabled — GOOGLE_GENAI_API_KEY is not configured.',
   'schedule.aiDisabledAction': 'AI Optimization and AI-powered features are unavailable.',
+  'schedule.preferences': 'Preferences',
+  'schedule.preferencesHint': 'Describe your scheduling preferences in plain language. Example: "Put important matches on court 1, compress it into Friday."',
+  'schedule.preferencesPlaceholder': 'e.g. "Put important matches on court 1, 45 min rest between categories"...',
+  'schedule.verificationFailed': 'Schedule verification failed',
 
   // Bracket
   'bracket.title': 'Bracket Tree',
