@@ -6,19 +6,21 @@
  * service (default: http://127.0.0.1:8500/schedule, override with
  * SCHEDULER_URL env), and returns optimal court+time assignments.
  *
- * Phase 0/1 migration: this route used to read from Firestore via the
- * client SDK. ADR-001 retires Firestore, so reads now go through Prisma.
- * The Court model is still pending Phase 1; for now the route synthesises
- * two courts if `tournament.settings.courts` is empty.
+ * Stage 2 (SEL-93): accepts natural-language preferences, translates them
+ * into a structured constraint object via the model, and passes them to the
+ * solver. Falls back to no preferences if the model is unavailable.
  *
  * POST /api/scheduler/solve
- * body: { tournamentId: string, marginMinutes?: number }
- * returns: { tournamentId, assignments: [...], makespan_minutes, status, solve_time_seconds, source: "scheduler" | "fallback" }
+ * body: { tournamentId: string, marginMinutes?: number, preferencesText?: string, applyAssignments?: boolean }
+ * returns: { tournamentId, assignments: [...], makespan_minutes, status, solve_time_seconds, source: "scheduler" | "fallback", preferences?: object, preferencesSource?: "model" | "fallback" }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { translatePreferences, type TranslationContext } from '@/lib/scheduler/constraint-translator';
+import { emptyPreferences, type SchedulePreferences } from '@/lib/scheduler/constraint-schema';
+import { verifySchedule, type VerifierInput, type VerifierMatch } from '@/lib/schedule-verifier';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,8 +61,51 @@ function serviceUnavailable(error: string, message: string): NextResponse<Author
   return NextResponse.json({ error, message, status: 503 }, { status: 503 });
 }
 
+function explainInfeasibility(
+  data: SchedulerResponse & { conflicting_locks?: string[]; skipped_matches?: string[] },
+  payload: Record<string, unknown>,
+  matches: Array<{ id: string; player1Id: string | null; player2Id: string | null }>
+): string {
+  const parts: string[] = [];
+
+  if (data.conflicting_locks && data.conflicting_locks.length > 0) {
+    parts.push(`Referee lock conflict: ${data.conflicting_locks.length} match(es) are locked to courts that no longer exist (${data.conflicting_locks.join(', ')}). The referee must re-assign these locks.`);
+  }
+
+  const pMatches = payload.matches as Array<{ match_id: string; player_ids: string[]; duration_minutes: number }>;
+  const pCourts = payload.courts as Array<{ court_id: string }>;
+  const totalMatchMinutes = pMatches.reduce((s, m) => s + m.duration_minutes, 0);
+  const totalCourts = pCourts.length;
+
+  if (totalCourts === 0) {
+    parts.push('No courts available. Add at least one court to the venue before scheduling.');
+  }
+
+  const playerMatchCount: Record<string, number> = {};
+  for (const m of pMatches) {
+    for (const pid of m.player_ids) {
+      playerMatchCount[pid] = (playerMatchCount[pid] || 0) + 1;
+    }
+  }
+  const overloadedPlayers = Object.entries(playerMatchCount).filter(([, count]) => count > totalCourts * 2);
+  if (overloadedPlayers.length > 0) {
+    parts.push(`Player overload: ${overloadedPlayers.map(([pid, count]) => `${pid} has ${count} matches but only ${totalCourts} court(s) available`).join('; ')}. Consider adding courts or reducing matches.`);
+  }
+
+  const estimatedSequential = totalMatchMinutes + (pMatches.length - 1) * (payload.margin_minutes as number);
+  const availableCourtMinutes = totalCourts * 14 * 60;
+  if (estimatedSequential > availableCourtMinutes && totalCourts > 0) {
+    parts.push(`Capacity: ${pMatches.length} matches need ~${Math.round(estimatedSequential / 60)}h of court time across ${totalCourts} court(s), but only ~${Math.round(availableCourtMinutes / 60)}h is available in a 14-hour day. Add courts, reduce matches, or shorten match duration.`);
+  }
+
+  if (parts.length === 0) {
+    parts.push(`The solver could not find a valid schedule (${data.status}). This usually means the constraints are too tight for the available courts and time. Try: (1) adding more courts, (2) increasing the time window, (3) reducing the rest margin, or (4) removing some matches.`);
+  }
+
+  return parts.join(' ');
+}
+
 export async function POST(req: NextRequest) {
-  // ---- Body parsing ---------------------------------------------------------
   let body: unknown;
   try {
     body = await req.json();
@@ -71,9 +116,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { tournamentId, marginMinutes = 30, applyAssignments = false } = (body ?? {}) as {
+  const {
+    tournamentId,
+    marginMinutes,
+    preferencesText,
+    applyAssignments = false,
+  } = (body ?? {}) as {
     tournamentId?: string;
     marginMinutes?: number;
+    preferencesText?: string;
     applyAssignments?: boolean;
   };
 
@@ -84,14 +135,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ---- Auth ----------------------------------------------------------------
   const session = await auth();
   if (!session?.user?.id) {
     return unauthorised('Oturum açmanız gerekiyor.');
   }
   const userId = session.user.id;
 
-  // ---- Read tournament + matches from Prisma -------------------------------
   let tournament: {
     id: string;
     clubId: string;
@@ -107,6 +156,7 @@ export async function POST(req: NextRequest) {
         courts: Array<{ id: string; name: string; order: number }>;
       }>;
     };
+    categories: Array<{ id: string; name: string }>;
   } | null;
   let matches: Array<{
     id: string;
@@ -114,6 +164,7 @@ export async function POST(req: NextRequest) {
     position: number;
     player1Id: string | null;
     player2Id: string | null;
+    categoryId: string | null;
     category: { matchMinutes: number } | null;
   }> = [];
 
@@ -139,6 +190,9 @@ export async function POST(req: NextRequest) {
             },
           },
         },
+        categories: {
+          select: { id: true, name: true },
+        },
       },
     });
 
@@ -149,7 +203,12 @@ export async function POST(req: NextRequest) {
     matches = await prisma.match.findMany({
       where: { tournamentId },
       orderBy: [{ round: 'asc' }, { position: 'asc' }],
-      select: { id: true, round: true, position: true, player1Id: true, player2Id: true, category: { select: { matchMinutes: true } } },
+      select: {
+        id: true, round: true, position: true,
+        player1Id: true, player2Id: true,
+        categoryId: true,
+        category: { select: { matchMinutes: true } },
+      },
     });
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
@@ -157,20 +216,12 @@ export async function POST(req: NextRequest) {
     return serviceUnavailable('database_unavailable', 'Turnuva verileri okunamadı. Lütfen tekrar deneyin.');
   }
 
-  // ---- AuthZ: caller must own, administer, or direct the tournament's club --
   const isOwner = tournament.club.ownerId === userId;
   const isAdmin = tournament.club.adminIds.includes(userId);
   if (!isOwner && !isAdmin) {
-    // Phase 1 will add a per-tournament director relation; until then, only
-    // club-level owner/admin can solve. This is the safest default.
     return forbidden('Bu turnuvayı çözümleme yetkiniz yok.');
   }
 
-  // ---- Build scheduler payload --------------------------------------------
-  // Phase 1: prefer real Venue/Court rows; fall back to the legacy
-  // settings.courts JSON for tournaments that pre-date the migration. If
-  // neither source has any courts, synthesise two placeholders so the
-  // solver can still be exercised end-to-end.
   const settings = (tournament.settings ?? {}) as { courts?: Array<{ court_id: string; name?: string }> };
   const dbCourts = tournament.club.venues.flatMap((v) =>
     v.courts.map((c) => ({
@@ -188,9 +239,6 @@ export async function POST(req: NextRequest) {
     { court_id: 'c2', name: 'Court 2', venue_id: 'c2' },
   ];
 
-  // Venues for the solver's open_hours enforcement. Same fallback chain as
-  // courts: DB rows first, then settings.courts as nameless venues with no
-  // hours, then the synthesised pair.
   const dbVenues = tournament.club.venues
     .filter((v) => v.courts.length > 0)
     .map((v) => ({
@@ -202,6 +250,27 @@ export async function POST(req: NextRequest) {
     ? dbVenues
     : courts.map((c) => ({ venue_id: c.venue_id ?? c.court_id, courts: [c.court_id] }));
 
+  let prefs: SchedulePreferences = { ...emptyPreferences };
+  let prefsSource: 'model' | 'fallback' = 'fallback';
+  let prefsRejectionReason: string | undefined;
+
+  if (preferencesText?.trim()) {
+    const ctx: TranslationContext = {
+      courtIds: courts.map((c) => c.court_id),
+      courtNames: Object.fromEntries(courts.map((c) => [c.court_id, c.name])),
+      categoryIds: tournament.categories.map((c) => c.id),
+      categoryNames: Object.fromEntries(tournament.categories.map((c) => [c.id, c.name])),
+    };
+    const result = await translatePreferences(preferencesText, ctx);
+    prefs = result.preferences;
+    prefsSource = result.source;
+    prefsRejectionReason = result.rejectionReason;
+  } else if (marginMinutes !== undefined) {
+    prefs = { ...emptyPreferences, minRestMinutes: marginMinutes };
+  }
+
+  const effectiveMargin = prefs.minRestMinutes;
+
   const payload = {
     tournament_id: tournamentId,
     start_time_iso: tournament.startsAt.toISOString(),
@@ -209,15 +278,19 @@ export async function POST(req: NextRequest) {
       const playerIds: string[] = [];
       if (m.player1Id) playerIds.push(m.player1Id);
       if (m.player2Id) playerIds.push(m.player2Id);
+      const baseDuration = m.category?.matchMinutes ?? 60;
+      const overrideDuration = m.categoryId ? prefs.categoryDurations[m.categoryId] : undefined;
       return {
         match_id: m.id,
-        duration_minutes: m.category?.matchMinutes ?? 60,
+        duration_minutes: overrideDuration ?? baseDuration,
         player_ids: playerIds,
       };
     }),
     courts,
     venues,
-    margin_minutes: marginMinutes,
+    margin_minutes: effectiveMargin,
+    court_priority: prefs.courtPriority,
+    day_compaction: prefs.dayCompaction,
   };
 
   if (payload.matches.length === 0) {
@@ -231,7 +304,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // ---- Call OR-Tools scheduler ---------------------------------------------
   try {
     const res = await fetch(`${SCHEDULER_URL}/schedule`, {
       method: 'POST',
@@ -252,8 +324,8 @@ export async function POST(req: NextRequest) {
 
     if (applyAssignments && data.assignments.length > 0) {
       try {
-        await prisma.$transaction(
-          data.assignments.map((a) =>
+        await prisma.$transaction([
+          ...data.assignments.map((a) =>
             prisma.match.update({
               where: { id: a.match_id },
               data: {
@@ -261,8 +333,12 @@ export async function POST(req: NextRequest) {
                 courtId: a.court_id,
               },
             })
-          )
-        );
+          ),
+          prisma.tournament.update({
+            where: { id: tournamentId },
+            data: { preferences: prefs as any },
+          }),
+        ]);
       } catch (e) {
         const detail = e instanceof Error ? e.message : String(e);
         console.error('[scheduler] apply assignments failed:', detail);
@@ -273,6 +349,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ...data,
       source: 'scheduler',
+      preferences: prefs,
+      preferencesSource: prefsSource,
+      ...(prefsRejectionReason ? { preferencesRejectionReason: prefsRejectionReason } : {}),
     });
   } catch (e) {
     console.error('[scheduler/solve] scheduler unreachable:', (e as Error).message);

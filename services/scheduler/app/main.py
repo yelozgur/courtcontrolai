@@ -112,6 +112,9 @@ class SchedulePayload(BaseModel):
     # Per-player QR presence at the venue. The referee translates this into
     # `matches[].skipped` with skip_reason; the solver does not act on it.
     attendance: dict[str, bool] = Field(default_factory=dict)
+    # Stage 2: model-formalised preferences (SEL-93).
+    court_priority: list[str] = Field(default_factory=list)
+    day_compaction: bool = False
 
 
 # ---- FastAPI app ----
@@ -171,6 +174,8 @@ async def schedule(payload: SchedulePayload) -> dict[str, Any]:
             revision=payload.revision,
             objectives=payload.objectives,
             attendance=payload.attendance,
+            court_priority=payload.court_priority,
+            day_compaction=payload.day_compaction,
         )
         result: ScheduleResult = solve(req)
         return result_to_dict(result)

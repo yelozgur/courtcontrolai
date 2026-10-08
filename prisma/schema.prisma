@@ -129,6 +129,7 @@ model Tournament {
   startsAt  DateTime
   endsAt    DateTime?
   settings  Json? // bracket type (single/double elim), max players, etc.
+  preferences Json? // Stage 2: last-used schedule preferences (SEL-93)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
@@ -138,6 +139,7 @@ model Tournament {
   teams         Team[]
   categories    Category[]
   registrations Registration[]
+  scheduleRuns  ScheduleRun[]
 
   @@index([status, startsAt])
   @@schema("schema_courtcontrolai")
@@ -221,6 +223,32 @@ model Bracket {
   updatedAt    DateTime @updatedAt
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@schema("schema_courtcontrolai")
+}
+
+// ===== Schedule Verification =====
+
+model ScheduleRun {
+  id              String           @id @default(uuid())
+  tournamentId    String
+  solverStatus    String
+  verifiedStatus  ScheduleVerifyStatus @default(PENDING)
+  violations      Json?
+  makespanMinutes Int?
+  assignmentCount Int              @default(0)
+  createdAt       DateTime         @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId, createdAt])
+  @@schema("schema_courtcontrolai")
+}
+
+enum ScheduleVerifyStatus {
+  PENDING
+  PASSED
+  FAILED
 
   @@schema("schema_courtcontrolai")
 }

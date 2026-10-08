@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Clock, Loader2, Plus, LayoutGrid, List, Trophy, Sparkles, Trash2, Layers } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Loader2, Plus, LayoutGrid, List, Trophy, Sparkles, Trash2, Layers, MessageSquare } from "lucide-react"
 import { collection, query, where, limit, addDoc, getDocs, doc, deleteDoc, updateDoc, setDoc } from "firebase/firestore"
 import { useFirestore, useMemoFirebase, useCollection, useUser, useUserClub, useFilteredCollection } from "@/firebase"
 import { useI18n } from "@/i18n/I18nProvider"
@@ -43,6 +43,8 @@ export default function SchedulingPage() {
   const [isAddingMatch, setIsAddingMatch] = useState(false)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [isGeneratingBracket, setIsGeneratingBracket] = useState(false)
+  const [preferencesText, setPreferencesText] = useState("")
+  const [showPreferences, setShowPreferences] = useState(false)
   
   const [newMatch, setNewMatch] = useState({
     teamA: "",
@@ -192,6 +194,7 @@ export default function SchedulingPage() {
         body: JSON.stringify({
           tournamentId: activeTournament.id,
           applyAssignments: true,
+          preferencesText: preferencesText.trim() || undefined,
         }),
       })
 
@@ -480,6 +483,16 @@ export default function SchedulingPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowPreferences(!showPreferences)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <MessageSquare className="w-4 h-4 mr-2" />
+            {t('schedule.preferences')}
+          </Button>
+
+          <Button
             variant="default"
             size="sm"
             onClick={handleGenerateBracket}
@@ -530,6 +543,20 @@ export default function SchedulingPage() {
           <Button onClick={() => setIsAddingMatch(true)} disabled={!selectedTournamentId} className="bg-primary"><Plus className="w-4 h-4 mr-2" /> {t('schedule.manualMatch')}</Button>
         </div>
       </div>
+
+      {showPreferences && (
+        <Card className="bg-card/50 border-white/5">
+          <CardContent className="pt-4">
+            <Label className="text-sm text-muted-foreground mb-2 block">{t('schedule.preferencesHint')}</Label>
+            <textarea
+              value={preferencesText}
+              onChange={(e) => setPreferencesText(e.target.value)}
+              placeholder={t('schedule.preferencesPlaceholder')}
+              className="w-full h-20 rounded-lg border border-white/10 bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={view} onValueChange={(v: any) => setView(v)}>
         <div className="flex justify-between items-center mb-6">

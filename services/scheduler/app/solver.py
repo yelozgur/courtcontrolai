@@ -137,6 +137,14 @@ class ScheduleRequest:
     # this directly, but it is recorded so the bracket can display it.
     attendance: dict[str, bool] = field(default_factory=dict)
 
+    # Stage 2: model-formalised preferences (SEL-93).
+    # court_priority: ordered court IDs, most preferred first. Soft objective
+    # penalises assignments to lower-priority courts. Empty = no preference.
+    court_priority: list[str] = field(default_factory=list)
+    # day_compaction: when True, tighten the makespan objective weight so
+    # matches are packed into the smallest time window.
+    day_compaction: bool = False
+
 
 @dataclass
 class ScheduleAssignment:
@@ -441,8 +449,29 @@ def solve(req: ScheduleRequest) -> ScheduleResult:
     minimize_makespan = req.objectives.get("minimize_makespan", True)
     makespan = model.new_int_var(0, horizon_slots, "makespan")
     model.add_max_equality(makespan, [end_vars[m.match_id] for m in active])
+
+    obj_terms: list[cp_model.LinearExpr] = []
     if minimize_makespan:
-        model.minimize(makespan)
+        obj_terms.append(makespan)
+
+    if req.court_priority and len(req.court_priority) > 1:
+        priority_map = {cid: idx for idx, cid in enumerate(req.court_priority)}
+        known = [cid for cid in req.court_priority if cid in court_index]
+        if len(known) > 1:
+            max_penalty = len(known)
+            for m in active:
+                for cid in known:
+                    rank = priority_map[cid]
+                    is_on = model.new_bool_var(f"prio_{m.match_id}_{cid}")
+                    model.add(court_idx_vars[m.match_id] == court_index[cid]).only_enforce_if(is_on)
+                    model.add(court_idx_vars[m.match_id] != court_index[cid]).only_enforce_if(is_on.negated())
+                    penalty = model.new_int_var(0, max_penalty, f"penalty_{m.match_id}_{cid}")
+                    model.add(penalty == rank).only_enforce_if(is_on)
+                    model.add(penalty == 0).only_enforce_if(is_on.negated())
+                    obj_terms.append(penalty)
+
+    if obj_terms:
+        model.minimize(sum(obj_terms))
 
     # Solve
     solver = cp_model.CpSolver()
