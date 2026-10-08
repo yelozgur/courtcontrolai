@@ -71,8 +71,8 @@ export default function LoginPage() {
           console.error('Firebase bridge failed:', error);
           toast({
             variant: 'destructive',
-            title: 'Bridge Failed',
-            description: 'Failed to sync with Firebase Auth',
+            title: t('auth.error.bridgeFailed'),
+            description: t('auth.error.bridgeFailedDesc'),
           });
         } finally {
           setBridging(false);
@@ -148,29 +148,29 @@ export default function LoginPage() {
             <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
               <CheckCircle2 className="h-10 w-10 text-emerald-500" />
             </div>
-            <CardTitle className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">Identity Verified</CardTitle>
-            <CardDescription className="text-lg">Select your destination to proceed.</CardDescription>
+            <CardTitle className="text-3xl font-headline font-bold uppercase tracking-tighter text-white">{t('auth.destination.identityVerified')}</CardTitle>
+            <CardDescription className="text-lg">{t('auth.destination.selectDestination')}</CardDescription>
           </div>
 
           <div className="grid gap-4">
             <Button size="lg" className="h-20 text-lg font-bold flex flex-col items-center justify-center gap-1 group bg-primary/10 border-primary/20 hover:bg-primary/20 text-white" variant="outline" onClick={() => router.push('/dashboard')}>
               <Zap className="h-5 w-5 text-primary group-hover:animate-pulse" />
-              <span>TOURNAMENT COMMAND</span>
+              <span>{t('auth.destination.tournamentCommand')}</span>
             </Button>
             <div className="grid grid-cols-2 gap-4">
               <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-white" variant="outline" onClick={() => router.push('/tournaments')}>
                 <Trophy className="h-5 w-5 text-amber-400" />
-                <span>BROWSE EVENTS</span>
+                <span>{t('auth.destination.browseEvents')}</span>
               </Button>
               <Button size="lg" className="h-20 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-white" variant="outline" onClick={() => router.push('/arena')}>
                 <Monitor className="h-5 w-5 text-accent" />
-                <span>WATCH ARENA</span>
+                <span>{t('auth.destination.watchArena')}</span>
               </Button>
             </div>
             {isAdminUser && (
               <Button size="lg" className="h-16 font-bold border-accent/30 text-accent hover:bg-accent/10 flex items-center justify-center gap-2" variant="outline" onClick={() => router.push('/dashboard')}>
                 <ShieldCheck className="h-5 w-5" />
-                SAAS ADMIN CONSOLE
+                {t('auth.destination.adminConsole')}
               </Button>
             )}
           </div>
@@ -199,11 +199,10 @@ export default function LoginPage() {
           {(!auth || !db) && (
             <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
               <ServerCrash className="h-4 w-4" />
-              <AlertTitle className="font-bold">Sunucuya bağlanılamıyor</AlertTitle>
+              <AlertTitle className="font-bold">{t('auth.error.serverUnavailable')}</AlertTitle>
               <AlertDescription className="mt-2 space-y-2">
                 <p className="text-xs">
-                  Kimlik doğrulama servisi şu anda kullanılamıyor, bu yüzden giriş yapılamıyor.
-                  Lütfen sayfayı yenileyin. Sorun devam ederse yöneticinize başvurun.
+                  {t('auth.error.serverUnavailableDesc')}
                 </p>
               </AlertDescription>
             </Alert>

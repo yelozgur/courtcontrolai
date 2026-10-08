@@ -69,6 +69,16 @@ const tr = {
   'auth.error.unauthorizedDomain': 'Yetkisiz Alan Adı',
   'auth.error.unauthorizedDomainDesc': 'Mevcut alan adınız Firebase Konsolunda yetkilendirilmemiş.',
   'auth.error.googleLoginFailed': 'Google Girişi Başarısız',
+  'auth.error.bridgeFailed': 'Köprü Hatası',
+  'auth.error.bridgeFailedDesc': 'Firebase Auth ile senkronizasyon başarısız',
+  'auth.error.serverUnavailable': 'Sunucuya Bağlanılamıyor',
+  'auth.error.serverUnavailableDesc': 'Kimlik doğrulama servisi şu anda kullanılamıyor, bu yüzden giriş yapılamıyor. Lütfen sayfayı yenileyin. Sorun devam ederse yöneticinize başvurun.',
+  'auth.destination.identityVerified': 'Kimlik Doğrulandı',
+  'auth.destination.selectDestination': 'Devam etmek için hedefinizi seçin.',
+  'auth.destination.tournamentCommand': 'TURNUVA KOMUTASI',
+  'auth.destination.browseEvents': 'ETKİNLİKLERİ GEZ',
+  'auth.destination.watchArena': 'ARENA İZLE',
+  'auth.destination.adminConsole': 'SİSTEM YÖNETİCİ KONSOLU',
 
   // Dashboard
   'dashboard.title': 'Yönetim Konsolu',
@@ -434,6 +444,16 @@ const en = {
   'auth.error.unauthorizedDomain': 'Unauthorized Domain',
   'auth.error.unauthorizedDomainDesc': 'Your current domain is not authorized in Firebase Console.',
   'auth.error.googleLoginFailed': 'Google Login Failed',
+  'auth.error.bridgeFailed': 'Bridge Failed',
+  'auth.error.bridgeFailedDesc': 'Failed to sync with Firebase Auth',
+  'auth.error.serverUnavailable': 'Server Unavailable',
+  'auth.error.serverUnavailableDesc': 'The authentication service is currently unavailable, so you cannot sign in. Please refresh the page. If the problem persists, contact your administrator.',
+  'auth.destination.identityVerified': 'Identity Verified',
+  'auth.destination.selectDestination': 'Select your destination to proceed.',
+  'auth.destination.tournamentCommand': 'TOURNAMENT COMMAND',
+  'auth.destination.browseEvents': 'BROWSE EVENTS',
+  'auth.destination.watchArena': 'WATCH ARENA',
+  'auth.destination.adminConsole': 'SYSTEM ADMIN CONSOLE',
 
   // Dashboard
   'dashboard.title': 'Management Console',
