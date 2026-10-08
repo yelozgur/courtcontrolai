@@ -10,7 +10,11 @@
 
 export type Locale = 'tr' | 'en'
 
-export const DEFAULT_LOCALE: Locale = 'tr'
+// English is the default. The audience is an international club
+// organisation and every product surface ships in English first; Turkish
+// remains selectable through the locale switcher and is remembered per
+// browser.
+export const DEFAULT_LOCALE: Locale = 'en'
 
 export const SUPPORTED_LOCALES: { code: Locale; label: string; flag: string }[] = [
   { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },

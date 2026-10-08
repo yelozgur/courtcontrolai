@@ -16,22 +16,26 @@ const STORAGE_KEY = 'cca_locale';
 /**
  * CourtControl AI: i18n Provider.
  *
- * Locale state'ini localStorage'da persist eder. Browser default locale'u
- * (navigator.language) algılar. Client-side, server-side'da default 'tr'.
+ * Locale state'ini localStorage'da persist eder.
+ *
+ * Default İngilizcedir. Tarayıcı dili algılanmaz: bir Türkçe tarayıcıda
+ * açılan ürün yine İngilizce görünür, çünkü varsayılan dil kullanıcının
+ * cihazına değil ürünün hedef kitlesine göre belirlenir. Kullanıcı Türkçe
+ * seçerse bu tercih localStorage'da saklanır ve bir daha sorulmaz.
  */
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate from localStorage (default TR — Turkish market)
+  // Hydrate from localStorage (default EN)
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
       if (stored && (stored === 'tr' || stored === 'en')) {
         setLocaleState(stored);
       }
-      // Default: TR (Türkçe — ana pazar)
-      // Kullanıcı açıkça EN seçene kadar TR kalır
+      // No stored choice: keep DEFAULT_LOCALE (English).
+      // An explicit previous choice is always respected.
     } catch {
       // localStorage unavailable, keep default
     }
