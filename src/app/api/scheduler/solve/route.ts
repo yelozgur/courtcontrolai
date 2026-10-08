@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
     }));
   const venues = dbVenues.length > 0
     ? dbVenues
-    : courts.map((c) => ({ venue_id: c.venue_id ?? c.court_id, courts: [c.court_id] }));
+    : courts.map((c) => ({ venue_id: c.venue_id ?? c.court_id, courts: [c.court_id], open_hours: undefined }));
 
   let prefs: SchedulePreferences = { ...emptyPreferences };
   let prefsSource: 'model' | 'fallback' = 'fallback';
