@@ -26,24 +26,97 @@ model Club {
 
   tournaments Tournament[]
   teams       Team[]
+  venues      Venue[]
 
   @@schema("schema_courtcontrolai")
 }
 
 model Team {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
   tournamentId String
   clubId       String
   playerIds    String[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   club       Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
-  @@schema("schema_courtcontrolai")
   @@index([tournamentId])
+  @@schema("schema_courtcontrolai")
+}
+
+// ===== Phase 1: Physical resources =====
+
+model Venue {
+  id        String   @id @default(uuid())
+  clubId    String
+  name      String
+  openHours Json? // {"mon":[["HH:MM","HH:MM"]], ...}; null = no info / open all day
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club   Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  courts Court[]
+
+  @@index([clubId])
+  @@schema("schema_courtcontrolai")
+}
+
+model Court {
+  id        String   @id @default(uuid())
+  venueId   String
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId])
+  @@schema("schema_courtcontrolai")
+}
+
+// ===== Phase 1: Registration =====
+
+model Registration {
+  id            String   @id @default(uuid())
+  tournamentId  String
+  userId        String?
+  displayName   String
+  email         String
+  categoryId    String?
+  skillLevel    String?
+  paymentStatus String   @default("waived")
+  paidAmount    Decimal  @default(0)
+  skipped       Boolean  @default(false)
+  skipReason    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  category   Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  checkIns   CheckIn[]
+
+  @@index([tournamentId])
+  @@index([email])
+  @@index([categoryId])
+  @@schema("schema_courtcontrolai")
+}
+
+model CheckIn {
+  id             String   @id @default(uuid())
+  registrationId String
+  scannedAt      DateTime @default(now())
+  method         String   @default("qr")
+  scannedBy      String?
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+  @@index([scannedAt])
+  @@schema("schema_courtcontrolai")
 }
 
 model Tournament {
@@ -54,17 +127,41 @@ model Tournament {
   status    TournamentStatus @default(PLANNED)
   startsAt  DateTime
   endsAt    DateTime?
-  settings  Json?            // bracket type (single/double elim), max players, etc.
+  settings  Json? // bracket type (single/double elim), max players, etc.
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
-  club      Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  matches   Match[]
-  bracket   Bracket?
-  teams     Team[]
+  club          Club           @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  matches       Match[]
+  bracket       Bracket?
+  teams         Team[]
+  categories    Category[]
+  registrations Registration[]
 
-  @@schema("schema_courtcontrolai")
   @@index([status, startsAt])
+  @@schema("schema_courtcontrolai")
+}
+
+model Category {
+  id           String   @id @default(uuid())
+  tournamentId String
+  name         String
+  slug         String
+  minAge       Int?
+  maxAge       Int?
+  gender       String?
+  teamSize     Int      @default(1)
+  matchMinutes Int      @default(60)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tournament    Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+  matches       Match[]
+
+  @@unique([tournamentId, slug])
+  @@index([tournamentId])
+  @@schema("schema_courtcontrolai")
 }
 
 enum TournamentStatus {
@@ -80,8 +177,9 @@ enum TournamentStatus {
 model Match {
   id           String      @id @default(uuid())
   tournamentId String
+  categoryId   String?
   round        Int
-  position     Int         // position within round
+  position     Int // position within round
   player1Id    String?
   player2Id    String?
   score1       Int         @default(0)
@@ -93,9 +191,11 @@ model Match {
   updatedAt    DateTime    @updatedAt
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  category   Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  @@schema("schema_courtcontrolai")
   @@index([tournamentId, round, position])
+  @@index([categoryId])
+  @@schema("schema_courtcontrolai")
 }
 
 enum MatchStatus {
@@ -111,7 +211,7 @@ enum MatchStatus {
 model Bracket {
   id           String   @id @default(uuid())
   tournamentId String   @unique
-  data         Json     // bracket tree structure
+  data         Json // bracket tree structure
   version      Int      @default(1)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -124,19 +224,19 @@ model Bracket {
 // ===== AI Flow Queue =====
 
 model AIQueue {
-  id           String         @id @default(uuid())
-  type         String         // 'bracket-flow', 'optimize-schedule', 'optimize-schedule-tsp'
-  status       AIQueueStatus  @default(PENDING)
-  input        Json
-  output       Json?
-  error        String?
-  attempts     Int            @default(0)
-  startedAt    DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime       @default(now())
+  id          String        @id @default(uuid())
+  type        String // 'bracket-flow', 'optimize-schedule', 'optimize-schedule-tsp'
+  status      AIQueueStatus @default(PENDING)
+  input       Json
+  output      Json?
+  error       String?
+  attempts    Int           @default(0)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime      @default(now())
 
-  @@schema("schema_courtcontrolai")
   @@index([status, createdAt])
+  @@schema("schema_courtcontrolai")
 }
 
 enum AIQueueStatus {

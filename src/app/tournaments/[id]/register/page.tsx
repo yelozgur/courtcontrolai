@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, CheckCircle2, Loader2, User, Mail, DollarSign, CreditCard, ShieldCheck, Zap, Lock, MessageSquare, Send, Shirt } from 'lucide-react';
+import { Trophy, CheckCircle2, Loader2, User, Mail, DollarSign, Lock, MessageSquare, Send, Shirt } from 'lucide-react';
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useI18n } from '@/i18n/I18nProvider';
 import Image from 'next/image';
 
 export default function TournamentRegistration() {
@@ -21,6 +22,7 @@ export default function TournamentRegistration() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { t } = useI18n();
   
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,8 +86,8 @@ export default function TournamentRegistration() {
       tournamentId: id,
       createdAt: new Date().toISOString(),
       categoryName: tournament.categories?.find((c: any) => c.id === formData.categoryId)?.name || "Default",
-      paymentStatus: entryFee > 0 ? "paid" : "waived",
-      paidAmount: entryFee,
+      paymentStatus: "waived",
+      paidAmount: 0,
       verified: true
     };
 
@@ -250,7 +252,7 @@ export default function TournamentRegistration() {
               )}
 
               <Button type="submit" className="w-full h-16 text-xl font-bold bg-primary uppercase tracking-[0.2em] shadow-xl shadow-primary/20">
-                Continue to Payment
+                {t('pack.continueToPayment')}
               </Button>
             </form>
           </CardContent>
@@ -258,29 +260,14 @@ export default function TournamentRegistration() {
           <CardContent className="pt-10 space-y-8">
             <div className="text-center space-y-2">
                <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
-                  <CreditCard className="h-8 w-8 text-emerald-500" />
+                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
                </div>
-               <h3 className="text-2xl font-bold uppercase tracking-tight">Checkout</h3>
-               <p className="text-muted-foreground text-sm">Review registration for {tournament?.name}</p>
-            </div>
-
-            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4 relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-               <div className="flex justify-between items-center text-sm font-bold">
-                  <span className="text-emerald-500 uppercase tracking-widest text-[11px]">Total Due Today</span>
-                  <span className="text-3xl font-headline tracking-tighter">${(Number(tournament?.entryFee) || 0).toFixed(2)}</span>
-               </div>
+               <h3 className="text-2xl font-bold uppercase tracking-tight">Kayıt Onayı</h3>
+               <p className="text-muted-foreground text-sm">Pilot süresince kayıt ücretsizdir — ödeme adımı yok.</p>
+               <p className="text-muted-foreground/60 text-xs">Registration is free during the pilot — no checkout.</p>
             </div>
 
             <div className="space-y-6">
-               <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 flex items-start gap-4">
-                  <ShieldCheck className="h-6 w-6 text-primary mt-1" />
-                  <div className="text-[10px] uppercase font-bold tracking-tight space-y-1">
-                    <p className="text-white">Secure Transaction</p>
-                    <p className="text-muted-foreground leading-relaxed">Payments are protected by platform-grade encryption.</p>
-                  </div>
-               </div>
-
                <Button 
                 className="w-full h-20 text-2xl font-bold bg-emerald-500 hover:bg-emerald-600 shadow-2xl shadow-emerald-500/20 uppercase tracking-[0.1em] group transition-all" 
                 onClick={handleCompleteRegistration} 
@@ -293,8 +280,8 @@ export default function TournamentRegistration() {
                     </>
                   ) : (
                     <>
-                      <Zap className="mr-3 h-6 w-6 text-white group-hover:scale-125 transition-transform" /> 
-                      Register & Pay
+                      <CheckCircle2 className="mr-3 h-6 w-6 text-white group-hover:scale-125 transition-transform" /> 
+                      Kaydı Tamamla
                     </>
                   )}
                </Button>

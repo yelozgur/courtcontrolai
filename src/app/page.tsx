@@ -9,11 +9,13 @@ import { Trophy, Calendar, Users, Zap, ShieldCheck, Heart, Loader2, Monitor, Bui
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { useAiEnabled } from '@/hooks/use-ai-enabled';
 
 export default function HomePage() {
   const { user, loading } = useUser();
   const db = useFirestore();
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-tournament');
+  const aiEnabled = useAiEnabled();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -34,10 +36,10 @@ export default function HomePage() {
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
           <Link className="text-sm font-medium hover:text-primary transition-colors hidden sm:block" href="/tournaments">
-            Events
+            Turnuvalar
           </Link>
           <Link className="text-sm font-medium hover:text-primary transition-colors hidden sm:block" href="/arena">
-            Arena
+            Canlı Skor
           </Link>
           
           {loading ? (
@@ -47,17 +49,17 @@ export default function HomePage() {
               <Button asChild variant="outline" size="sm" className="rounded-xl border-primary/20">
                 <Link href="/dashboard" className="flex items-center gap-2">
                   {isAdmin && <ShieldCheck className="h-4 w-4 text-accent" />}
-                  {isAdmin ? 'Admin Console' : 'Dashboard'}
+                  {isAdmin ? 'Yönetici Konsolu' : 'Yönetim Konsolu'}
                 </Link>
               </Button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="sm">
-                <Link href="/login">Sign In</Link>
+                <Link href="/login">Giriş Yap</Link>
               </Button>
               <Button asChild variant="default" size="sm" className="bg-primary text-primary-foreground hidden md:flex rounded-xl">
-                <Link href="/signup">Register Club</Link>
+                <Link href="/signup">Kulüp Kaydı</Link>
               </Button>
             </div>
           )}
@@ -84,13 +86,13 @@ export default function HomePage() {
             <div className="flex flex-col items-center space-y-6 text-center">
               <div className="space-y-4">
                 <Badge variant="outline" className="text-accent border-accent/40 bg-accent/5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.2em] animate-in fade-in slide-in-from-top-4 duration-1000">
-                  {isAdmin ? 'SaaS Network Administrator' : 'The Multi-Tenant Sports Engine'}
+                  {isAdmin ? 'Yönetici Konsolu' : 'Kort ve Turnuva Yönetim Sistemi'}
                 </Badge>
                 <h1 className="text-5xl font-headline font-bold tracking-tighter sm:text-6xl md:text-7xl lg:text-9xl/none uppercase">
-                  Dominate Your <span className="text-primary drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Arena</span>
+                  Kortlarınızda Maç Kaosuna <span className="text-primary drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Son Verin</span>
                 </h1>
                 <p className="mx-auto max-w-[800px] text-muted-foreground md:text-xl lg:text-2xl leading-relaxed font-medium">
-                  The elite sports management hub. Automate complex schedules with Genkit AI, broadcast live scores, and grow your player community.
+                  Turnuva eşleşmelerini ve kort dağılımını dakikalar içinde hazırlayın; hakem masasından girilen skorları kulüp ekranlarına ve oyuncuların telefonlarına anında yayınlayın.
                 </p>
               </div>
 
@@ -98,13 +100,13 @@ export default function HomePage() {
                 <Button asChild size="lg" className="h-20 text-lg font-bold flex flex-col items-center gap-1 rounded-2xl group transition-all hover:scale-105">
                   <Link href="/tournaments">
                     <Trophy className="h-6 w-6 group-hover:animate-bounce" />
-                    <span>Browse Events</span>
+                    <span>Turnuvaları İncele</span>
                   </Link>
                 </Button>
                 <Button asChild variant="secondary" size="lg" className="h-20 text-lg font-bold flex flex-col items-center gap-1 rounded-2xl group transition-all hover:scale-105 border border-white/5">
                   <Link href="/arena">
                     <Monitor className="h-6 w-6 text-accent group-hover:scale-110" />
-                    <span>Live Arena Hub</span>
+                    <span>Canlı Skor Ekranı</span>
                   </Link>
                 </Button>
                 
@@ -119,7 +121,7 @@ export default function HomePage() {
                   <Button asChild variant="outline" size="lg" className="h-20 text-lg font-bold border-primary/30 text-primary hover:bg-primary/10 flex flex-col items-center gap-1 rounded-2xl group transition-all hover:scale-105">
                     <Link href={user ? "/dashboard" : "/signup"}>
                       <Zap className="h-6 w-6 group-hover:text-amber-400" />
-                      <span>{user ? "Go to Console" : "Launch Your Club"}</span>
+                      <span>{user ? "Yönetim Konsolu" : "Kulübünüzü Başlatın"}</span>
                     </Link>
                   </Button>
                 )}
@@ -131,6 +133,7 @@ export default function HomePage() {
         <section className="w-full py-24 bg-card/50 border-y border-white/5">
           <div className="container px-4 md:px-6 mx-auto">
             <div className="grid gap-12 lg:grid-cols-3">
+              {aiEnabled && (
               <div className="flex flex-col items-center space-y-4 text-center p-8 bg-secondary/20 rounded-[2.5rem] border border-white/5 backdrop-blur-sm transition-all hover:border-primary/30 group">
                 <div className="p-5 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Sparkles className="h-10 w-10 text-primary" />
@@ -140,6 +143,7 @@ export default function HomePage() {
                   Eliminate manual planning. Our Tournament Director AI handles court allocations and recovery times with Genkit intelligence.
                 </p>
               </div>
+              )}
               <div className="flex flex-col items-center space-y-4 text-center p-8 bg-secondary/20 rounded-[2.5rem] border border-white/5 backdrop-blur-sm transition-all hover:border-accent/30 group">
                 <div className="p-5 bg-accent/10 rounded-2xl group-hover:scale-110 transition-transform">
                   <Monitor className="h-10 w-10 text-accent" />

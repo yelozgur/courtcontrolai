@@ -7,19 +7,18 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const tournamentId = searchParams.get('tournamentId');
 
-    if (!tournamentId) {
-      return NextResponse.json(
-        { error: 'Missing required query parameter: tournamentId' },
-        { status: 400 }
-      );
-    }
-
     const teams = await prisma.team.findMany({
-      where: { tournamentId },
+      where: tournamentId ? { tournamentId } : undefined,
       orderBy: { createdAt: 'asc' },
+      take: 100,
       include: {
         club: {
           select: { id: true, name: true, slug: true },
@@ -31,7 +30,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('GET /api/teams error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch teams', details: (error as Error).message },
+      { error: 'Failed to fetch teams' },
       { status: 500 }
     );
   }
@@ -70,10 +69,8 @@ export async function POST(request: Request) {
     }
 
     const isClubAdmin =
-      tournament.club.ownerId === session.user.firebaseUid ||
       tournament.club.ownerId === session.user.id ||
-      tournament.club.adminIds.includes(session.user.firebaseUid || '') ||
-      tournament.club.adminIds.includes(session.user.id || '');
+      tournament.club.adminIds.includes(session.user.id);
 
     if (!isClubAdmin) {
       return NextResponse.json(
@@ -95,7 +92,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/teams error:', error);
     return NextResponse.json(
-      { error: 'Failed to create team', details: (error as Error).message },
+      { error: 'Failed to create team' },
       { status: 500 }
     );
   }

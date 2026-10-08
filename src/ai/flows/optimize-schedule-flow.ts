@@ -6,7 +6,8 @@
  * - optimizeTournamentSchedule - A function that generates an optimized match schedule based on tournament rules, participants, and specific user goals.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, isAiEnabled } from '@/ai/genkit';
+import { AiNotConfiguredError } from '@/ai/errors';
 import { z } from 'genkit';
 
 const CategorySchema = z.object({
@@ -58,11 +59,16 @@ const ScheduleOutputSchema = z.object({
 
 export type ScheduleOutput = z.infer<typeof ScheduleOutputSchema>;
 
-const optimizeSchedulePrompt = ai.definePrompt({
-  name: 'optimizeSchedulePrompt',
-  input: { schema: ScheduleInputSchema },
-  output: { schema: ScheduleOutputSchema },
-  prompt: `You are an elite Tournament Director and Optimization Expert.
+function getFlow() {
+  if (!ai) {
+    throw new AiNotConfiguredError();
+  }
+
+  const optimizeSchedulePrompt = ai.definePrompt({
+    name: 'optimizeSchedulePrompt',
+    input: { schema: ScheduleInputSchema },
+    output: { schema: ScheduleOutputSchema },
+    prompt: `You are an elite Tournament Director and Optimization Expert.
 Your task is to generate a logical, fair, and efficient match schedule for the tournament: "{{{tournamentName}}}".
 
 CONTEXT:
@@ -93,38 +99,40 @@ RULES:
 5. COURT ASSIGNMENT: Distribute matches across available courts at the prioritized location. Use Court 1 for highest category matches.
 6. START TIME: Begin matches at 09:00 AM on the start date. Use 30-min or 60-min increments based on {{{matchDuration}}}.
 7. OUTPUT: Generate a comprehensive list of scheduled matches that honors these constraints.`,
-});
+  });
 
-const optimizeTournamentScheduleFlow = ai.defineFlow(
-  {
-    name: 'optimizeTournamentScheduleFlow',
-    inputSchema: ScheduleInputSchema,
-    outputSchema: ScheduleOutputSchema,
-  },
-  async (input) => {
-    const { output } = await optimizeSchedulePrompt(input);
+  return ai.defineFlow(
+    {
+      name: 'optimizeTournamentScheduleFlow',
+      inputSchema: ScheduleInputSchema,
+      outputSchema: ScheduleOutputSchema,
+    },
+    async (input) => {
+      const { output } = await optimizeSchedulePrompt(input);
 
-    // CourtControl AI: LLM output Zod ile reparse — output! non-null assertion
-    // kaldırıldı, runtime'da crash riski yok. Garbage dönerse fallback dön.
-    if (!output) {
-      console.warn('[optimize-schedule] LLM returned null/undefined, returning empty schedule');
-      return { scheduledMatches: [], summary: 'AI returned no output. Please try again or use manual scheduling.' };
+      if (!output) {
+        console.warn('[optimize-schedule] LLM returned null/undefined, returning empty schedule');
+        return { scheduledMatches: [], summary: 'AI returned no output. Please try again or use manual scheduling.' };
+      }
+
+      const parsed = ScheduleOutputSchema.safeParse(output);
+      if (!parsed.success) {
+        console.error('[optimize-schedule] LLM output failed Zod validation:', parsed.error.issues);
+        return {
+          scheduledMatches: [],
+          summary: `AI output failed validation: ${parsed.error.issues[0]?.message || 'unknown error'}. Try again with simpler instructions.`,
+        };
+      }
+
+      return parsed.data;
     }
-
-    // Reparse: schema validation + sanitization
-    const parsed = ScheduleOutputSchema.safeParse(output);
-    if (!parsed.success) {
-      console.error('[optimize-schedule] LLM output failed Zod validation:', parsed.error.issues);
-      return {
-        scheduledMatches: [],
-        summary: `AI output failed validation: ${parsed.error.issues[0]?.message || 'unknown error'}. Try again with simpler instructions.`,
-      };
-    }
-
-    return parsed.data;
-  }
-);
+  );
+}
 
 export async function optimizeTournamentSchedule(input: ScheduleInput): Promise<ScheduleOutput> {
-  return optimizeTournamentScheduleFlow(input);
+  if (!isAiEnabled()) {
+    throw new AiNotConfiguredError();
+  }
+  const flow = getFlow();
+  return flow(input);
 }

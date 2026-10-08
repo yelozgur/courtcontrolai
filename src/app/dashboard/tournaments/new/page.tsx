@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -61,7 +62,7 @@ export default function TournamentWizard() {
     return query(collection(db, "clubs"), where("ownerId", "==", user.uid), limit(1))
   }, [db, user])
 
-  const { data: userClubs } = useCollection(clubsQuery)
+  const { data: userClubs, loading: clubsLoading } = useCollection(clubsQuery)
   const clubId = userClubs?.[0]?.id
   const clubSport = userClubs?.[0]?.primarySport || "padel"
 
@@ -139,7 +140,10 @@ export default function TournamentWizard() {
   }
 
   const handleLaunch = () => {
-    if (!db || !clubId) return
+    if (!db || !clubId) {
+      toast({ variant: "destructive", title: "No Club", description: "Create a club before launching a tournament." })
+      return
+    }
     
     if (formData.entryFee > 0 && formData.entryFee < 5) {
       toast({ 
@@ -180,7 +184,22 @@ export default function TournamentWizard() {
       })
   }
 
-  if (!clubId) return <div className="p-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></div>
+  if (clubsLoading) return <div className="p-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></div>
+
+  if (!clubId) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 p-20">
+      <Trophy className="h-12 w-12 text-muted-foreground/30" />
+      <h3 className="text-2xl font-headline font-bold">No Club Found</h3>
+      <p className="text-muted-foreground max-w-md">
+        Your account is not associated with a club. Create a club first to launch tournaments.
+      </p>
+      <Button asChild className="h-12 px-8 rounded-xl">
+        <Link href="/dashboard/club">
+          <Plus className="mr-2 h-4 w-4" /> Create Club
+        </Link>
+      </Button>
+    </div>
+  )
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 py-6">

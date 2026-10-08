@@ -9,6 +9,7 @@ export async function GET() {
   try {
     const clubs = await prisma.club.findMany({
       orderBy: { createdAt: 'desc' },
+      take: 50,
       select: {
         id: true,
         name: true,
@@ -22,7 +23,7 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/clubs error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch clubs', details: (error as Error).message },
+      { error: 'Failed to fetch clubs' },
       { status: 500 }
     );
   }
@@ -57,8 +58,8 @@ export async function POST(request: Request) {
       data: {
         name,
         slug,
-        ownerId: session.user.firebaseUid || session.user.id,
-        adminIds: [session.user.firebaseUid || session.user.id],
+        ownerId: session.user.id,
+        adminIds: [session.user.id],
         description,
         logoUrl,
       },
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/clubs error:', error);
     return NextResponse.json(
-      { error: 'Failed to create club', details: (error as Error).message },
+      { error: 'Failed to create club' },
       { status: 500 }
     );
   }

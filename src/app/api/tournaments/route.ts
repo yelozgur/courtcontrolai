@@ -9,6 +9,7 @@ export async function GET() {
   try {
     const tournaments = await prisma.tournament.findMany({
       orderBy: { createdAt: 'desc' },
+      take: 100,
       include: {
         club: {
           select: { id: true, name: true, slug: true },
@@ -19,7 +20,7 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/tournaments error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch tournaments', details: (error as Error).message },
+      { error: 'Failed to fetch tournaments' },
       { status: 500 }
     );
   }
@@ -48,10 +49,8 @@ export async function POST(request: Request) {
     }
 
     const isClubAdmin =
-      club.ownerId === session.user.firebaseUid ||
       club.ownerId === session.user.id ||
-      club.adminIds.includes(session.user.firebaseUid || '') ||
-      club.adminIds.includes(session.user.id || '');
+      club.adminIds.includes(session.user.id);
 
     if (!isClubAdmin) {
       return NextResponse.json(
@@ -85,7 +84,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/tournaments error:', error);
     return NextResponse.json(
-      { error: 'Failed to create tournament', details: (error as Error).message },
+      { error: 'Failed to create tournament' },
       { status: 500 }
     );
   }

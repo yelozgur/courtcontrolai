@@ -114,6 +114,39 @@ export default function DashboardOverview() {
         </div>
       </div>
 
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+        <Card className="rounded-2xl border-border bg-card hover:border-primary/50 transition-all">
+          <CardContent className="p-6 flex flex-col h-full">
+            <div className="text-4xl font-headline font-bold text-primary mb-3">1</div>
+            <h3 className="font-bold text-lg mb-1">Kulübü kur</h3>
+            <p className="text-sm text-muted-foreground mb-4 flex-grow">Kort ve mekan bilgilerinizi girin.</p>
+            <Button asChild className="rounded-xl font-bold w-full">
+              <Link href="/dashboard/club">Set up your club</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl border-border bg-card hover:border-primary/50 transition-all">
+          <CardContent className="p-6 flex flex-col h-full">
+            <div className="text-4xl font-headline font-bold text-primary mb-3">2</div>
+            <h3 className="font-bold text-lg mb-1">Oyuncuları ekle</h3>
+            <p className="text-sm text-muted-foreground mb-4 flex-grow">Turnuvaya katılacak oyuncuları kaydedin.</p>
+            <Button asChild className="rounded-xl font-bold w-full">
+              <Link href="/dashboard/participants">Add your players</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl border-border bg-card hover:border-primary/50 transition-all">
+          <CardContent className="p-6 flex flex-col h-full">
+            <div className="text-4xl font-headline font-bold text-primary mb-3">3</div>
+            <h3 className="font-bold text-lg mb-1">Fikstürü yayınla</h3>
+            <p className="text-sm text-muted-foreground mb-4 flex-grow">Turnuvayı oluşturup fikstürü kulüp ekranlarına gönderin.</p>
+            <Button asChild className="rounded-xl font-bold w-full">
+              <Link href="/dashboard/schedule">Publish your bracket</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Club Tournaments" value={tournaments?.length || 0} icon={Trophy} sub="Active Events" />
         <StatCard title="Live Matches" value={matches?.length || 0} icon={Activity} sub="Currently Scoring" />

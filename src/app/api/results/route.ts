@@ -5,6 +5,35 @@ import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const tournamentId = searchParams.get('tournamentId');
+
+    const matches = await prisma.match.findMany({
+      where: {
+        ...(tournamentId ? { tournamentId } : {}),
+        status: { in: ['COMPLETED', 'WALKOVER', 'DISQUALIFIED'] },
+      },
+      orderBy: { playedAt: 'desc' },
+      take: 200,
+    });
+
+    return NextResponse.json(matches, { status: 200 });
+  } catch (error) {
+    console.error('GET /api/results error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch results' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -50,10 +79,8 @@ export async function POST(request: Request) {
     }
 
     const isClubAdmin =
-      match.tournament.club.ownerId === session.user.firebaseUid ||
       match.tournament.club.ownerId === session.user.id ||
-      match.tournament.club.adminIds.includes(session.user.firebaseUid || '') ||
-      match.tournament.club.adminIds.includes(session.user.id || '');
+      match.tournament.club.adminIds.includes(session.user.id);
 
     if (!isClubAdmin) {
       return NextResponse.json(
@@ -85,7 +112,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/results error:', error);
     return NextResponse.json(
-      { error: 'Failed to update match result', details: (error as Error).message },
+      { error: 'Failed to update match result' },
       { status: 500 }
     );
   }

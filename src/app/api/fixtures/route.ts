@@ -5,6 +5,32 @@ import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const tournamentId = searchParams.get('tournamentId');
+
+    const matches = await prisma.match.findMany({
+      where: tournamentId ? { tournamentId } : undefined,
+      orderBy: [{ round: 'asc' }, { position: 'asc' }],
+      take: 200,
+    });
+
+    return NextResponse.json(matches, { status: 200 });
+  } catch (error) {
+    console.error('GET /api/fixtures error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch fixtures' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -28,11 +54,17 @@ export async function POST(request: Request) {
         teams: true,
         matches: true,
         bracket: true,
+        club: { select: { ownerId: true, adminIds: true } },
       },
     });
 
     if (!tournament) {
       return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
+    }
+
+    const userId = session.user.id;
+    if (tournament.club.ownerId !== userId && !tournament.club.adminIds.includes(userId)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const teams = tournament.teams;
@@ -72,7 +104,6 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error: 'Scheduler service returned an error',
-            details: errorText,
           },
           { status: 502 }
         );
@@ -130,7 +161,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'Failed to call scheduler service',
-          details: (schedulerError as Error).message,
         },
         { status: 503 }
       );
@@ -138,7 +168,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('POST /api/fixtures error:', error);
     return NextResponse.json(
-      { error: 'Failed to generate fixtures', details: (error as Error).message },
+      { error: 'Failed to generate fixtures' },
       { status: 500 }
     );
   }

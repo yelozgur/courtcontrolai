@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useAiEnabled } from '@/hooks/use-ai-enabled';
 import { 
   Database, 
   AlertCircle, 
@@ -32,6 +33,7 @@ import { cn } from '@/lib/utils';
 export default function AdminCostDashboard() {
   const db = useFirestore();
   const { user } = useUser();
+  const aiEnabled = useAiEnabled();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !user) return null;
@@ -195,7 +197,9 @@ export default function AdminCostDashboard() {
                 <CardContent className="space-y-6 pt-6">
                   <UsageProgress label="Total Storage Reads" current={stats.readUsagePercent} sub="Across all tenants" />
                   <UsageProgress label="Total Storage Writes" current={stats.writeUsagePercent} sub="Across all tenants" />
-                  <UsageProgress label="AI Genkit Load" current={stats.aiUsagePercent} sub="Capacity used" color="text-accent" />
+                  {aiEnabled && (
+                    <UsageProgress label="AI Load" current={stats.aiUsagePercent} sub="Capacity used" color="text-accent" />
+                  )}
                   
                   <div className="pt-4 border-t border-white/5 flex items-center gap-3">
                      <Zap className="h-4 w-4 text-emerald-500" />

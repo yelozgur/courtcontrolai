@@ -14,6 +14,7 @@ import { useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { useToast } from "@/hooks/use-toast"
+import { useAiEnabled } from "@/hooks/use-ai-enabled"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -44,6 +45,7 @@ export default function EditTournamentPage() {
   const { id } = useParams()
   const router = useRouter()
   const db = useFirestore()
+  const aiEnabled = useAiEnabled()
   const { toast } = useToast()
   
   const tournamentRef = useMemoFirebase(() => {
@@ -325,7 +327,11 @@ export default function EditTournamentPage() {
                     <MapPin className="h-6 w-6 text-primary" />
                     <div>
                        <p className="font-bold">Resource Management</p>
-                       <p className="text-xs text-muted-foreground">Adjust match timing and buffer logic for Genkit optimizer.</p>
+                       <p className="text-xs text-muted-foreground">
+                         {aiEnabled
+                           ? 'Adjust match timing and buffer logic for Genkit optimizer.'
+                           : 'Adjust match timing and buffer logic.'}
+                       </p>
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-4">

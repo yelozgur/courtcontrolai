@@ -4,9 +4,45 @@
 
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./prisma";
 import { getFirebaseAdmin } from "./firebase-admin";
+import { timingSafeEqual } from "node:crypto";
+
+const TEST_USER_EMAIL = process.env.AUTH_TEST_USER_EMAIL || "test@courtcontrolai.local";
+const TEST_USER_ID = "test-user-e2e";
+
+function testSessionProvider() {
+  return Credentials({
+    id: "test-session",
+    name: "Test Session",
+    credentials: {
+      token: { label: "Token", type: "text" },
+    },
+    async authorize(credentials) {
+      const expectedToken = process.env.AUTH_TEST_TOKEN;
+      if (!expectedToken) return null;
+
+      const providedToken = credentials?.token;
+      if (typeof providedToken !== "string" || !providedToken) return null;
+
+      const expectedBuf = Buffer.from(expectedToken);
+      const providedBuf = Buffer.from(providedToken);
+
+      if (expectedBuf.length !== providedBuf.length) return null;
+
+      if (!timingSafeEqual(expectedBuf, providedBuf)) return null;
+
+      return {
+        id: TEST_USER_ID,
+        email: TEST_USER_EMAIL,
+        name: "E2E Test User",
+        emailVerified: new Date(),
+      };
+    },
+  });
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -20,6 +56,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
       },
     }),
+    ...(process.env.AUTH_TEST_ENABLED === "true" ? [testSessionProvider()] : []),
   ],
 
   pages: {
@@ -35,6 +72,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google' && user.email) {
+        // Firebase bridge is best-effort. Vercel doesn't carry FIREBASE_ADMIN_*,
+        // so the bridge must degrade to a no-op rather than blocking sign-in.
         try {
           const adminAuth = getFirebaseAdmin();
           try {
@@ -52,8 +91,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           }
         } catch (error) {
-          console.error('Firebase bridge failed:', error);
-          return false;
+          console.warn(
+            '[auth] Firebase bridge unavailable, sign-in continues without Firebase UID sync:',
+            error instanceof Error ? error.message : error
+          );
         }
       }
       return true;
@@ -67,13 +108,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account) {
         token.provider = account.provider;
       }
-      if (token.email) {
+      if (token.email && token.provider === "google") {
+        // Same graceful-degradation contract as signIn: missing FIREBASE_ADMIN_*
+        // must not poison every Google session.
         try {
           const adminAuth = getFirebaseAdmin();
           const firebaseUser = await adminAuth.getUserByEmail(token.email as string);
           token.firebaseUid = firebaseUser.uid;
         } catch (error) {
-          console.error('Failed to get Firebase UID for JWT:', error);
+          if (!token.firebaseUid) {
+            console.warn(
+              '[auth] Firebase UID sync skipped (admin SDK unavailable):',
+              error instanceof Error ? error.message : error
+            );
+          }
         }
       }
       return token;

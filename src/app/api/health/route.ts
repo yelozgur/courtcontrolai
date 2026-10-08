@@ -134,7 +134,7 @@ async function checkScheduler(): Promise<CheckResult> {
   // In dev/local, we don't enforce; in prod, this probes the M2 endpoint.
   const schedulerUrl = process.env.SCHEDULER_URL; // e.g. http://m2-mac.tail-xyz.ts.net:8500
   if (!schedulerUrl) {
-    return { ok: true, mode: 'dev', note: 'SCHEDULER_URL not set (dev mode)' };
+    return { ok: false, mode: 'dev', error: 'SCHEDULER_URL not set — scheduler is not running' };
   }
   const start = Date.now();
   try {
@@ -168,17 +168,34 @@ export async function GET() {
     Promise.resolve(checkAIQuota()),
   ]);
 
-  const checks = { process: process_check, env, scheduler, ai_quota };
-  const allOk = Object.values(checks).every((c) => c.ok);
+  const requiredChecks = { process: process_check, env };
+  const requiredOk = Object.values(requiredChecks).every((c) => c.ok);
+
+  const capabilities: Record<string, string> = {};
+  if (!ai_quota.ok) {
+    capabilities.ai = 'disabled';
+  } else {
+    capabilities.ai = 'enabled';
+  }
+  if (scheduler.mode === 'dev') {
+    capabilities.scheduler = 'dev';
+  } else if (scheduler.ok) {
+    capabilities.scheduler = 'remote';
+  } else {
+    // SCHEDULER_URL is configured but the probe failed. This is a real outage and must
+    // not be reported as "dev", which would hide it behind the deliberate-off label.
+    capabilities.scheduler = 'unreachable';
+  }
 
   return NextResponse.json(
     {
-      ok: allOk,
+      ok: requiredOk,
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || '1.0.0',
-      checks,
+      checks: { process: process_check, env, scheduler, ai_quota },
+      capabilities,
       uptime_s: Math.round((Date.now() - START_TIME) / 1000),
     },
-    { status: allOk ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
+    { status: requiredOk ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
   );
 }
