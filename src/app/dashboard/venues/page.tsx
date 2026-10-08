@@ -43,14 +43,14 @@ interface Venue {
 }
 
 const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
-const WEEKDAY_LABELS: Record<string, { en: string; tr: string }> = {
-  mon: { en: "Monday", tr: "Pazartesi" },
-  tue: { en: "Tuesday", tr: "Salı" },
-  wed: { en: "Wednesday", tr: "Çarşamba" },
-  thu: { en: "Thursday", tr: "Perşembe" },
-  fri: { en: "Friday", tr: "Cuma" },
-  sat: { en: "Saturday", tr: "Cumartesi" },
-  sun: { en: "Sunday", tr: "Pazar" },
+const WEEKDAY_LABELS: Record<string, { en: string; tr: string; enShort: string; trShort: string }> = {
+  mon: { en: "Monday", tr: "Pazartesi", enShort: "Mon", trShort: "Pzt" },
+  tue: { en: "Tuesday", tr: "Salı", enShort: "Tue", trShort: "Sal" },
+  wed: { en: "Wednesday", tr: "Çarşamba", enShort: "Wed", trShort: "Çar" },
+  thu: { en: "Thursday", tr: "Perşembe", enShort: "Thu", trShort: "Per" },
+  fri: { en: "Friday", tr: "Cuma", enShort: "Fri", trShort: "Cum" },
+  sat: { en: "Saturday", tr: "Cumartesi", enShort: "Sat", trShort: "Cmt" },
+  sun: { en: "Sunday", tr: "Pazar", enShort: "Sun", trShort: "Paz" },
 }
 
 export default function VenuesPage() {
@@ -122,16 +122,34 @@ export default function VenuesPage() {
     }
   }
 
-  const formatOpenHours = (oh: Record<string, string[][]> | null) => {
+  const formatOpenHoursCompact = (oh: Record<string, string[][]> | null) => {
     if (oh === null) return t("venue.openHours.null")
     const entries = Object.entries(oh)
     if (entries.length === 0) return t("venue.openHours.closed")
-    return WEEKDAYS
-      .filter((day) => oh[day])
-      .map((day) => {
-        const label = WEEKDAY_LABELS[day]?.[locale as "en" | "tr"] ?? WEEKDAY_LABELS[day]?.tr ?? day
-        const ranges = oh[day].map((r) => r.join("–")).join(", ")
-        return `${label}: ${ranges}`
+    const loc = locale as "en" | "tr"
+    const closedLabel = t("venue.openHours.dayClosed")
+    const dayStrings = WEEKDAYS.map((day) => {
+      const slots = oh[day]
+      if (!slots || slots.length === 0) return closedLabel
+      return slots.map((r) => r.join("–")).join(", ")
+    })
+    type Group = { start: number; end: number; hours: string }
+    const groups: Group[] = []
+    for (let i = 0; i < 7; i++) {
+      const h = dayStrings[i]
+      if (groups.length > 0 && groups[groups.length - 1].hours === h) {
+        groups[groups.length - 1].end = i
+      } else {
+        groups.push({ start: i, end: i, hours: h })
+      }
+    }
+    return groups
+      .map((g) => {
+        const shortKey = loc === "en" ? "enShort" : "trShort"
+        const startLabel = WEEKDAY_LABELS[WEEKDAYS[g.start]][shortKey]
+        const endLabel = WEEKDAY_LABELS[WEEKDAYS[g.end]][shortKey]
+        const dayPart = g.start === g.end ? startLabel : `${startLabel}–${endLabel}`
+        return `${dayPart}: ${g.hours}`
       })
       .join("; ")
   }
@@ -187,11 +205,13 @@ export default function VenuesPage() {
                       <h3 className="text-lg font-bold truncate">{venue.name}</h3>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="whitespace-nowrap shrink-0">
                         {venue.courts.length} {t("venue.court")}
                       </Badge>
-                      <span className="truncate text-xs">{formatOpenHours(venue.openHours)}</span>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                      {formatOpenHoursCompact(venue.openHours)}
+                    </p>
                     {venue.courts.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-3">
                         {venue.courts.map((court) => (

@@ -6,19 +6,11 @@ The orchestrator opened every PNG in this directory and read the rendered conten
 
 | File | What it shows | Usable as evidence |
 |---|---|---|
-| `home-2026-10-07.png` | Landing page | Yes |
-| `tournaments-public-2026-10-07.png` | Public tournament list | Yes |
-| `venues-list-2026-10-07.png` | **Login page** (stale, pre-fix) | **No** |
-| `venues-detail-2026-10-07.png` | **Login page** (stale, pre-fix) | **No** |
-| `venues-list-2026-10-08.png` | Venue list — "Main Arena" with 3 courts, Turkish hours starting Pazartesi, "Konsol / Mekanlar" breadcrumb, "Hesabım" dropdown | Yes |
-| `venues-detail-2026-10-08.png` | Venue detail — "Açılış Saatleri" tab, Pazartesi 09:00–12:00 & 14:00–20:00, Turkish day labels | Yes |
-| `venues-reorder-2026-10-08.png` | Court reorder — Court B moved to #1, Court A to #2, "Sahaları Yönet" tab | Yes |
-
-The two `venues-*-2026-10-07.png` captures were taken without an authenticated session,
-so the middleware redirected to `/login` and the venue screens never rendered. An earlier
-report described `venues-list` as showing the venue list page. That was wrong: it is
-byte-for-byte the same login screen as `venues-detail`. They are kept as the record of
-what went wrong.
+| `home-2026-10-07.png` | Landing page — "DOMINATE YOUR ARENA" hero, "Court Control AI" branding, Events/Arena nav | Yes |
+| `tournaments-public-2026-10-07.png` | Public tournament list — "LIVE COMPETITIONS" header, two tournament cards (Padel $20, Badminton free), "Club Console" button | Yes |
+| `venues-list-2026-10-08.png` | Admin venues list — "Mekanlar" page, "Main Arena" with 3 courts (Court A/B/C), Turkish hours, "Konsol / Mekanlar" breadcrumb | Yes |
+| `venues-detail-2026-10-08.png` | Venue edit — "Mekanı Düzenle" / "Açılış Saatleri" tab, Pazartesi 09:00 AM–12:00 PM & 02:00 PM–08:00 PM, Turkish day labels | Yes |
+| `venues-reorder-2026-10-08.png` | Court reorder — "Sahalar (3)" with Court B at #1, Court A at #2, drag handles visible, "Mekan Ayarları" section | Yes |
 
 The `venues-*-2026-10-08.png` captures were taken with an authenticated test session
 (`AUTH_TEST_ENABLED=true` locally) and show the Venue UI rendering correctly.

@@ -131,7 +131,7 @@ export default function LoginPage() {
     try {
       await signIn('google', { callbackUrl: '/login' });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Google Login Failed', description: error.message });
+      toast({ variant: 'destructive', title: t('auth.error.googleLoginFailed'), description: error.message });
       setIsSubmitting(false);
     }
   };
@@ -212,9 +212,9 @@ export default function LoginPage() {
           {errorType === 'domain' && (
             <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
               <Globe className="h-4 w-4" />
-              <AlertTitle className="font-bold">Unauthorized Domain</AlertTitle>
+              <AlertTitle className="font-bold">{t('auth.error.unauthorizedDomain')}</AlertTitle>
               <AlertDescription className="mt-2 space-y-2">
-                <p className="text-xs">Your current domain is not authorized in Firebase Console.</p>
+                <p className="text-xs">{t('auth.error.unauthorizedDomainDesc')}</p>
               </AlertDescription>
             </Alert>
           )}
@@ -231,7 +231,7 @@ export default function LoginPage() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15c-1.1-1.1-2.61-1.66-4.21-1.66-2.86 0-5.29-1.93-6.16-4.53L2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
-            Sign in with Google
+            {t('auth.signIn.googleButton')}
           </Button>
 
           <div className="relative">
@@ -239,7 +239,7 @@ export default function LoginPage() {
               <Separator className="w-full" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#0F172A] px-2 text-muted-foreground">Or with email</span>
+              <span className="bg-[#0F172A] px-2 text-muted-foreground">{t('auth.signIn.orWithEmail')}</span>
             </div>
           </div>
 

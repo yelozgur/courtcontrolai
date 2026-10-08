@@ -55,6 +55,8 @@ const tr = {
   'auth.signIn.button': 'Giriş Yap',
   'auth.signIn.signUpPrompt': 'Hesabın yok mu?',
   'auth.signIn.signUpLink': 'Kayıt Ol',
+  'auth.signIn.googleButton': 'Google ile giriş yap',
+  'auth.signIn.orWithEmail': 'veya e-posta ile',
   'auth.signUp.title': 'Kayıt Ol',
   'auth.signUp.subtitle': 'Hızlıca kulüp hesabı oluştur.',
   'auth.signUp.organizer': 'Turnuva Organizatörü',
@@ -64,6 +66,9 @@ const tr = {
   'auth.signUp.continue': 'Devam',
   'auth.error.invalidCredentials': 'E-posta veya şifre hatalı.',
   'auth.error.networkError': 'Bağlantı hatası. İnternet bağlantınızı kontrol edin.',
+  'auth.error.unauthorizedDomain': 'Yetkisiz Alan Adı',
+  'auth.error.unauthorizedDomainDesc': 'Mevcut alan adınız Firebase Konsolunda yetkilendirilmemiş.',
+  'auth.error.googleLoginFailed': 'Google Girişi Başarısız',
 
   // Dashboard
   'dashboard.title': 'Yönetim Konsolu',
@@ -345,6 +350,7 @@ const tr = {
   'venue.openHours.custom': 'Özel saatler',
   'venue.openHours.addRange': 'Aralık Ekle',
   'venue.openHours.weekday': 'Haftanın günü',
+  'venue.openHours.dayClosed': 'Kapalı',
   'venue.save': 'Kaydet',
   'venue.saved': 'Mekan Kaydedildi',
   'venue.created': 'Mekan Oluşturuldu',
@@ -414,6 +420,8 @@ const en = {
   'auth.signIn.button': 'Sign In',
   'auth.signIn.signUpPrompt': "Don't have an account?",
   'auth.signIn.signUpLink': 'Sign Up',
+  'auth.signIn.googleButton': 'Sign in with Google',
+  'auth.signIn.orWithEmail': 'or with email',
   'auth.signUp.title': 'Sign Up',
   'auth.signUp.subtitle': 'Quickly create your club account.',
   'auth.signUp.organizer': 'Tournament Organizer',
@@ -423,6 +431,9 @@ const en = {
   'auth.signUp.continue': 'Continue',
   'auth.error.invalidCredentials': 'Invalid email or password.',
   'auth.error.networkError': 'Network error. Please check your connection.',
+  'auth.error.unauthorizedDomain': 'Unauthorized Domain',
+  'auth.error.unauthorizedDomainDesc': 'Your current domain is not authorized in Firebase Console.',
+  'auth.error.googleLoginFailed': 'Google Login Failed',
 
   // Dashboard
   'dashboard.title': 'Management Console',
@@ -704,6 +715,7 @@ const en = {
   'venue.openHours.custom': 'Custom hours',
   'venue.openHours.addRange': 'Add Range',
   'venue.openHours.weekday': 'Weekday',
+  'venue.openHours.dayClosed': 'Closed',
   'venue.save': 'Save',
   'venue.saved': 'Venue Saved',
   'venue.created': 'Venue Created',
