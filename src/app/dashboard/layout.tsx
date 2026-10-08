@@ -64,13 +64,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useI18n();
   
   const [isTestMode, setIsTestMode] = React.useState(false);
+  const [testModeLoading, setTestModeLoading] = React.useState(true);
   const hasNextAuthSession = sessionStatus === 'authenticated' && session?.user;
 
   React.useEffect(() => {
     fetch('/api/auth/test-mode')
       .then((r) => r.json())
       .then((d) => setIsTestMode(!!d.enabled))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setTestModeLoading(false));
   }, []);
 
   const userProfileRef = useMemoFirebase(() => {
@@ -103,13 +105,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // different component".
   React.useEffect(() => {
     if (sessionStatus === 'loading') return;
+    if (testModeLoading) return;
     if (isTestMode && hasNextAuthSession) {
       return;
     }
     if (!authUnavailable && !authLoading && !user) {
       router.replace('/login');
     }
-  }, [authUnavailable, authLoading, user, router, isTestMode, hasNextAuthSession, sessionStatus]);
+  }, [authUnavailable, authLoading, user, router, isTestMode, hasNextAuthSession, sessionStatus, testModeLoading]);
+
+  if (testModeLoading) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">{t('common.syncingConsole')}</p>
+      </div>
+    );
+  }
 
   if (authUnavailable && !user && !(isTestMode && hasNextAuthSession)) {
     return (

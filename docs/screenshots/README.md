@@ -10,9 +10,9 @@ The orchestrator opened every PNG in this directory and read the rendered conten
 | `tournaments-public-2026-10-07.png` | Public tournament list | Yes |
 | `venues-list-2026-10-07.png` | **Login page** (stale, pre-fix) | **No** |
 | `venues-detail-2026-10-07.png` | **Login page** (stale, pre-fix) | **No** |
-| `venues-list-2026-10-08.png` | Venue list — "Main Arena" with 3 courts + openHours | Yes |
-| `venues-detail-2026-10-08.png` | Açılış Saatleri editor — Pazartesi 09:00–12:00, 14:00–20:00 | Yes |
-| `venues-reorder-2026-10-08.png` | Court reorder — Court B moved to #1, Court A to #2 | Yes |
+| `venues-list-2026-10-08.png` | Venue list — "Main Arena" with 3 courts, Turkish hours starting Pazartesi, "Konsol / Mekanlar" breadcrumb, "Hesabım" dropdown | Yes |
+| `venues-detail-2026-10-08.png` | Venue detail — "Açılış Saatleri" tab, Pazartesi 09:00–12:00 & 14:00–20:00, Turkish day labels | Yes |
+| `venues-reorder-2026-10-08.png` | Court reorder — Court B moved to #1, Court A to #2, "Sahaları Yönet" tab | Yes |
 
 The two `venues-*-2026-10-07.png` captures were taken without an authenticated session,
 so the middleware redirected to `/login` and the venue screens never rendered. An earlier
