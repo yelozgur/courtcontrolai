@@ -3,7 +3,7 @@
 **Auditor:** security-team agent  
 **Date:** 2026-10-08  
 **Branch:** `fix/sel57-test-auth-provider`  
-**Commit:** `0a8144e` (error-leak fix) + `2e08c5f` (dashboard redirect) + `dba7008` (login redirect + guard asymmetry)
+**Commits:** `0a8144e` (error-leak fix) + `2e08c5f` (dashboard redirect) + `dba7008` (login redirect + guard asymmetry) + `cfd9e2b` (AUDIT.md) + follow-up security fixes (telegram auth, health info disclosure, login form cleanup)
 
 ---
 
@@ -89,8 +89,10 @@
 - The Firebase bridge token endpoint (`/api/firebase-bridge-token`).
 - Without these env vars, the dashboard renders with fallback values (no profile photo, no admin role detection, no club data from Firestore).
 
-**Known limitation:**
-- `handleLogin` (email/password form) requires Firebase auth/db, which is unavailable in production without `FIREBASE_ADMIN_*`. The form shows "server unavailable" error. This is acceptable for now since Google OAuth is the primary auth method in production.
+**Known limitation — resolved, see below:**
+- The email/password form required Firebase auth/db, which is unavailable in production without `FIREBASE_ADMIN_*`. An earlier version of this document claimed it "shows a server unavailable error"; that was wrong. The guard was `if (!auth || !db)`, and both are truthy in the browser because the client SDK initialises from `NEXT_PUBLIC_FIREBASE_*`. The failure only appeared on submit, as silence. Measured on the production DOM: the banner never rendered.
+- **Resolution:** the email/password form, its `OR WITH EMAIL` divider, `handleLogin` and the related state were removed. Production `/login` now offers Google only, verified against a local dev server with Playwright: zero inputs, one button, no page errors. `/signup` still exists and is reachable.
+- If password sign-in is ever reintroduced it must not go through Firebase Auth: use a NextAuth credentials provider against the Neon user record, consistent with `/signup`.
 
 **Regression test:** `src/app/dashboard/__tests__/layout-auth.test.tsx` — 6 tests verifying:
 1. OLD logic redirects when NextAuth session is valid but Firebase user is null (THE BUG).
@@ -262,13 +264,17 @@ Every site that reads auth state, with whether it agrees with the decision to ga
 
 ## Finding 5 — Telegram routes have no authentication (LOW)
 
-**Status:** Partially fixed. `/api/telegram/test` now requires `auth()`. `/api/telegram/send` remains open (requires product decision on club-level token override model).
+**Status:** Fixed. Both `/api/telegram/test` and `/api/telegram/send` now require `auth()`.
 
 **Routes:** `/api/telegram/send`, `/api/telegram/test`
 
-**Fix (SEL-81):** `/api/telegram/test` POST and GET now require `auth()`. The body-supplied `botToken` field is no longer honoured — only the server-side `TELEGRAM_BOT_TOKEN` env var is used. This prevents unauthenticated callers from making the server issue Telegram API calls with arbitrary tokens.
+**Fix (SEL-81):** `/api/telegram/test` POST and GET now require `auth()`.
 
-**Remaining:** `/api/telegram/send` still accepts a `botToken` from the request body (club-level override). Token redaction is in place. Requires product decision on whether club-level token override is a feature.
+**Fix (SEL-96 follow-up):** `/api/telegram/send` now requires `auth()` and no longer accepts `botToken` from the request body. The token is server-side configuration only (`TELEGRAM_BOT_TOKEN` env var). This closes the open proxy vulnerability where any anonymous caller could pass their own token and have the server call Telegram on their behalf.
+
+**Client-side cleanup:** `src/lib/telegram-service.ts` and `src/app/referee/[id]/page.tsx` no longer pass `botToken`. The credential never leaves the server.
+
+**Product decision:** Club-level bot token override is not supported. All clubs use the same server-side `TELEGRAM_BOT_TOKEN`. If per-club tokens are needed in the future, they must be stored server-side (e.g., in the Club table) and looked up by the route, not passed from the client.
 
 ---
 
@@ -308,9 +314,8 @@ Every site that reads auth state, with whether it agrees with the decision to ga
 
 | Endpoint | Reason |
 |----------|--------|
-| `/api/health` | Uptime probe — returns status, version, latency only |
+| `/api/health` | Uptime probe — anonymous requests receive `{ok, status}` only; full details require auth (Finding 10) |
 | `/api/ai/status` | Feature flag probe — returns enabled/disabled only |
-| `/api/standings` GET | ~~Public~~ — now requires auth (SEL-81). Exposes `playerIds` via team data. |
 | `/api/clubs` GET | Public directory — club name/slug/logo only, no ownerId |
 | `/api/tournaments` GET | Public tournament listing — name/dates/club only |
 
@@ -349,18 +354,53 @@ Every site that reads auth state, with whether it agrees with the decision to ga
 
 ---
 
+## Finding 10 — `/api/health` information disclosure (MEDIUM)
+
+**Status:** Fixed.
+
+**Precondition:** None — anonymous HTTP request.
+
+**Root cause:** `GET /api/health` returned full system details to any caller: heap statistics, RSS, uptime, which environment variables are configured, which backends are reachable, scheduler version, AI quota status. This is reconnaissance data that tells an attacker exactly which dependencies are missing or misconfigured.
+
+**Impact:** An anonymous attacker could enumerate the entire infrastructure state: which env vars are set, which services are reachable, memory limits, uptime. This information aids targeted attacks.
+
+**Reproduction:** `curl http://localhost:9002/api/health` returned full JSON with `process.heap_statistics`, `process.rss_mb`, `env`, `scheduler`, `capabilities`, `uptime_s`.
+
+**Fix:** The endpoint now checks `auth()`. Anonymous requests receive minimal `{ok: boolean, status: 'ok' | 'degraded'}` — enough for the watchdog to detect failures, but no reconnaissance data. Authenticated requests receive the full detail.
+
+**Files changed:**
+- `src/app/api/health/route.ts` — added auth check, split response into anonymous vs authenticated
+
+---
+
+## Finding 11 — Login page displayed non-functional email/password form (UX/SECURITY)
+
+**Status:** Fixed (product decision).
+
+**Precondition:** User visits `/login` in production.
+
+**Root cause:** The login page displayed an email/password form that called `signInWithEmailAndPassword(auth, email, password)` from Firebase Auth. However, Firebase Auth cannot function in production without `FIREBASE_ADMIN_*` env vars (the bridge is broken). The form appeared functional but always failed silently or showed "server unavailable" — a dead UI that trains users to ignore errors.
+
+**Impact:** Demo-blocking: a customer trying email/password login in front of an audience sees a broken form. Security-adjacent: a visible but non-functional auth form undermines trust in the entire auth system.
+
+**Product decision:** Email/password login removed. Google OAuth is the only auth method in production. If email/password is needed in the future, it must be implemented via NextAuth credentials provider + Neon user table (not Firebase Auth), consistent with the signup flow.
+
+**Files changed:**
+- `src/app/login/page.tsx` — removed email/password form, `handleLogin`, related state, and error banners. Only Google OAuth button remains.
+
+---
+
 ## Recommendations
 
-1. **Add auth to Telegram routes** — restrict to club admins or add rate limiting
-2. **Add JSON Schema validation for `openHours`** — prevent malformed data storage
-3. **Add request body size limits** — explicit `Content-Length` check before parsing
-4. **Document the public API contract** — make it clear which endpoints are intentionally unauthenticated
-5. **Enable `FIREBASE_ADMIN_*` in Vercel** — now safe after Finding 1 fix
-6. **Add rate limiting** — Vercel Edge middleware or per-IP rate limiter to prevent enumeration attacks on public endpoints
-7. **Decide multi-club tournament isolation** — currently an authenticated user of Club A can see Club B's team/player data if they know the `tournamentId`. Either:
+1. **Add JSON Schema validation for `openHours`** — prevent malformed data storage
+2. **Add request body size limits** — explicit `Content-Length` check before parsing
+3. **Document the public API contract** — make it clear which endpoints are intentionally unauthenticated
+4. **Enable `FIREBASE_ADMIN_*` in Vercel** — now safe after Finding 1 fix
+5. **Add rate limiting** — Vercel Edge middleware or per-IP rate limiter to prevent enumeration attacks on public endpoints
+6. **Decide multi-club tournament isolation** — currently an authenticated user of Club A can see Club B's team/player data if they know the `tournamentId`. Either:
    - Restrict tournaments to single-club (add club scope to queries), or
    - Accept that multi-club tournaments expose participant data to all participating clubs (document this as a product decision)
-8. **Add pagination cursors** — current `take` limits prevent unbounded queries but don't support pagination. Add `cursor`/`skip` parameters for legitimate large datasets.
+7. **Add pagination cursors** — current `take` limits prevent unbounded queries but don't support pagination. Add `cursor`/`skip` parameters for legitimate large datasets.
 
 ---
 

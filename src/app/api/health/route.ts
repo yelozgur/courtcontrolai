@@ -24,10 +24,11 @@
  * initialized Firebase client SDK without firebase-admin (out of scope for now).
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getHeapStatistics } from 'node:v8';
+import { auth } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -160,7 +161,7 @@ function checkAIQuota(): CheckResult {
   return { ok: true, provider: 'google-ai-pro', daily_limit: 1500 };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const [process_check, env, scheduler, ai_quota] = await Promise.all([
     Promise.resolve(checkProcess()),
     Promise.resolve(checkEnv()),
@@ -187,6 +188,29 @@ export async function GET() {
     capabilities.scheduler = 'unreachable';
   }
 
+  const status = requiredOk ? 200 : 503;
+
+  // This endpoint is polled by the watchdog, which has no session, so the
+  // ok/fail signal must stay anonymous. The detail is a different matter: heap
+  // limits, RSS, uptime, which env vars are configured and which backend is
+  // reachable are reconnaissance. Anyone could read them and know exactly which
+  // dependencies are missing.
+  let isAuthenticated = false;
+  try {
+    const session = await auth();
+    isAuthenticated = Boolean(session?.user);
+  } catch {
+    // A broken auth config must not turn the health probe into a 500.
+    isAuthenticated = false;
+  }
+
+  if (!isAuthenticated) {
+    return NextResponse.json(
+      { ok: requiredOk, status: requiredOk ? 'ok' : 'degraded' },
+      { status, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+
   return NextResponse.json(
     {
       ok: requiredOk,
@@ -196,6 +220,6 @@ export async function GET() {
       capabilities,
       uptime_s: Math.round((Date.now() - START_TIME) / 1000),
     },
-    { status: requiredOk ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
+    { status, headers: { 'Cache-Control': 'no-store' } }
   );
 }

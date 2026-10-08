@@ -89,9 +89,9 @@ export default function RefereeConsole() {
     )
 
     await sendTelegramNotification({
-      botToken: club.telegramBotToken,
       chatId: club.telegramBotUsername || "",
-      message: msg
+      message: msg,
+      clubId: club.id,
     })
 
     toast({ title: "Notifications Sent", description: "Players have been alerted via Telegram." })

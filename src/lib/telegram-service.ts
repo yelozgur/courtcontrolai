@@ -5,17 +5,16 @@
  * @fileOverview Telegram Notification Helper
  *
  * Frontend bu helper'i kullanir ama ASLA bot token'i gormez.
- * Token server-side /api/telegram/send route'unda kalir.
- * Onceki 'use client' versiyon browser console'dan token
- * yakalanabiliyordu — artik tum istekler server uzerinden gidiyor.
+ * Token yalnizca server-side /api/telegram/send route'unda, TELEGRAM_BOT_TOKEN
+ * env'inden okunur. Onceki surum istemciden `botToken` aliyordu; bu, route'u
+ * anonim bir acik proxy'ye ceviriyordu — herhangi biri kendi token'ini
+ * gonderip sunucuyu Telegram'a istek ettirebiliyordu.
  */
 
 export interface TelegramNotification {
   chatId: string;
   message: string;
-  // Opsiyonel: eger club'un kendi bot'u varsa server'a token override gonder
-  // (server yine de default env TELEGRAM_BOT_TOKEN'i fallback olarak kullanir)
-  botToken?: string;
+  clubId?: string;
 }
 
 export interface TelegramResult {
@@ -26,12 +25,12 @@ export interface TelegramResult {
 
 /**
  * Server-side Telegram API'ye forward eder. Bot token hicbir zaman
- * browser'a gitmez.
+ * browser'a girmez, cikmaz.
  */
 export async function sendTelegramNotification({
   chatId,
   message,
-  botToken,
+  clubId,
 }: TelegramNotification): Promise<TelegramResult> {
   if (!chatId || !message) {
     return { ok: false, error: 'chatId ve message zorunlu' };
@@ -41,7 +40,7 @@ export async function sendTelegramNotification({
     const res = await fetch('/api/telegram/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId, message, botToken, parseMode: 'HTML' }),
+      body: JSON.stringify({ chatId, message, clubId, parseMode: 'HTML' }),
     });
 
     const data = await res.json();

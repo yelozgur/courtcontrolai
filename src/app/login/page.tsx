@@ -5,16 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Zap, LogIn, Loader2, Mail, Lock, Globe, Trophy, Monitor, ShieldCheck, CheckCircle2, ServerCrash } from 'lucide-react';
+import { Zap, Loader2, Trophy, Monitor, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth, useUser, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, signInWithCustomToken } from 'firebase/auth';
+import { signInWithCustomToken } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useI18n } from '@/i18n/I18nProvider';
-import { Separator } from '@/components/ui/separator';
 import { signIn, useSession } from 'next-auth/react';
 
 export default function LoginPage() {
@@ -26,12 +22,9 @@ export default function LoginPage() {
   const { t } = useI18n();
   const { data: session, status } = useSession();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authSuccess, setAuthSuccess] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
-  const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | 'domain' | null>(null);
   const [bridging, setBridging] = useState(false);
 
   // The NextAuth session IS the identity, so leave /login the moment it exists.
@@ -90,49 +83,6 @@ export default function LoginPage() {
 
     bridgeToFirebase();
   }, [status, session, auth, db, bridging]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!auth || !db) {
-      // Without Firebase the form cannot succeed. The previous behaviour was a
-      // silent no-op: the button stayed enabled, the user clicked, and nothing
-      // happened at all — no error, no spinner. Since the dashboard now
-      // redirects unauthenticated visitors here, that combined into a permanent
-      // lockout with no way out and no explanation.
-      setErrorType('config');
-      return;
-    }
-    setIsSubmitting(true);
-    setErrorType(null);
-
-    try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const loggedUser = result.user;
-      const isAdminEmail = loggedUser.email?.toLowerCase() === 'admin@deneme.com';
-      setIsAdminUser(isAdminEmail);
-
-      const userRef = doc(db, 'users', loggedUser.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: loggedUser.email,
-          displayName: loggedUser.displayName || email.split('@')[0],
-          role: isAdminEmail ? 'admin' : 'club_owner',
-          createdAt: serverTimestamp(),
-        });
-      } else if (isAdminEmail && userSnap.data().role !== 'admin') {
-        await setDoc(userRef, { role: 'admin' }, { merge: true });
-      }
-
-      setAuthSuccess(true);
-    } catch (error: any) {
-      setErrorType(error.code === 'auth/unauthorized-domain' ? 'domain' : 'creds');
-      toast({ variant: 'destructive', title: t('common.error'), description: error.message });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleGoogleLogin = async () => {
     setIsSubmitting(true);
@@ -204,28 +154,6 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {(!auth || !db) && (
-            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
-              <ServerCrash className="h-4 w-4" />
-              <AlertTitle className="font-bold">{t('auth.error.serverUnavailable')}</AlertTitle>
-              <AlertDescription className="mt-2 space-y-2">
-                <p className="text-xs">
-                  {t('auth.error.serverUnavailableDesc')}
-                </p>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {errorType === 'domain' && (
-            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
-              <Globe className="h-4 w-4" />
-              <AlertTitle className="font-bold">{t('auth.error.unauthorizedDomain')}</AlertTitle>
-              <AlertDescription className="mt-2 space-y-2">
-                <p className="text-xs">{t('auth.error.unauthorizedDomainDesc')}</p>
-              </AlertDescription>
-            </Alert>
-          )}
-
           <Button 
             variant="outline" 
             className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-white"
@@ -241,50 +169,13 @@ export default function LoginPage() {
             {t('auth.signIn.googleButton')}
           </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#0F172A] px-2 text-muted-foreground">{t('auth.signIn.orWithEmail')}</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">{t('auth.signIn.email')}</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  placeholder="name@example.com"
-                  className="pl-10 bg-white/5 border-white/10 text-white"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">{t('auth.signIn.password')}</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="pl-10 bg-white/5 border-white/10 text-white"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <Button type="submit" className="w-full h-11" disabled={isSubmitting || !auth || !db}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-              {t('auth.signIn.button')}
-            </Button>
-          </form>
+          {/* Email/password sign-in is intentionally not offered. It was built on
+              Firebase Auth, which cannot work in production: FIREBASE_ADMIN_* is
+              not set there, so signInWithEmailAndPassword could never establish a
+              session. The form still rendered — client-side Firebase initialises
+              from NEXT_PUBLIC_* and only fails at the moment of submit — so it
+              looked usable and then did nothing. Identity is Google-only today;
+              bring the form back only together with a working credential path. */}
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-sm text-center text-muted-foreground">

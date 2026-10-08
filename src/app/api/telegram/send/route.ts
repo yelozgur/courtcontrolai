@@ -1,8 +1,11 @@
 // CourtControl AI — Telegram Send API Route
 // Bot token'ini browser'a expose etmemek icin server-side endpoint.
-// Onceki 'use client' telegram-service.ts'in guvenli versiyonu.
+// Token sunucu tarafinda kulup kaydindan veya env'den cozulur.
 //
-// ENV: TELEGRAM_BOT_TOKEN (opsiyonel, club bazli override edilebilir)
+// Token onceligi:
+//   1. clubId verilmissa → Firestore clubs/{clubId}.telegramBotToken
+//      (sahiplik dogrulamasi: club.ownerId === session.user.firebaseUid)
+//   2. TELEGRAM_BOT_TOKEN env degiskeni
 //
 // Frontend'den cagri:
 //   await fetch('/api/telegram/send', {
@@ -11,19 +14,18 @@
 //     body: JSON.stringify({
 //       chatId: '@channel_or_user_id',
 //       message: 'MATCH LIVE: Ali vs Veli, Court 1',
-//       // Istege bagli: club-level bot token override
-//       botToken: club.telegramBotToken
+//       clubId: 'firestore-club-doc-id',
 //     })
 //   })
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 
 interface SendPayload {
   chatId: string;
   message: string;
   parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2';
-  // Eger club'un kendi bot token'i varsa onu kullan, yoksa default ENV
-  botToken?: string;
+  clubId?: string;
 }
 
 interface TelegramApiResponse {
@@ -33,13 +35,59 @@ interface TelegramApiResponse {
   error_code?: number;
 }
 
+async function resolveTokenFromClub(
+  clubId: string,
+  firebaseUid: string | null | undefined
+): Promise<{ token: string | null; error?: string; status?: number }> {
+  if (!firebaseUid) {
+    return { token: null };
+  }
+
+  let db: import('firebase-admin/firestore').Firestore;
+  try {
+    const { getAdminFirestore } = await import('@/lib/firebase-admin');
+    db = getAdminFirestore();
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn('[telegram] Firebase Admin unavailable, falling back to env token');
+    return { token: null };
+  }
+
+  try {
+    const clubDoc = await db.collection('clubs').doc(clubId).get();
+    if (!clubDoc.exists) {
+      return { token: null, error: 'Club not found', status: 404 };
+    }
+
+    const club = clubDoc.data();
+    if (club?.ownerId !== firebaseUid) {
+      return { token: null, error: 'Forbidden', status: 403 };
+    }
+
+    const clubToken = club?.telegramBotToken;
+    if (typeof clubToken === 'string' && clubToken.trim().length > 0) {
+      return { token: clubToken.trim() };
+    }
+
+    return { token: null };
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[telegram] Firestore club lookup failed:', e instanceof Error ? e.message : 'unknown');
+    return { token: null };
+  }
+}
+
 export async function POST(req: NextRequest) {
-  // Hoisted so the catch block can redact the token without re-parsing the body.
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   let sentToken = '';
 
   try {
     const body = (await req.json()) as SendPayload;
-    const { chatId, message, parseMode = 'HTML', botToken: clubToken } = body;
+    const { chatId, message, parseMode = 'HTML', clubId } = body;
 
     if (!chatId || !message) {
       return NextResponse.json(
@@ -48,19 +96,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Token onceligi: 1) club-level (request'ten) 2) default ENV
-    const token = clubToken || process.env.TELEGRAM_BOT_TOKEN;
+    let token: string | null | undefined;
 
-    // A blank/whitespace-only value counts as absent, so a half-configured
-    // deployment still fails closed here instead of calling Telegram with junk.
+    if (clubId) {
+      const clubResult = await resolveTokenFromClub(clubId, session.user.firebaseUid);
+      if (clubResult.error) {
+        return NextResponse.json(
+          { ok: false, error: clubResult.error },
+          { status: clubResult.status || 400 }
+        );
+      }
+      token = clubResult.token;
+    }
+
+    if (!token) {
+      token = process.env.TELEGRAM_BOT_TOKEN;
+    }
+
     const usableToken = typeof token === 'string' && token.trim().length > 0 ? token.trim() : '';
 
     sentToken = usableToken;
 
     if (!usableToken) {
-      // 400, not 500: the request cannot succeed as submitted because the caller
-      // (club owner/operator) has not provided a usable bot credential. It is a
-      // fixable configuration fault on the caller's side, never a server crash.
       return NextResponse.json(
         { ok: false, error: 'Telegram bot token tanimli degil (TELEGRAM_BOT_TOKEN env veya club.telegramBotToken)' },
         { status: 400 }
@@ -100,8 +157,6 @@ export async function POST(req: NextRequest) {
       messageId: result.result?.message_id,
     });
   } catch (e) {
-    // Network/parse failures are upstream problems: report 502 and make sure the
-    // token (which lives in the request URL) can never reach the client.
     // eslint-disable-next-line no-console
     console.error('[telegram] send error:', e instanceof Error ? e.name : 'unknown');
     return NextResponse.json(
