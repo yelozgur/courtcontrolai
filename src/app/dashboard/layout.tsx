@@ -23,9 +23,7 @@ import {
   Megaphone,
   Menu,
   ChevronLeft,
-  Search,
   Bell,
-  SearchIcon,
   ServerCrash
 } from 'lucide-react';
 
@@ -55,8 +53,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from '@/components/ui/input';
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading: authLoading, authUnavailable } = useUser();
@@ -131,7 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">Syncing Console...</p>
+        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">{t('common.syncingConsole')}</p>
       </div>
     );
   }
@@ -140,7 +136,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">Giriş yapılıyor...</p>
+        <p className="text-muted-foreground animate-pulse text-xs uppercase tracking-widest font-bold">{t('common.loginInProgress')}</p>
       </div>
     );
   }
@@ -200,11 +196,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl">
           <Avatar className="h-10 w-10 border-2 border-primary/20">
             <AvatarImage src={profile?.photoURL} />
-            <AvatarFallback className="bg-primary/10 text-primary font-bold">{profile?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+            <AvatarFallback className="bg-primary/10 text-primary font-bold">{profile?.displayName?.charAt(0) || '?'}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold truncate leading-none mb-1">{profile?.displayName || 'Club Manager'}</p>
-            <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">{profile?.role?.replace('_', ' ') || 'Member'}</p>
+            <p className="text-xs font-bold truncate leading-none mb-1">{profile?.displayName || t('profile.clubManagerFallback')}</p>
+            <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">{profile?.role?.replace('_', ' ') || t('profile.memberFallback')}</p>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={handleSignOut}>
             <LogOut className="h-4 w-4" />
@@ -233,28 +229,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                    </Button>
                  </SheetTrigger>
                  <SheetContent side="left" className="p-0 border-r-0 w-72">
-                    <SheetHeader className="sr-only">
-                      <SheetTitle>Navigation Menu</SheetTitle>
-                      <SheetDescription>Access dashboard management links and tools.</SheetDescription>
-                    </SheetHeader>
+                     <SheetHeader className="sr-only">
+                       <SheetTitle>{t('common.navigationMenu')}</SheetTitle>
+                       <SheetDescription>{t('common.navigationMenuDesc')}</SheetDescription>
+                     </SheetHeader>
                     <SidebarContent />
                  </SheetContent>
                </Sheet>
              </div>
              
-             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-               <LayoutDashboard className="h-4 w-4" />
-               <span className="hidden md:block">Dashboard</span>
-               <span className="mx-2 hidden md:block">/</span>
-               <span className="text-foreground font-bold capitalize">{pathname.split('/').pop() || 'Overview'}</span>
-             </div>
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden md:block">{t('nav.console')}</span>
+                <span className="mx-2 hidden md:block">/</span>
+                <span className="text-foreground font-bold">
+                  {(() => {
+                    const segments = pathname.split('/').filter(Boolean);
+                    const last = segments[segments.length - 1] || '';
+                    const key = `breadcrumb.${last}`;
+                    const translated = t(key);
+                    return translated !== key ? translated : t('common.overview');
+                  })()}
+                </span>
+              </div>
           </div>
 
           <div className="flex items-center gap-4">
-             <div className="relative hidden md:block w-64">
-               <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-               <Input placeholder="Search anything (⌘K)" className="pl-9 h-9 bg-secondary/50 border-transparent focus:bg-background transition-all rounded-full" />
-             </div>
              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative">
                <Bell className="h-5 w-5" />
                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background"></span>
@@ -269,7 +269,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                        <AvatarImage src={profile?.photoURL} />
                        <AvatarFallback className="text-[10px]">{profile?.displayName?.charAt(0)}</AvatarFallback>
                      </Avatar>
-                     <span className="text-xs font-bold hidden sm:inline-block">Account</span>
+                      <span className="text-xs font-bold hidden sm:inline-block">{t('profile.myAccount')}</span>
                    </Button>
                  </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -295,19 +295,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="lg:hidden border-t border-border bg-card flex justify-around p-3 pb-safe-offset-2">
            <Link href="/dashboard" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground')}>
              <LayoutDashboard className="h-5 w-5" />
-             <span className="text-[9px] font-bold uppercase tracking-widest">Home</span>
+             <span className="text-[9px] font-bold uppercase tracking-widest">{t('nav.tab.home')}</span>
            </Link>
            <Link href="/dashboard/tournaments" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname.includes('tournaments') ? 'text-primary' : 'text-muted-foreground')}>
              <Trophy className="h-5 w-5" />
-             <span className="text-[9px] font-bold uppercase tracking-widest">Events</span>
+             <span className="text-[9px] font-bold uppercase tracking-widest">{t('nav.tab.events')}</span>
            </Link>
            <Link href="/dashboard/schedule" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname.includes('schedule') ? 'text-primary' : 'text-muted-foreground')}>
              <Calendar className="h-5 w-5" />
-             <span className="text-[9px] font-bold uppercase tracking-widest">Plan</span>
+             <span className="text-[9px] font-bold uppercase tracking-widest">{t('nav.tab.plan')}</span>
            </Link>
            <Link href="/dashboard/profile" className={cn("p-2 rounded-xl flex flex-col items-center gap-1", pathname.includes('profile') ? 'text-primary' : 'text-muted-foreground')}>
              <User className="h-5 w-5" />
-             <span className="text-[9px] font-bold uppercase tracking-widest">Me</span>
+             <span className="text-[9px] font-bold uppercase tracking-widest">{t('nav.tab.me')}</span>
            </Link>
         </div>
       </div>

@@ -40,6 +40,12 @@ const tr = {
   'common.continue': 'Devam',
   'common.optional': 'İsteğe bağlı',
   'common.required': 'Zorunlu',
+  'common.searchPlaceholder': 'Ara... (⌘K)',
+  'common.overview': 'Genel Bakış',
+  'common.syncingConsole': 'Konsol Senkronize Ediliyor...',
+  'common.loginInProgress': 'Giriş yapılıyor...',
+  'common.navigationMenu': 'Navigasyon Menüsü',
+  'common.navigationMenuDesc': 'Konsol bağlantılarına ve araçlara erişin.',
 
   // Auth
   'auth.signIn.title': 'Giriş Yap',
@@ -284,6 +290,26 @@ const tr = {
   'nav.partners': 'Partnerler',
   'nav.settings': 'Ayarlar',
   'nav.mainMenu': 'Ana Menü',
+  'nav.tab.home': 'Ana Sayfa',
+  'nav.tab.events': 'Etkinlikler',
+  'nav.tab.plan': 'Plan',
+  'nav.tab.me': 'Ben',
+
+  // Breadcrumb segment labels
+  'breadcrumb.dashboard': 'Konsol',
+  'breadcrumb.tournaments': 'Turnuvalar',
+  'breadcrumb.schedule': 'Maç Planlayıcı',
+  'breadcrumb.venues': 'Mekanlar',
+  'breadcrumb.participants': 'Kulüp Roster',
+  'breadcrumb.check-in': 'Mekan Girişi',
+  'breadcrumb.sponsors': 'Partnerler',
+  'breadcrumb.club': 'Ayarlar',
+  'breadcrumb.profile': 'Profil Ayarları',
+  'breadcrumb.admin': 'Platform Yönetimi',
+  'breadcrumb.marketing': 'Pazarlama',
+  'breadcrumb.clubs': 'Kulüpler',
+  'breadcrumb.users': 'Kullanıcılar',
+  'breadcrumb.costs': 'Ekonomi',
 
   // Settings
   'settings.title': 'Kulüp Ayarları',
@@ -346,6 +372,8 @@ const tr = {
   'profile.clubIdentity': 'Kulüp Kimliği',
   'profile.logOut': 'Çıkış',
   'profile.myAccount': 'Hesabım',
+  'profile.clubManagerFallback': 'Kulüp Yöneticisi',
+  'profile.memberFallback': 'Üye',
 }
 
 const en = {
@@ -371,6 +399,12 @@ const en = {
   'common.continue': 'Continue',
   'common.optional': 'Optional',
   'common.required': 'Required',
+  'common.searchPlaceholder': 'Search... (⌘K)',
+  'common.overview': 'Overview',
+  'common.syncingConsole': 'Syncing Console...',
+  'common.loginInProgress': 'Logging in...',
+  'common.navigationMenu': 'Navigation Menu',
+  'common.navigationMenuDesc': 'Access dashboard management links and tools.',
 
   // Auth
   'auth.signIn.title': 'Sign In',
@@ -615,6 +649,26 @@ const en = {
   'nav.partners': 'Partners',
   'nav.settings': 'Settings',
   'nav.mainMenu': 'Main Menu',
+  'nav.tab.home': 'Home',
+  'nav.tab.events': 'Events',
+  'nav.tab.plan': 'Plan',
+  'nav.tab.me': 'Me',
+
+  // Breadcrumb segment labels
+  'breadcrumb.dashboard': 'Console',
+  'breadcrumb.tournaments': 'Tournaments',
+  'breadcrumb.schedule': 'Match Planner',
+  'breadcrumb.venues': 'Venues',
+  'breadcrumb.participants': 'Club Roster',
+  'breadcrumb.check-in': 'Venue Arrival',
+  'breadcrumb.sponsors': 'Partners',
+  'breadcrumb.club': 'Settings',
+  'breadcrumb.profile': 'Profile Settings',
+  'breadcrumb.admin': 'Platform Admin',
+  'breadcrumb.marketing': 'Marketing',
+  'breadcrumb.clubs': 'Clubs',
+  'breadcrumb.users': 'Users',
+  'breadcrumb.costs': 'Economics',
 
   // Settings
   'settings.title': 'Club Settings',
@@ -677,6 +731,8 @@ const en = {
   'profile.clubIdentity': 'Club Identity',
   'profile.logOut': 'Log Out',
   'profile.myAccount': 'My Account',
+  'profile.clubManagerFallback': 'Club Manager',
+  'profile.memberFallback': 'Member',
 }
 
 export const translations: Record<Locale, Record<string, string>> = { tr, en }

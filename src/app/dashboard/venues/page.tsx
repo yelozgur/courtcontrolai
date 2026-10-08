@@ -42,10 +42,21 @@ interface Venue {
   courts: Court[]
 }
 
+const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
+const WEEKDAY_LABELS: Record<string, { en: string; tr: string }> = {
+  mon: { en: "Monday", tr: "Pazartesi" },
+  tue: { en: "Tuesday", tr: "Salı" },
+  wed: { en: "Wednesday", tr: "Çarşamba" },
+  thu: { en: "Thursday", tr: "Perşembe" },
+  fri: { en: "Friday", tr: "Cuma" },
+  sat: { en: "Saturday", tr: "Cumartesi" },
+  sun: { en: "Sunday", tr: "Pazar" },
+}
+
 export default function VenuesPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   const [venues, setVenues] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
@@ -115,8 +126,13 @@ export default function VenuesPage() {
     if (oh === null) return t("venue.openHours.null")
     const entries = Object.entries(oh)
     if (entries.length === 0) return t("venue.openHours.closed")
-    return entries
-      .map(([day, ranges]) => `${day}: ${ranges.map((r) => r.join("-")).join(", ")}`)
+    return WEEKDAYS
+      .filter((day) => oh[day])
+      .map((day) => {
+        const label = WEEKDAY_LABELS[day]?.[locale as "en" | "tr"] ?? WEEKDAY_LABELS[day]?.tr ?? day
+        const ranges = oh[day].map((r) => r.join("–")).join(", ")
+        return `${label}: ${ranges}`
+      })
       .join("; ")
   }
 
@@ -134,7 +150,7 @@ export default function VenuesPage() {
         <div>
           <h1 className="text-3xl font-headline font-bold">{t("venue.venues")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {venues.length} {venues.length === 1 ? t("venue.court") : t("venue.courts")}
+            {venues.length} {t("venue.court")}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -172,7 +188,7 @@ export default function VenuesPage() {
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <Badge variant="outline">
-                        {venue.courts.length} {venue.courts.length === 1 ? t("venue.court") : t("venue.courts")}
+                        {venue.courts.length} {t("venue.court")}
                       </Badge>
                       <span className="truncate text-xs">{formatOpenHours(venue.openHours)}</span>
                     </div>
