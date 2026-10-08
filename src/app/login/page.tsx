@@ -34,54 +34,62 @@ export default function LoginPage() {
   const [errorType, setErrorType] = useState<'config' | 'creds' | 'firestore' | 'domain' | null>(null);
   const [bridging, setBridging] = useState(false);
 
+  // The NextAuth session IS the identity, so leave /login the moment it exists.
+  // Waiting for the Firebase bridge is what produced the sign-in loop: the
+  // bridge token request needs FIREBASE_ADMIN_*, which Vercel does not carry,
+  // so the bridge failed here, `authSuccess` was never set, and the user stayed
+  // on /login forever while NextAuth reported them as signed in.
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.email && auth && !bridging) {
-      const bridgeToFirebase = async () => {
-        setBridging(true);
-        try {
-          const response = await fetch('/api/firebase-bridge-token');
-          if (!response.ok) {
-            throw new Error('Failed to get Firebase bridge token');
-          }
-          const { token } = await response.json();
-          await signInWithCustomToken(auth, token);
-
-          const isAdminEmail = session.user.email?.toLowerCase() === 'admin@deneme.com';
-          setIsAdminUser(isAdminEmail);
-
-          if (db && session.user.firebaseUid) {
-            const userRef = doc(db, 'users', session.user.firebaseUid);
-            const userSnap = await getDoc(userRef);
-
-            if (!userSnap.exists()) {
-              await setDoc(userRef, {
-                email: session.user.email,
-                displayName: session.user.name || (session.user.email ? session.user.email.split('@')[0] : 'user'),
-                photoURL: session.user.image,
-                role: isAdminEmail ? 'admin' : 'club_owner',
-                createdAt: serverTimestamp(),
-              });
-            } else if (isAdminEmail && userSnap.data().role !== 'admin') {
-              await setDoc(userRef, { role: 'admin' }, { merge: true });
-            }
-          }
-
-          setAuthSuccess(true);
-        } catch (error) {
-          console.error('Firebase bridge failed:', error);
-          toast({
-            variant: 'destructive',
-            title: t('auth.error.bridgeFailed'),
-            description: t('auth.error.bridgeFailedDesc'),
-          });
-        } finally {
-          setBridging(false);
-        }
-      };
-
-      bridgeToFirebase();
+    if (status === 'authenticated' && session?.user?.email) {
+      router.replace('/dashboard');
     }
-  }, [status, session, auth, db, bridging, toast]);
+  }, [status, session, router]);
+
+  // Best-effort Firebase sync for Firestore reads. It must never block or trap
+  // the user; Firestore reads already fall back when no Firebase user exists.
+  useEffect(() => {
+    if (status !== 'authenticated' || !session?.user?.email || !auth || !db || bridging) return;
+
+    const bridgeToFirebase = async () => {
+      setBridging(true);
+      try {
+        const response = await fetch('/api/firebase-bridge-token');
+        if (!response.ok) {
+          throw new Error(`Firebase bridge token request failed: HTTP ${response.status}`);
+        }
+        const { token } = await response.json();
+        await signInWithCustomToken(auth, token);
+
+        const isAdminEmail = session.user.email?.toLowerCase() === 'admin@deneme.com';
+        setIsAdminUser(isAdminEmail);
+
+        if (session.user.firebaseUid) {
+          const userRef = doc(db, 'users', session.user.firebaseUid);
+          const userSnap = await getDoc(userRef);
+
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              email: session.user.email,
+              displayName: session.user.name || (session.user.email ? session.user.email.split('@')[0] : 'user'),
+              photoURL: session.user.image,
+              role: isAdminEmail ? 'admin' : 'club_owner',
+              createdAt: serverTimestamp(),
+            });
+          } else if (isAdminEmail && userSnap.data().role !== 'admin') {
+            await setDoc(userRef, { role: 'admin' }, { merge: true });
+          }
+        }
+
+        setAuthSuccess(true);
+      } catch (error) {
+        console.warn('[auth] Firebase bridge unavailable, continuing without it:', error);
+      } finally {
+        setBridging(false);
+      }
+    };
+
+    bridgeToFirebase();
+  }, [status, session, auth, db, bridging]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +137,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsSubmitting(true);
     try {
-      await signIn('google', { callbackUrl: '/login' });
+      await signIn('google', { callbackUrl: '/dashboard' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: t('auth.error.googleLoginFailed'), description: error.message });
       setIsSubmitting(false);

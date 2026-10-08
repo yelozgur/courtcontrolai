@@ -8,6 +8,7 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./prisma";
 import { getFirebaseAdmin } from "./firebase-admin";
+import { isAuthTestEnabled } from "./auth-test-mode";
 import { timingSafeEqual } from "node:crypto";
 
 const TEST_USER_EMAIL = process.env.AUTH_TEST_USER_EMAIL || "test@courtcontrolai.local";
@@ -56,7 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
       },
     }),
-    ...(process.env.AUTH_TEST_ENABLED === "true" ? [testSessionProvider()] : []),
+    ...(isAuthTestEnabled() ? [testSessionProvider()] : []),
   ],
 
   pages: {
