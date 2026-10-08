@@ -3,7 +3,7 @@
 **Auditor:** security-team agent  
 **Date:** 2026-10-08  
 **Branch:** `fix/sel57-test-auth-provider`  
-**Commit:** `0a8144e` (error-leak fix) + this audit's fixes
+**Commit:** `0a8144e` (error-leak fix) + `2e08c5f` (dashboard redirect) + `dba7008` (login redirect + guard asymmetry)
 
 ---
 
@@ -20,19 +20,25 @@
 
 ## Finding 9 — Google sign-in redirect loop (CRITICAL) — SEL-96
 
-**Status:** Fixed.
+**Status:** Fixed (two commits: `2e08c5f` and `dba7008`).
 
 **Precondition:** User signs in via Google OAuth in production (where `FIREBASE_ADMIN_*` env vars are not set).
 
 **Reproduction:** Code-reviewed, not executed (requires a live Google OAuth flow against production). The attack surface is the redirect loop itself — no data exposure, but complete denial of authenticated access.
 
-**Root cause:** `src/app/dashboard/layout.tsx` gated dashboard access on the Firebase client-side auth state (`useUser()` from `src/firebase/auth/use-user.tsx`). After a successful NextAuth/Google sign-in:
+**Root cause (two independent causes):**
+
+**Cause 1 — Dashboard layout gated on Firebase Auth (commit `2e08c5f`):**
+`src/app/dashboard/layout.tsx` gated dashboard access on the Firebase client-side auth state (`useUser()` from `src/firebase/auth/use-user.tsx`). After a successful NextAuth/Google sign-in:
 
 1. NextAuth creates a session in Neon/Prisma (confirmed by `schema_courtcontrolai.Account` and `schema_courtcontrolai.User` rows).
 2. The `jwt` callback in `src/lib/auth.ts` attempts to sync the Firebase UID via `getFirebaseAdmin()`, but `FIREBASE_ADMIN_CLIENT_EMAIL` and `FIREBASE_ADMIN_PRIVATE_KEY` are not set in Vercel production → the bridge degrades gracefully with a `console.warn`.
 3. `token.firebaseUid` is never set → `session.user.firebaseUid` is null.
 4. The login page's bridge attempt (`/api/firebase-bridge-token`) returns 400 because `firebaseUid` is missing → `signInWithCustomToken` never fires → Firebase client auth has no user.
 5. `useUser()` returns `user: null` → the layout's `useEffect` calls `router.replace('/login')` → permanent redirect loop.
+
+**Cause 2 — Login page waited for Firebase bridge (commit `dba7008`):**
+`src/app/login/page.tsx` waited for the Firebase bridge to succeed before redirecting. The bridge token request needs `FIREBASE_ADMIN_*`, which Vercel does not carry, so the bridge always failed in production. On failure, the code only showed a toast error — no redirect happened. The user stayed on `/login` forever while NextAuth reported them as signed in. Additionally, `signIn('google', { callbackUrl: '/login' })` returned to `/login` after the OAuth flow, compounding the trap.
 
 **Impact:** Complete denial of service for all Google sign-in users. The dashboard is unreachable after authentication. This is the most demo-blocking defect in the project.
 
@@ -45,25 +51,46 @@
 - Two identity systems where one is never established in production is untenable. The authoritative system (NextAuth/Prisma) must be the gate.
 
 **What changed:**
+
+**Commit `2e08c5f` (dashboard layout):**
 - `src/app/dashboard/layout.tsx`:
   - Redirect guard now checks `sessionStatus === 'authenticated' && session?.user` (NextAuth) instead of `!authLoading && !user` (Firebase).
   - Removed the `authUnavailable` error screen — Firebase being unavailable no longer blocks dashboard access.
   - Sign-out now calls both `firebaseSignOut(auth)` (best-effort) and `nextAuthSignOut()` (authoritative).
   - Removed unused imports: `ServerCrash`, `Gavel`, `ChevronLeft`.
 
+**Commit `dba7008` (login page + guard asymmetry):**
+- `src/app/login/page.tsx`:
+  - Redirect to `/dashboard` immediately when NextAuth session is authenticated (separate effect).
+  - Firebase bridge is now a separate best-effort effect that does not block or trap the user.
+  - Bridge failure is logged with `console.warn` instead of showing a toast error.
+- `src/lib/auth-test-mode.ts` (new file):
+  - Unified predicate `isAuthTestEnabled()` that checks both `NODE_ENV !== 'production'` AND `AUTH_TEST_ENABLED === 'true'`.
+  - Fixes guard asymmetry: the test-mode endpoint and the provider registration now use the same logic.
+- `src/lib/auth.ts`:
+  - Uses `isAuthTestEnabled()` instead of checking only `AUTH_TEST_ENABLED`.
+- `src/app/api/auth/test-mode/route.ts`:
+  - Uses `isAuthTestEnabled()` for consistency.
+- `vitest.config.ts`:
+  - Added `include: ['src/**/*.{test,spec}.{ts,tsx}']` to exclude `e2e/*.spec.ts` (Playwright tests were being picked up by vitest, causing 8 'failed' files even though all 62 tests passed).
+
 **What stays:**
 - Firebase client SDK for Firestore reads (clubs, tournaments, profiles).
 - The Firebase bridge code in `auth.ts` (best-effort, degrades gracefully).
-- The login page's bridge attempt (will fail without `FIREBASE_ADMIN_*`, but that's acceptable).
+- The login page's bridge attempt (will fail without `FIREBASE_ADMIN_*`, but that's acceptable — it no longer blocks the redirect).
 
 **What becomes unnecessary after this fix:**
 - The `authUnavailable` error screen in the dashboard layout.
 - The dependency on Firebase Auth for dashboard access.
+- Waiting for Firebase bridge before redirecting from login page.
 
 **What still requires `FIREBASE_ADMIN_*` in production:**
 - Firestore reads in the dashboard (profile data, club data via `useUserClub`).
 - The Firebase bridge token endpoint (`/api/firebase-bridge-token`).
 - Without these env vars, the dashboard renders with fallback values (no profile photo, no admin role detection, no club data from Firestore).
+
+**Known limitation:**
+- `handleLogin` (email/password form) requires Firebase auth/db, which is unavailable in production without `FIREBASE_ADMIN_*`. The form shows "server unavailable" error. This is acceptable for now since Google OAuth is the primary auth method in production.
 
 **Regression test:** `src/app/dashboard/__tests__/layout-auth.test.tsx` — 6 tests verifying:
 1. OLD logic redirects when NextAuth session is valid but Firebase user is null (THE BUG).
